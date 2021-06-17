@@ -490,7 +490,7 @@ Write-Host "#######################################################" -Foreground
 Write-Host "#                                                     #" -ForegroundColor Green
 Write-Host "#          IT Glue to Hudu Migration Script           #" -ForegroundColor Green
 Write-Host "#                                                     #" -ForegroundColor Green
-Write-Host "#          Version: 0.1 - Alpha                       #" -ForegroundColor Green
+Write-Host "#          Version: 0.2 - Beta                        #" -ForegroundColor Green
 Write-Host "#          Date: 2021-04-02                           #" -ForegroundColor Green
 Write-Host "#                                                     #" -ForegroundColor Green
 Write-Host "#          Author: Luke Whitelock                     #" -ForegroundColor Green
