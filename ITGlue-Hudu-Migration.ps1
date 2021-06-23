@@ -2152,7 +2152,7 @@ else {
     $ITGPasswordsRaw = Import-ITGlueItems -ItemSelect $PasswordSelect
 
     $ITGPasswords = foreach ($ITGRawPass in $ITGPasswordsRaw){
-        $ITGPassword = Get-ITGluePasswords -id $ITGRawPass.id
+        $ITGPassword = (Get-ITGluePasswords -id $ITGRawPass.id).data
         $ITGPassword
     }
 
