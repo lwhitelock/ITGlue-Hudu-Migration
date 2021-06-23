@@ -2150,7 +2150,8 @@ else {
     Write-Host "Fetching Passwords from IT Glue" -ForegroundColor Green
     $PasswordSelect = { (Get-ITGluePasswords -page_size 1000 -page_number $i).data }
     $ITGPasswordsRaw = Import-ITGlueItems -ItemSelect $PasswordSelect
-
+	
+    Write-Host "Fetching each password individually to get the actual password data. This may take a while" -foregroundcolor Green
     $ITGPasswords = foreach ($ITGRawPass in $ITGPasswordsRaw){
         $ITGPassword = (Get-ITGluePasswords -id $ITGRawPass.id).data
         $ITGPassword
