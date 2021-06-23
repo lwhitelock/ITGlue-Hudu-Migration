@@ -1809,7 +1809,7 @@ else {
                         else {
 
                             if ($field.FieldType -eq "Password") {
-                                $ITGPassword = (Get-ITGluePasswords -filter_id $_.value).data
+                                $ITGPassword = (Get-ITGluePasswords -id $_.value).data
                                 try {						
                                     $null = $AssetFields.add("$($field.HuduParsedName)", ($ITGPassword.attributes.password -replace '[^\x09\x0A\x0D\x20-\xD7FF\xE000-\xFFFD\x10000\x10FFFF]'))
                                 }
