@@ -485,7 +485,7 @@ $FontAwesomeUpgrade = [PSCustomObject]@{
 ############################### End of Functions ###############################
 
 
-###################### Initial Setup and Confimations ###############################
+###################### Initial Setup and Confirmations ###############################
 Write-Host "#######################################################" -ForegroundColor Green
 Write-Host "#                                                     #" -ForegroundColor Green
 Write-Host "#          IT Glue to Hudu Migration Script           #" -ForegroundColor Green
@@ -564,7 +564,7 @@ If ([version]$HuduAppInfo.version -lt [version]$RequiredHuduVersion) {
 
 
 #Grabbing ITGlue Module and installing.
-If (Get-Module -ListAvailable -Name "ITGlueAPI") { 
+If (Get-Module -ListAvailable -Name "ITGlueAPIv2") { 
     Import-module ITGlueAPIv2 
 }
 Else { 
