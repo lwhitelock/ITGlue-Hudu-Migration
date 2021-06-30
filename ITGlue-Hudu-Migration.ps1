@@ -1983,10 +1983,14 @@ else {
 
         # Now do the actual work of populating the content of articles
         $ArticleErrors = foreach ($Article in $MatchedArticles) {
-            # Check for attachments
+            
+	    
+	    # Check for attachments
             $attachdir = $Attachfiles | Where-Object { $_.PSIsContainer -eq $true -and $_.Name -match $Article.ITGID }
             if ($Attachdir) {
-
+		$InFile = ''
+		$html = ''
+		$rawsource = ''
 
                 $ManualLog = [PSCustomObject]@{
                     Document_Name = $Article.Name
