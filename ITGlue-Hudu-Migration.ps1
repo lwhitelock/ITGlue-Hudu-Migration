@@ -2199,7 +2199,8 @@ else {
                     Write-Host "Starting $($unmatchedPassword.Name)"
 
                     $PasswordableType = 'Asset'
-
+		    $ParentItemID = $null
+		    
                     if ($($unmatchedPassword.ITGObject.attributes."resource-id")) {
 						
                         if ($unmatchedPassword.ITGObject.attributes."resource-type" -eq "flexible-asset-traits") {
