@@ -1,5 +1,5 @@
 #
-# Please Read the blog post at https://mspp.io/itglue-to-hudu-migration-script/ before running this script
+# Please Read the blog post at https://mspp.io/automated-it-glue-to-hudu-migration-script/ before running this script
 #
 # References
 # Determine image type https://devblogs.microsoft.com/scripting/psimaging-part-1-test-image/
@@ -506,10 +506,10 @@ Write-Host "# https://join.mspgeek.com/                           #" -Foreground
 Write-Host "# Or log an issue in the Github Respository:          #" -ForegroundColor Green
 Write-Host "# https://github.com/lwhitelock/ITGlue-Hudu-Migration #" -ForegroundColor Green
 Write-Host "#######################################################" -ForegroundColor Green
-Write-Host "# Instructions:                                       #" -ForegroundColor Green
-Write-Host "# Please view my blog post:                           #" -ForegroundColor Green
-Write-Host "# https://mspp.io/itglue-to-hudu-migration-script     #" -ForegroundColor Green
-Write-Host "# for detailed instructions                           #" -ForegroundColor Green
+Write-Host " Instructions:                                       " -ForegroundColor Green
+Write-Host " Please view my blog post:                           " -ForegroundColor Green
+Write-Host " https://mspp.io/automated-it-glue-to-hudu-migration-script/     " -ForegroundColor Green
+Write-Host " for detailed instructions                           " -ForegroundColor Green
 Write-Host "#######################################################" -ForegroundColor Green
 
 
