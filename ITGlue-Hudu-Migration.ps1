@@ -1,5 +1,8 @@
 #
 # Please Read the blog post at https://mspp.io/automated-it-glue-to-hudu-migration-script/ before running this script
+# Version 1.1
+# Updated 30/01/2022
+# If you found this script useful please consider sponsoring me at https://github.com/sponsors/lwhitelock?frequency=one-time
 #
 # References
 # Determine image type https://devblogs.microsoft.com/scripting/psimaging-part-1-test-image/
@@ -541,12 +544,12 @@ if ((get-host).version.major -ne 7) {
 
 
 #Get the Hudu API Module if not installed
-if (Get-Module -ListAvailable -Name HuduAPI) {
-    Import-Module HuduAPI 
+if ((Get-Module -ListAvailable -Name HuduAPI).version -eq '2.1.1') {
+    Import-Module HuduAPI -Version 2.1.1
 }
 else {
-    Install-Module HuduAPI -Force
-    Import-Module HuduAPI
+    Install-Module HuduAPI -RequiredVersion 2.1.1
+    Import-Module HuduAPI -Version 2.1.1
 }
   
 #Login to Hudu
@@ -554,7 +557,7 @@ New-HuduAPIKey $HuduAPIKey
 New-HuduBaseUrl $HuduBaseDomain
 
 # Check we have the correct version
-$RequiredHuduVersion = "2.1.5.6"
+$RequiredHuduVersion = "2.1.5.9"
 $HuduAppInfo = Get-HuduAppInfo
 If ([version]$HuduAppInfo.version -lt [version]$RequiredHuduVersion) {
     Write-Host "This script requires at least version $RequiredHuduVersion. Please update your version of Hudu and run the script again. Your version is $($HuduAppInfo.version)"
@@ -681,7 +684,7 @@ else {
 
     #Import Locations
     Write-Host "Fetching Locations from IT Glue" -ForegroundColor Green
-    $LocationsSelect = { (Get-ITGlueLocations -page_size 1000 -page_number $i).data }
+    $LocationsSelect = { (Get-ITGlueLocations -page_size 1000 -page_number $i -include related_items).data }
     $ITGLocations = Import-ITGlueItems -ItemSelect $LocationsSelect
 
 
@@ -989,7 +992,7 @@ else {
 
     #Get Configurations from IT Glue
     Write-Host "Fetching Configurations from IT Glue" -ForegroundColor Green
-    $ConfigurationsSelect = { (Get-ITGlueConfigurations -page_size 1000 -page_number $i).data }
+    $ConfigurationsSelect = { (Get-ITGlueConfigurations -page_size 1000 -page_number $i -include related_items).data }
     $ITGConfigurations = Import-ITGlueItems -ItemSelect $ConfigurationsSelect
 
 		
@@ -1294,7 +1297,7 @@ else {
 
 
     Write-Host "Fetching Contacts from IT Glue" -ForegroundColor Green
-    $ContactsSelect = { (Get-ITGlueContacts -page_size 1000 -page_number $i).data }
+    $ContactsSelect = { (Get-ITGlueContacts -page_size 1000 -page_number $i -include related_items).data }
     $ITGContacts = Import-ITGlueItems -ItemSelect $ContactsSelect
 
     #($ITGContacts.attributes | sort-object -property name, "organization-name" -Unique)
@@ -1417,7 +1420,7 @@ else {
     $ConfigImportAssetLayoutName = ($MatchedConfigurations.HuduObject | Select-Object name, asset_type | group-object -property asset_type | sort-object count -descending | Select-Object -first 1).name
 
     Write-Host "Fetching Flexible Asset Layouts from IT Glue" -ForegroundColor Green
-    $FlexLayoutSelect = { (Get-ITGlueFlexibleAssetTypes -page_size 1000 -page_number $i).data }
+    $FlexLayoutSelect = { (Get-ITGlueFlexibleAssetTypes -page_size 1000 -page_number $i -include related_items).data }
     $FlexLayouts = Import-ITGlueItems -ItemSelect $FlexLayoutSelect
 
     $HuduLayouts = Get-HuduAssetLayouts
@@ -1438,7 +1441,7 @@ else {
             [PSCustomObject]@{
                 "Name"       = $ITGLayout.attributes.name
                 "ITGID"      = $ITGLayout.id
-                "HuduID"     = $ITGLayout.id
+                "HuduID"     = $HuduLayout.id
                 "Matched"    = $true
                 "HuduObject" = $HuduLayout
                 "ITGObject"  = $ITGLayout
@@ -1485,8 +1488,11 @@ else {
                     position     = 500
                 }
             )
-		
-            if ($($FontAwesomeUpgrade."$($UnmatchedLayout.ITGObject.attributes.icon)")) {
+            if ($null -eq $UnmatchedLayout.ITGObject.attributes.icon){
+                $NewIcon = 'circle'
+
+            }
+            elseif ($($FontAwesomeUpgrade."$($UnmatchedLayout.ITGObject.attributes.icon)")) {
                 $NewIcon = $($FontAwesomeUpgrade."$($UnmatchedLayout.ITGObject.attributes.icon)")
             }
             else {
@@ -1507,6 +1513,7 @@ else {
             $UnmatchedLayout.Imported = "Created-By-Script"
 
 
+
         }
 
 
@@ -1521,7 +1528,7 @@ else {
 				
             # Grab all the Assets for the layout
             Write-Host "Fetching Flexible Assets from IT Glue (This may take a while)"
-            $FlexAssetsSelect = { (Get-ITGlueFlexibleAssets -page_size 1000 -page_number $i -filter_flexible_asset_type_id $UpdateLayout.ITGID).data }
+            $FlexAssetsSelect = { (Get-ITGlueFlexibleAssets -page_size 1000 -page_number $i -filter_flexible_asset_type_id $UpdateLayout.ITGID -include related_items).data }
             $FlexAssets = Import-ITGlueItems -ItemSelect $FlexAssetsSelect
 		
 				
@@ -1638,7 +1645,6 @@ else {
                 }
 
             }
-
 
             $null = Set-HuduAssetLayout -id $UpdateLayout.HuduID  -name $UpdateLayout.HuduObject.Name -icon $UpdateLayout.HuduObject.icon -color $UpdateLayout.HuduObject.color -icon_color $UpdateLayout.HuduObject.icon_color -include_passwords $true -include_photos $true -include_comments $true -include_files $true -fields @($UpdateLayoutFields)
             $UpdatedLayout = Get-HuduAssetLayouts -layoutid $UpdateLayout.HuduID
@@ -1809,7 +1815,7 @@ else {
                         else {
 
                             if ($field.FieldType -eq "Password") {
-                                $ITGPassword = (Get-ITGluePasswords -id $_.value).data
+                                $ITGPassword = (Get-ITGluePasswords -id $_.value -include related_items).data
                                 try {						
                                     $null = $AssetFields.add("$($field.HuduParsedName)", ($ITGPassword.attributes.password -replace '[^\x09\x0A\x0D\x20-\xD7FF\xE000-\xFFFD\x10000\x10FFFF]'))
                                 }
@@ -1896,13 +1902,11 @@ else {
         $company = $MatchedCompanies | where-object -filter { $_.CompanyName -eq $doc.organization }
         if (($company | Measure-Object).count -eq 1) {
 
-			
-	
-	
             $art_folder_id = ''
             if ($company.InternalCompany -eq $false) {
                 if (($folders | Measure-Object).count -gt 2) {
                     # Make / Check Folders
+
                     $art_folder_id = (Initialize-HuduFolder $folders[1..$($folders.count - 2)] -company_id $company.HuduID).id
                 }
                 $ArticleSplat = @{
@@ -2152,12 +2156,12 @@ else {
 
     #Import Passwords
     Write-Host "Fetching Passwords from IT Glue" -ForegroundColor Green
-    $PasswordSelect = { (Get-ITGluePasswords -page_size 1000 -page_number $i).data }
+    $PasswordSelect = { (Get-ITGluePasswords -page_size 1000 -page_number $i -include related_items).data }
     $ITGPasswordsRaw = Import-ITGlueItems -ItemSelect $PasswordSelect
 	
     Write-Host "Fetching each password individually to get the actual password data. This may take a while" -foregroundcolor Green
     $ITGPasswords = foreach ($ITGRawPass in $ITGPasswordsRaw){
-        $ITGPassword = (Get-ITGluePasswords -id $ITGRawPass.id).data
+        $ITGPassword = (Get-ITGluePasswords -id $ITGRawPass.id -include related_items).data
         $ITGPassword
     }
 
@@ -2405,6 +2409,7 @@ $(($MatchedLayouts | Measure-Object).count) : Layouts Migrated <br />
 $(($MatchedAssets | Measure-Object).count) : Assets Migrated <br />
 $(($MatchedArticles | Measure-Object).count) : Articles Migrated <br />
 $(($MatchedPasswords | Measure-Object).count) : Passwords Migrated <br />
+If you found this script useful please consider sponsoring me at: <a href=https://github.com/sponsors/lwhitelock?frequency=one-time>https://github.com/sponsors/lwhitelock?frequency=one-time</a>
 <hr>
 <h1>Manual Actions Required Report</h1>
 "@
