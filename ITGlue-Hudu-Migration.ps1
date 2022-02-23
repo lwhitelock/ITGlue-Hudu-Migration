@@ -493,8 +493,8 @@ Write-Host "#######################################################" -Foreground
 Write-Host "#                                                     #" -ForegroundColor Green
 Write-Host "#          IT Glue to Hudu Migration Script           #" -ForegroundColor Green
 Write-Host "#                                                     #" -ForegroundColor Green
-Write-Host "#          Version: 0.2 - Beta                        #" -ForegroundColor Green
-Write-Host "#          Date: 2021-04-02                           #" -ForegroundColor Green
+Write-Host "#          Version: 1.1 - Beta                        #" -ForegroundColor Green
+Write-Host "#          Date: 30/01/2022                           #" -ForegroundColor Green
 Write-Host "#                                                     #" -ForegroundColor Green
 Write-Host "#          Author: Luke Whitelock                     #" -ForegroundColor Green
 Write-Host "#                  https://mspp.io                    #" -ForegroundColor Green
