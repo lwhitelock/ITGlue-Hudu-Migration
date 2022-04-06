@@ -1950,6 +1950,8 @@ if ($ResumeFound -eq $true -and (Test-Path "MigrationLogs\Articles.json")) {
 
         # Now do the actual work of populating the content of articles
         $ArticleErrors = foreach ($Article in $MatchedArticles) {
+
+            $page_out = ''
             
 	    
             # Check for attachments
@@ -2233,7 +2235,7 @@ if ($ResumeFound -eq $true -and (Test-Path "MigrationLogs\Passwords.json")) {
                         }
                     }
 					
-                    if (!$($unmatchedPassword.ITGObject.attributes."resource-type") -eq "flexible-asset-traits") {
+                    if (!($($unmatchedPassword.ITGObject.attributes."resource-type") -eq "flexible-asset-traits")) {
 						
 
 
