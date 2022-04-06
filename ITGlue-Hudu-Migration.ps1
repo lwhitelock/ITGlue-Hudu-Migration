@@ -56,7 +56,7 @@ $HuduPrimaryLocationNames = @("Primary Address")
 $ImportDomains = $true
 
 # Choose if you would like to enable monitoring for the imported websites.
-$EnableWebsiteMonitoring = "false"
+$DisableWebsiteMonitoring = "false"
 
 ############################### Configuration Settings ###############################
 $ImportConfigurations = $true
@@ -926,7 +926,7 @@ if ($ResumeFound -eq $true -and (Test-Path "MigrationLogs\Websites.json")) {
 
                     Write-Host "Starting $($unmatchedWebsite.Name)"
 
-                    $HuduNewWebsite = New-HuduWebsite -name "https://$($unmatchedWebsite.ITGObject.attributes.name)" -notes $unmatchedWebsite.ITGObject.attributes.notes -paused $EnableWebsiteMonitoring -companyid $company.HuduCompanyObject.ID -disabledns $EnableWebsiteMonitoring -disablessl $EnableWebsiteMonitoring -disablewhois $EnableWebsiteMonitoring
+                    $HuduNewWebsite = New-HuduWebsite -name "https://$($unmatchedWebsite.ITGObject.attributes.name)" -notes $unmatchedWebsite.ITGObject.attributes.notes -paused $DisableWebsiteMonitoring -companyid $company.HuduCompanyObject.ID -disabledns $DisableWebsiteMonitoring -disablessl $DisableWebsiteMonitoring -disablewhois $DisableWebsiteMonitoring
 
 
                     $unmatchedWebsite.matched = $true
