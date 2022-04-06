@@ -1,7 +1,7 @@
 #
 # Please Read the blog post at https://mspp.io/automated-it-glue-to-hudu-migration-script/ before running this script
-# Version 1.1
-# Updated 30/01/2022
+# Version 1.2
+# Updated 06/04/2022
 # If you found this script useful please consider sponsoring me at https://github.com/sponsors/lwhitelock?frequency=one-time
 #
 # References
