@@ -2045,7 +2045,7 @@ if ($ResumeFound -eq $true -and (Test-Path "MigrationLogs\Articles.json")) {
                             }
 
                         }
-                        $link.href = "$($HuduBaseDomain)$($HuduPath)"
+                        $link.href = "$HuduPath"
                         Write-Host "Link Rewritten to $($link.href)"
 
                     }
