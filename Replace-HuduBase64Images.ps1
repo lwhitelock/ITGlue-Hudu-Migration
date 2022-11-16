@@ -310,7 +310,7 @@ function Repair-Base64ImagesFromArticle {
 
 }
 
-# Import AWS Tools, and confirm credentials are saved as your default profile
+# Import AWS Tools, and confirm credentials are saved as your default profile and bucket variables are set
 try {
     Import-Module AWSPowerShell.NetCore
     while ($ConfirmAWsCredential -notin 'Y','N') {
@@ -326,6 +326,9 @@ catch {
     Install-Module AWSPowerShell.NetCore -Scope CurrentUser -ErrorAction Stop
     Set-AWSCredential -StoreAs default -AccessKey (Read-Host "Please enter your access key") -SecretKey (Read-Host "Please enter your secret key")
 }
+
+if (-not $storageBucket) {$storageBucket = Read-Host 'Enter your bucket name'}
+if (-not $storageEndpoint) {$storageEndpoint = Read-Host "Enter your storage endpoint url"}
 
 # Import ImageMagic Modules, prompt for path if the module is missing
 try {
