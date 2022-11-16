@@ -23,6 +23,10 @@ $ConnectionDetails = @{
     dbpass = ''
 }
 
+# S3/Spaces/Object Storage details. You must set these values for S3 upload to succeed. You can read these from your .ENV file
+$storageBucket = ''
+$storageEndpoint = '' 
+
 # PostgreSQL functions
 function Connect-PSQL {
     param (
@@ -272,7 +276,7 @@ function Repair-Base64ImagesFromArticle {
 
     $UploadedArticleImages = foreach ($Filename in (Get-ChildItem -Path $TemporaryFolderPath -Filter "Article$ArticleID-image*.b64")) {
         Write-Host "Uploading $Filename.fullname to S3 Storage" -ForegroundColor Green
-        New-HuduImage -Connection $Conn -FilePath $Filename.fullname -OutputPath $TemporaryFolderPath  -BucketName kbsfiles -EndpointUri https://nyc3.digitaloceanspaces.com -ArticleId $ArticleID
+        New-HuduImage -Connection $Conn -FilePath $Filename.fullname -OutputPath $TemporaryFolderPath  -BucketName $storageBucket -EndpointUri $storageEndpoint -ArticleId $ArticleID
     }
     
     if ($UploadedArticleImages) {
