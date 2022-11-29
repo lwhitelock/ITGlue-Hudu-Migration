@@ -402,7 +402,11 @@ if ($InlineImageArticles) {
     $Results = foreach ($articleToFix in $InlineImageArticles) {
         $newContent = Repair-Base64ImagesFromArticle -ArticleID $articleToFix.id
         Write-Host "Posting new HTML Content to document $articleToFix" -ForegroundColor Cyan
-        $updatedDoc = Set-HuduArticle -name $articleToFix.name -content $newContent -id $articleToFix.id
+        if ($newContent.length -gt 1) {
+            $updatedDoc = Set-HuduArticle -name $articleToFix.name -content $newContent[$newContent.length-1] -id $articleToFix.id
+        } else {
+            $updatedDoc = Set-HuduArticle -name $articleToFix.name -content $newContent -id $articleToFix.id
+         }
 
         @{
             articleid = $articleToFix.ID
