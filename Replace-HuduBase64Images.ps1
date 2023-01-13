@@ -9,7 +9,7 @@
 
 param(
     [parameter(ParameterSetName='RunAll')][switch]$ProcessAllArticles,
-    [parameter(ParameterSetName='RunOne')]$AritcleIdsToProcess,
+    [parameter(ParameterSetName='RunOne')]$ArticleIdsToProcess,
     [parameter(ParameterSetName='RunSome')][int]$NumberofArticlesToLoop
 )
 
@@ -362,11 +362,11 @@ catch {
 
 Write-Host 'Running Script'
 pause
-if ($AritcleIdsToProcess) {
+if ($ArticleIdsToProcess) {
 
     # Pulling specific document with base64 images from the database. This can take several minutes.
-    Write-Host "Pulling document $($AritcleIdsToProcess -join ',') with base64 images from the database. This can take several minutes." -ForegroundColor Cyan
-    $InlineImageArticles = Get-PSQLData -Connection $Conn -Query "Select id,name,slug from articles where content like '%data:image%' and id in ($($AritcleIdsToProcess -join ','))"
+    Write-Host "Pulling document $($ArticleIdsToProcess -join ',') with base64 images from the database. This can take several minutes." -ForegroundColor Cyan
+    $InlineImageArticles = Get-PSQLData -Connection $Conn -Query "Select id,name,slug from articles where content like '%data:image%' and id in ($($ArticleIdsToProcess -join ','))"
 
 }
 
@@ -401,7 +401,7 @@ if ($InlineImageArticles) {
 
     $Results = foreach ($articleToFix in $InlineImageArticles) {
         $newContent = Repair-Base64ImagesFromArticle -ArticleID $articleToFix.id
-        Write-Host "Posting new HTML Content to document $articleToFix" -ForegroundColor Cyan
+        Write-Host "Posting new HTML Content to document $($articleToFix.name)" -ForegroundColor Cyan
         if (($newContent.count -gt 1) -and ($newContent.getType().name -ne 'String')) {
             $updatedDoc = Set-HuduArticle -name $articleToFix.name -content $newContent[$newContent.length-1] -id $articleToFix.id
         } else {
