@@ -2107,6 +2107,7 @@ if ($ResumeFound -eq $true -and (Test-Path "MigrationLogs\Articles.json")) {
 
 ############################### Passwords ###############################
 
+
 #Check for Passwords Resume
 if ($ResumeFound -eq $true -and (Test-Path "MigrationLogs\Passwords.json")) {
     Write-Host "Loading Previous Paswords Migration"
@@ -2116,18 +2117,33 @@ if ($ResumeFound -eq $true -and (Test-Path "MigrationLogs\Passwords.json")) {
     #Import Passwords
     Write-Host "Fetching Passwords from IT Glue" -ForegroundColor Green
     $PasswordSelect = { (Get-ITGluePasswords -page_size 1000 -page_number $i -include related_items).data }
-    $ITGPasswordsRaw = Import-ITGlueItems -ItemSelect $PasswordSelect
-	
-    Write-Host "Fetching each password individually to get the actual password data. This may take a while" -foregroundcolor Green
-    $ITGPasswords = foreach ($ITGRawPass in $ITGPasswordsRaw) {
-        $ITGPassword = (Get-ITGluePasswords -id $ITGRawPass.id -include related_items).data
-        $ITGPassword
+    $ITGPasswords = Import-ITGlueItems -ItemSelect $PasswordSelect -MigrationName 'Passwords'
+    try {
+        Write-Host "Loading Passwords from CSV for faster import" -foregroundcolor Cyan
+        $ITGPasswordsRaw = Import-CSV -Path "$ITGLueExportPath\passwords.csv"
     }
+	catch {
+        $ITGPasswordsSingle = foreach ($ITGRawPass in $ITGPasswords) {
+            $ITGPassword = (Get-ITGluePasswords -id $ITGRawPass.id -include related_items).data
+            $ITGPassword
+        }
+        $ITGPasswords = $ITGPasswordsSingle
+    }
+    
+
 
     Write-Host "$($ITGPasswords.count) ITG Glue Passwords Found" 
 
     $MatchedPasswords = foreach ($itgpassword in $ITGPasswords ) {
-	
+        if ($ITGPasswordsRaw) {
+            #Write-Host "Using faster CSV Password" -ForegroundColor Gray
+            $ITGPasswordValue = ($ITGPasswordsRaw |Where-Object {$_.id -eq $itgpassword.id}).password
+            $OTPSecretValue = ($ITGPasswordsRaw |Where-Object {$_.id -eq $itgpassword.id}).otp_secret
+            $itgpassword.attributes | Add-Member -MemberType NoteProperty -Name password -Value $ITGPasswordValue
+            $itgpassword.attributes | Add-Member -MemberType NoteProperty -Name otp_secret -Value $OTPSecretValue
+        }
+        
+
         [PSCustomObject]@{
             "Name"       = $itgpassword.attributes.name
             "ITGID"      = $itgpassword.id
@@ -2249,6 +2265,7 @@ if ($ResumeFound -eq $true -and (Test-Path "MigrationLogs\Passwords.json")) {
                             password          = $unmatchedPassword.ITGObject.attributes.password
                             url               = $unmatchedPassword.ITGObject.attributes.url
                             username          = $unmatchedPassword.ITGObject.attributes.username
+                            otpsecret         = $unmatchedPassword.ITGObject.attributes.otp_secret
 
                         }
 
@@ -2284,7 +2301,6 @@ if ($ResumeFound -eq $true -and (Test-Path "MigrationLogs\Passwords.json")) {
     $ManualActions | ConvertTo-Json -depth 100 | Out-File 'MigrationLogs\ManualActions.json'
 
 }
-
 
 ############################### Generate Manual Actions Report ###############################
 
