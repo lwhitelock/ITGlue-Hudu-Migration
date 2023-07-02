@@ -1,394 +1,30 @@
-#
-# Please Read the blog post at https://mspp.io/automated-it-glue-to-hudu-migration-script/ before running this script
-# Version 1.2
-# Updated 06/04/2022
-# If you found this script useful please consider sponsoring me at https://github.com/sponsors/lwhitelock?frequency=one-time
-#
-# References
-# Determine image type https://devblogs.microsoft.com/scripting/psimaging-part-1-test-image/
-# Parsing HTML https://stackoverflow.com/questions/28497902/finding-img-tags-in-html-files-in-powershell
-# Nice Base64 conversion https://www.aaron-powell.com/posts/2010-11-07-base64-encoding-images-with-powershell/
-
-
-############################### Settings ###############################
-############################### API Settings ###############################
-
-# Hudu
-# Get a Hudu API Key from https://yourhududomain.com/admin/api_keys
-$HuduAPIKey = "ABCDEFGHIJK123456"
-# Set the base domain of your Hudu instance without a trailing /
-$HuduBaseDomain = "https://your.hududomain.com"
-
-# IT Glue - MAKE SURE TO USE AN API KEY WITH PASSWORD ACCESS
-$ITGAPIEndpoint = "https://api.eu.itglue.com"
-$ITGKey = "ITG.123455677890ABCDEFGHJKIL"
-
-#Enter your primary IT Glue internal URL
-$ITGURL = "https://yourdomain.eu.itglue.com"
-
-# IT Glue Internal Company Name (The documents from this company will be migrated to the Global KB)
-$InternalCompany = "Internal Company"
-
-############################### Core Settings ###############################
-# This should point to the folder where you extracted your IT Glue export
-$ITGLueExportPath = "c:\temp\itglue\export\"
-
-# Choose if you want to resume previous attempts from the last successful section
-$ResumePrevious = $true
-
-############################### Company Settings ###############################
-$ImportCompanies = $true
-
-############################### Location Settings ###############################
-$ImportLocations = $true
-
-# The asset layout name how locations will appear in Hudu
-$LocImportAssetLayoutName = "Locations"
-
-# The font awesome name for the locations icon in Hudu
-$LocImportIcon = "fas fa-building"
-
-# Here set two arrays of the different names you have used to identify the primary location in both ITGlue And Hudu
-$ITGPrimaryLocationNames = @("Primary Address", "Main", "Head Office", "Main Office")
-$HuduPrimaryLocationNames = @("Primary Address")
-
-############################### Domain / Website Settings ###############################
-$ImportDomains = $true
-
-# Choose if you would like to enable monitoring for the imported websites.
-$DisableWebsiteMonitoring = "false"
-
-############################### Configuration Settings ###############################
-$ImportConfigurations = $true
-
-# The font awesome name for the locations icon in Hudu
-$ConfigImportIcon = "fas fa-sitemap"
-
-# Set if you would like a Prefix in front of configuration names created in Hudu. This can make it easy to review and you can rename them later set to "" if you dont want one
-$ConfigurationPrefix = "ITGlue-"
-
-############################### Contact Settings ###############################
-$ImportContacts = $true
-
-# The asset layout name how locations will appear in Hudu
-$ConImportAssetLayoutName = "People"
-
-# The font awesome name for the locations icon in Hudu
-$ConImportIcon = "fas fa-users"
-
-############################### Flexible Asset Layouts ###############################
-$ImportFlexibleAssetLayouts = $true
-
-# Set if you would like a Prefix in front of Layout names created in Hudu. This can make it easy to review and you can rename them later set to "" if you don't want one
-$FlexibleLayoutPrefix = "ITGlue-"
-
-############################### Flexible Assets ###############################
-$ImportFlexibleAssets = $true
-
-############################### Articles ###############################
-$ImportArticles = $true
-
-############################### Passwords ###############################
-$ImportPasswords = $true
-
-############################### End of Settings ###############################
-
-
+# Main settings load
+. .\Initialize-Module.ps1
 
 ############################### Functions ###############################
+# Used to determine if a file is an image and what type of image
+. .\Private\Test-Image.ps1
 
-############################### Used to get the Base64 encoded version of a file
-function ConvertToBase64 {
-    Param([String]$path)
-    [convert]::ToBase64String((get-content -LiteralPath $path -AsByteStream -raw))
-}
+# Confirm Object Import
+. .\Private\Confirm-Import.ps1
 
-############################### Used to determine if a file is an image and what type of image
-function TestImage {
-    [CmdletBinding()]
-    [OutputType([System.Boolean])]
-    param(
-        [Parameter(Mandatory = $true, Position = 0, ValueFromPipeline = $true)]
-        [ValidateNotNullOrEmpty()]
-        [Alias('PSPath')]
-        [string] $Path
-    )
+# Matches items from IT Glue to Hudu and creates new items in Hudu
+. .\Private\Import-Items.ps1
 
-    PROCESS {
+# Select Item Import Mode
+. .\Private\Get-ImportMode.ps1
 
-        $knownHeaders = @{
-            jpg = @( "FF", "D8" );
-            bmp = @( "42", "4D" );
-            gif = @( "47", "49", "46" );
-            tif = @( "49", "49", "2A" );
-            png = @( "89", "50", "4E", "47", "0D", "0A", "1A", "0A" );
-            pdf = @( "25", "50", "44", "46" );
-        }
+# Get Configurations Option
+. .\Private\Get-ConfigurationsImportMode.ps1
 
-        # coerce relative paths from the pipeline into full paths
+# Get Flexible Asset Layout Option
+. .\Private\Get-FlexLayoutImportMode.ps1
 
-        if ($_ -ne $null) {
-            $Path = $_.FullName
-        }
+# Fetch Items from ITGlue
+. .\Private\Import-ITGlueItems.ps1
 
-        # read in the first 8 bits
-        $bytes = Get-Content -LiteralPath $Path -AsByteStream -ReadCount 1 -TotalCount 8 -ErrorAction Ignore
-        $retval = 'NONIMAGE'
-        
-        foreach ($key in $knownHeaders.Keys) {
-            # make the file header data the same length and format as the known header
-            $fileHeader = $bytes |
-            Select-Object -First $knownHeaders[$key].Length |
-            ForEach-Object { $_.ToString("X2") }
-            if ($fileHeader.Length -eq 0) {
-                continue
-            }
-            # compare the two headers
-            $diff = Compare-Object -ReferenceObject $knownHeaders[$key] -DifferenceObject $fileHeader
-            if (($diff | Measure-Object).Count -eq 0) {
-                $retval = $key
-            }
-        }
-        return $retval
-    }
-}
-
-
-############################### Confirm Object Import
-function Confirm-Import {
-    param(
-        [string]$ImportObjectName,
-        [PSCustomObject]$ImportObject,
-        [String]$ImportSetting
-    )
-    if ($ImportSetting -eq "S") {
-        $ImportConfirm = Read-Host "Would you like to migrate: $ImportObjectName Y/n"
-        if ($ImportConfirm -ne "Y" -or $ImportConfirm -ne "y") {
-            Write-Host "$ImportObjectName has been skipped"
-            $ImportObject.imported = "Not-Migrated"
-            continue
-        }	
-    }
-}
-
-############################### Matches items from IT Glue to Hudu and creates new items in Hudu
-function Import-Items {
-    Param(
-        $AssetFieldsMap,
-        $AssetLayoutFields,
-        $ImportIcon,
-        $ImportEnabled,
-        $HuduItemFilter,
-        $ImportAssetLayoutName,
-        $ItemSelect,
-        $MigrationName,
-        $ITGImports
-    )
-
-
-    $ImportsMigrated = 0
-
-    $ImportLayout = $null
-	
-    Write-Host "Processing $ImportAssetLayoutName"
-
-    # Lets try to match itemss
-    $ImportLayout = Get-HuduAssetLayouts -name $ImportAssetLayoutName
-	
-    if ($ImportLayout) {
-		
-        $HuduImports = Get-HuduAssets -assetlayoutid $ImportLayout.id
-        Write-Host "$MigrationName layout found attempting to match existing entries"
-        $MatchedImports = foreach ($itgimport in $ITGImports ) {
-
-            $HuduImport = $HuduImports | where-object -filter $HuduItemFilter
-			
-	
-            if ($HuduImport) {
-                [PSCustomObject]@{
-                    "Name"        = $itgimport.attributes.name
-                    "CompanyName" = $itgimport.attributes."organization-name"
-                    "ITGID"       = $itgimport.id
-                    "HuduID"      = $HuduImport.id
-                    "Matched"     = $true
-                    "HuduObject"  = $HuduImport
-                    "ITGObject"   = $itgimport
-                    "Imported"    = "Pre-Existing"
-					
-                }
-            } else {
-                [PSCustomObject]@{
-                    "Name"        = $itgimport.attributes.name
-                    "CompanyName" = $itgimport.attributes."organization-name"
-                    "ITGID"       = $itgimport.id
-                    "HuduID"      = ""
-                    "Matched"     = $false
-                    "HuduObject"  = ""
-                    "ITGObject"   = $itgimport
-                    "Imported"    = ""
-                }
-            }
-        }
-    } else {
-        $MatchedImports = foreach ($itgimport in $ITGImports ) {
-            [PSCustomObject]@{
-                "Name"        = $itgimport.attributes.name
-                "CompanyName" = $itgimport.attributes."organization-name"
-                "ITGID"       = $itgimport.id
-                "HuduID"      = ""
-                "Matched"     = $false
-                "HuduObject"  = ""
-                "ITGObject"   = $itgimport
-                "Imported"    = ""
-            }
-		
-        }
-
-    }
-	
-    Write-Host "Matched $MigrationName (Already exist so will not be migrated)"
-    Write-Host $($MatchedImports | Sort-Object CompanyName | Where-Object { $_.Matched -eq $true } | Select-Object CompanyName, Name | Format-Table | Out-String)
-	
-    Write-Host "Unmatched $MigrationName"
-    Write-Host $($MatchedImports | Sort-Object CompanyName | Where-Object { $_.Matched -eq $false } | Select-Object CompanyName, Name | Format-Table | Out-String)
-	
-    # Import Items
-    $UnmappedImportCount = ($MatchedImports | Where-Object { $_.Matched -eq $false } | measure-object).count
-    if ($ImportEnabled -eq $true -and $UnmappedImportCount -gt 0) {
-		
-        if (!$ImportLayout) { 
-            Write-Host "Creating New Asset Layout $ImportAssetLayoutName"
-            $Null = New-HuduAssetLayout -name $ImportAssetLayoutName -icon $ImportIcon -color "#6e00d5" -icon_color "#ffffff" -include_passwords $true -include_photos $true -include_comments $true -include_files $true -fields $AssetLayoutFields
-            $ImportLayout = Get-HuduAssetLayouts -name $ImportAssetLayoutName
-		
-        }
-	
-        $ImportOption = Get-ImportMode -ImportName $MigrationName
-	
-        if (($importOption -eq "A") -or ($importOption -eq "S") ) {		
-	
-            foreach ($company in $CompaniesToMigrate) {
-                Write-Host "Migrating $($company.CompanyName) $MigrationName"
-	
-                foreach ($unmatchedImport in ($MatchedImports | Where-Object { $_.Matched -eq $false -and $company.ITGCompanyObject.id -eq $_."ITGObject".attributes."organization-id" })) {
-	
-                    $AssetFields = & $AssetFieldsMap
-
-					
-
-                    Confirm-Import -ImportObjectName "$($unmatchedImport.Name): $($AssetFields | Out-String)" -ImportObject $unmatchedImport -ImportSetting $ImportOption
-	
-                    Write-Host "Starting $($unmatchedImport.Name)"
-	
-                    $HuduAssetName = $($unmatchedImport.Name)
-					
-                    $HuduNewImport = (New-HuduAsset -name $HuduAssetName -company_id $company.HuduCompanyObject.ID -asset_layout_id $ImportLayout.id -fields $AssetFields).asset
-	
-                    $unmatchedImport.matched = $true
-                    $unmatchedImport.HuduID = $HuduNewImport.id
-                    $unmatchedImport."HuduObject" = $HuduNewImport
-                    $unmatchedImport.Imported = "Created-By-Script"
-	
-                    $ImportsMigrated = $ImportsMigrated + 1
-	
-                    Write-host "$($unmatchedImport.Name) Has been created in Hudu"
-                    Write-Host ""
-                }
-            }
-        }
-			
-	
-    } else {
-        if ($UnmappedImportCount -eq 0) {
-            Write-Host "All $MigrationName matched, no migration required" -foregroundcolor green
-        } else {
-            Write-Host "Warning Import $MigrationName is set to disabled so the above unmatched $MigrationName will not have data migrated" -foregroundcolor red
-            Read-Host -Prompt "Press any key to continue or CTRL+C to quit" 
-        }
-    }
-	
-    Return $MatchedImports
-
-}
-
-############################### Select Item Import Mode
-function Get-ImportMode {
-    param(
-        [string]$ImportName
-    )
-    Write-Host "Importing $ImportName"
-    $ImportOption = Read-Host "[A] Import All unmapped $ImportName. [N] Import None of the unmapped $ImportName. [S] Select for each individual $ImportName (A/N/S)"
-    if (!($ImportOption -in @("A", "N", "S"))) {
-        Write-Host "Please select A, N or S"
-        $ImportOption = Get-ImportMode -ImportName $ImportName
-    }
-		
-    return $ImportOption
-}
-
-############################### Get Configurations Option
-function Get-ConfigurationsImportMode {
-    $ImportOption = Read-Host "[1] [2] [3]"
-    if (!($ImportOption -in @(1, 2, 3))) {
-        Write-Host "Please select 1, 2 or 3"
-        $ImportOption = Get-ConfigurationsImportMode -ImportName $ImportName
-    }
-		
-    return $ImportOption
-}
-
-############################### Get Flexible Asset Layout Option
-function Get-FlexLayoutImportMode {
-    $ImportOption = Read-Host "[1] [2]"
-    if (!($ImportOption -in @(1, 2))) {
-        Write-Host "Please select 1 or 2"
-        $ImportOption = Get-FlexLayoutImportMode -ImportName $ImportName
-    }
-		
-    return $ImportOption
-}
-
-
-
-############################### Fetch Items from ITGlue
-function Import-ITGlueItems {
-    Param(
-        $ItemSelect
-    )
-    $i = 1
-    $ITGImports = do {
-        $itgimport = & $ItemSelect
-        $i++
-        $itgimport
-        Write-Host "Retrieved $($itgimport.count) $MigrationName" -ForegroundColor Yellow
-    }while ($itgimport.count % 1000 -eq 0 -and $itgimport.count -ne 0)
-    return $ITGImports
-}
-
-############################### Fetch Items from ITGlue
-function Find-MigratedItem {
-    param (
-        $ITGID
-    )
-
-    $FoundItem = $MatchedAssets | Where-Object { $_.ITGID -eq $ITGID }
-	
-    if (!$FoundItem) {
-        $FoundItem = $MatchedContacts | Where-Object { $_.ITGID -eq $ITGID }
-    }
- 	
-    if (!$FoundItem) {
-        $FoundItem = $MatchedConfigurations | Where-Object { $_.ITGID -eq $ITGID }
-    }
- 	
-    if (!$FoundItem) {
-        $FoundItem = $MatchedLocations | Where-Object { $_.ITGID -eq $ITGID }
-    }
-
-		
-    return $FoundItem
-
-}
+# Find migrated items
+. .\Private\Find-MigratedItem.ps1
 
 ############################### Lookup table to upgrade from Font Awesome 4 to 5
 $FontAwesomeUpgrade = [PSCustomObject]@{
@@ -477,10 +113,6 @@ $FontAwesomeUpgrade = [PSCustomObject]@{
     "window-close"         = "window-close"
 
 }
-
-
-
-
 ############################### End of Functions ###############################
 
 
@@ -489,18 +121,22 @@ Write-Host "#######################################################" -Foreground
 Write-Host "#                                                     #" -ForegroundColor Green
 Write-Host "#          IT Glue to Hudu Migration Script           #" -ForegroundColor Green
 Write-Host "#                                                     #" -ForegroundColor Green
-Write-Host "#          Version: 1.1 - Beta                        #" -ForegroundColor Green
-Write-Host "#          Date: 30/01/2022                           #" -ForegroundColor Green
+Write-Host "#          Version: 2.0  -Beta                        #" -ForegroundColor Green
+Write-Host "#          Date: 02/07/2023                           #" -ForegroundColor Green
 Write-Host "#                                                     #" -ForegroundColor Green
 Write-Host "#          Author: Luke Whitelock                     #" -ForegroundColor Green
 Write-Host "#                  https://mspp.io                    #" -ForegroundColor Green
+Write-Host "#          Contributors: John Duprey                  #" -ForegroundColor Green
+Write-Host "#                        Mendy Green                  #" -ForegroundColor Green
+Write-Host "#                  https://MSPGeek.org                #" -ForegroundColor Green
+Write-Host "#                  https://mendyonline.com            #" -ForegroundColor Green
 Write-Host "#                                                     #" -ForegroundColor Green
 Write-Host "#######################################################" -ForegroundColor Green
 Write-Host "# Note: This is an unofficial script, please do not   #" -ForegroundColor Green
 Write-Host "# contact Hudu support if you run into issues.        #" -ForegroundColor Green
 Write-Host "# For support please visit the Hudu Sub-Reddit:       #" -ForegroundColor Green
 Write-Host "# https://www.reddit.com/r/hudu/                      #" -ForegroundColor Green
-Write-Host "# The #v-hudu channel on the MSPGeek Slack:           #" -ForegroundColor Green
+Write-Host "# The #v-hudu channel on the MSPGeek Slack/Discord:   #" -ForegroundColor Green
 Write-Host "# https://join.mspgeek.com/                           #" -ForegroundColor Green
 Write-Host "# Or log an issue in the Github Respository:          #" -ForegroundColor Green
 Write-Host "# https://github.com/lwhitelock/ITGlue-Hudu-Migration #" -ForegroundColor Green
@@ -510,7 +146,8 @@ Write-Host " Please view my blog post:                           " -ForegroundCo
 Write-Host " https://mspp.io/automated-it-glue-to-hudu-migration-script/     " -ForegroundColor Green
 Write-Host " for detailed instructions                           " -ForegroundColor Green
 Write-Host "#######################################################" -ForegroundColor Green
-
+Write-Host "# Please keep ALL COPIES of the Migration Logs folder. This can save you." -ForegroundColor Gray
+Write-Host "# Please DO NOT CHANGE ANYTHING in the Migration Logs folder. This can save you." -ForegroundColor Gray
 
 # CMA
 Write-Host "######################################################" -ForegroundColor Red
@@ -540,11 +177,11 @@ if ((get-host).version.major -ne 7) {
 
 
 #Get the Hudu API Module if not installed
-if ((Get-Module -ListAvailable -Name HuduAPI).version -eq '2.1.1') {
-    Import-Module HuduAPI -Version 2.1.1
+if ((Get-Module -ListAvailable -Name HuduAPI).version -eq '2.4.1') {
+    Import-Module HuduAPI -Version 2.4.1
 } else {
-    Install-Module HuduAPI -RequiredVersion 2.1.1
-    Import-Module HuduAPI -Version 2.1.1
+    Install-Module HuduAPI -RequiredVersion 2.4.1
+    Import-Module HuduAPI -Version 2.4.1
 }
   
 #Login to Hudu
@@ -1996,8 +1633,9 @@ if ($ResumeFound -eq $true -and (Test-Path "MigrationLogs\Articles.json")) {
                     $imagePath = "$basepath/$imgPath"
                     $imageType = TestImage($imagePath)
                     if ($imageType -ne 'NONIMAGE') {
-                        $imgBase64 = ConvertToBase64($imagePath)
-                        $_.src = "data:image/$imageType;base64,$imgBase64"
+                        $imgPublicUrl = New-HuduPublicPhoto -FilePath $imagePath -RecordId $Article.HuduID -RecordType 'Article'
+                        [string]$NewImageURL = $imgPublicUrl.public_photo.url.replace($HuduBaseDomain, '')
+                        $_.src = "$NewImageURL"
                     } else {
                         [PSCustomObject]@{
                             ErrorType       = "Image Not Detected"

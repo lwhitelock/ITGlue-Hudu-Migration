@@ -6,6 +6,8 @@ Please see the blog post at: https://mspp.io/automated-it-glue-to-hudu-migration
 Small bug fixes
 ## Version 1.1
 Small bug fixes
+## Version 2.0.0-beta
+This is under development right now and should not be used.
 
 # Replace Base64 Images
 ## NON-SUPPORTED BY HUDU
