@@ -212,7 +212,7 @@ Add-ITGlueBaseURI -base_uri $ITGAPIEndpoint
 Add-ITGlueAPIKey $ITGKey
 
 # Check if we have a logs folder
-if (Test-Path -Path "MigrationLogs") {
+if (Test-Path -Path "$MigrationLogs") {
     if ($ResumePrevious -eq $true) {
         Write-Host "A previous attempt has been found job will be resumed from the last successful section" -ForegroundColor Green
         $ResumeFound = $true
@@ -223,7 +223,7 @@ if (Test-Path -Path "MigrationLogs") {
     }
 } else {
     Write-Host "No previous runs found creating log directory"
-    $null = New-Item -Name "MigrationLogs" -ItemType "directory"
+    $null = New-Item -Name "$MigrationLogs" -ItemType "directory"
     $ResumeFound = $false
 }
 
@@ -239,9 +239,9 @@ $ManualActions = [System.Collections.ArrayList]@()
 $HuduCompanies = Get-HuduCompanies
 
 #Check for Company Resume
-if ($ResumeFound -eq $true -and (Test-Path "MigrationLogs\Companies.json")) {
+if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Companies.json")) {
     Write-Host "Loading Previous Companies Migration"
-    $MatchedCompanies = Get-Content 'MigrationLogs\Companies.json' -raw | Out-String | ConvertFrom-Json
+    $MatchedCompanies = Get-Content "$MigrationLogs\Companies.json" -raw | Out-String | ConvertFrom-Json
 } else {
 
     #Import Companies
@@ -372,7 +372,7 @@ if ($ResumeFound -eq $true -and (Test-Path "MigrationLogs\Companies.json")) {
     }
 
     # Save the results to resume from if needed
-    $MatchedCompanies | ConvertTo-Json -depth 100 | Out-File 'MigrationLogs\Companies.json'
+    $MatchedCompanies | ConvertTo-Json -depth 100 | Out-File "$MigrationLogs\Companies.json"
     Read-Host "Snapshot Point: Companies Migrated Continue?"
 
 }
@@ -383,9 +383,9 @@ $HuduCompanies = Get-HuduCompanies
 
 ############################### Locations ###############################
 #Check for Location Resume
-if ($ResumeFound -eq $true -and (Test-Path "MigrationLogs\Locations.json")) {
+if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Locations.json")) {
     Write-Host "Loading Previous Locations Migration"
-    $MatchedLocations = Get-Content 'MigrationLogs\Locations.json' -raw | Out-String | ConvertFrom-Json -depth 100
+    $MatchedLocations = Get-Content "$MigrationLogs\Locations.json" -raw | Out-String | ConvertFrom-Json -depth 100
 } else {
 
 
@@ -487,7 +487,7 @@ if ($ResumeFound -eq $true -and (Test-Path "MigrationLogs\Locations.json")) {
     $MatchedLocations = Import-Items @LocImportSplat
 
     # Save the results to resume from if needed
-    $MatchedLocations | ConvertTo-Json -depth 100 | Out-File 'MigrationLogs\Locations.json'
+    $MatchedLocations | ConvertTo-Json -depth 100 | Out-File "$MigrationLogs\Locations.json"
     Read-Host "Snapshot Point: Locations Migrated Continue?"
 
 }
@@ -496,9 +496,9 @@ if ($ResumeFound -eq $true -and (Test-Path "MigrationLogs\Locations.json")) {
 ############################### Websites ###############################
 
 #Check for Website Resume
-if ($ResumeFound -eq $true -and (Test-Path "MigrationLogs\Websites.json")) {
+if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Websites.json")) {
     Write-Host "Loading Previous Websites Migration"
-    $MatchedWebsites = Get-Content 'MigrationLogs\Websites.json' -raw | Out-String | ConvertFrom-Json
+    $MatchedWebsites = Get-Content "$MigrationLogs\Websites.json" -raw | Out-String | ConvertFrom-Json
 } else {
 
     #Grab existing Websites in Hudu
@@ -589,7 +589,7 @@ if ($ResumeFound -eq $true -and (Test-Path "MigrationLogs\Websites.json")) {
     }
 
     # Save the results to resume from if needed
-    $MatchedWebsites | ConvertTo-Json -depth 100 | Out-File 'MigrationLogs\Websites.json'
+    $MatchedWebsites | ConvertTo-Json -depth 100 | Out-File "$MigrationLogs\Websites.json"
     Read-Host "Snapshot Point: Websites Migrated Continue?"
 
 }
@@ -604,9 +604,9 @@ $ConfigMigrationName = "Configurations"
 $ConfigImportAssetLayoutName = "Configurations"
 	
 #Check for Configuration Resume
-if ($ResumeFound -eq $true -and (Test-Path "MigrationLogs\Configurations.json")) {
+if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Configurations.json")) {
     Write-Host "Loading Previous Configurations Migration"
-    $MatchedConfigurations = Get-Content 'MigrationLogs\Configurations.json' -raw | Out-String | ConvertFrom-Json -depth 100
+    $MatchedConfigurations = Get-Content "$MigrationLogs\Configurations.json" -raw | Out-String | ConvertFrom-Json -depth 100
 } else {
 
     #Get Configurations from IT Glue
@@ -896,7 +896,7 @@ if ($ResumeFound -eq $true -and (Test-Path "MigrationLogs\Configurations.json"))
     }
 
     # Save the results to resume from if needed
-    $MatchedConfigurations | ConvertTo-Json -depth 100 | Out-File 'MigrationLogs\Configurations.json'
+    $MatchedConfigurations | ConvertTo-Json -depth 100 | Out-File "$MigrationLogs\Configurations.json"
     Read-Host "Snapshot Point: Configurations Migrated Continue?"
 
 }
@@ -904,9 +904,9 @@ if ($ResumeFound -eq $true -and (Test-Path "MigrationLogs\Configurations.json"))
 
 ############################### Contacts ###############################
 #Check for Location Resume
-if ($ResumeFound -eq $true -and (Test-Path "MigrationLogs\Contacts.json")) {
+if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Contacts.json")) {
     Write-Host "Loading Previous Contacts Migration"
-    $MatchedContacts = Get-Content 'MigrationLogs\Contacts.json' -raw | Out-String | ConvertFrom-Json -depth 100
+    $MatchedContacts = Get-Content "$MigrationLogs\Contacts.json" -raw | Out-String | ConvertFrom-Json -depth 100
 } else {
 
 
@@ -1016,7 +1016,7 @@ if ($ResumeFound -eq $true -and (Test-Path "MigrationLogs\Contacts.json")) {
     Write-Host "Contacts Complete"
 
     # Save the results to resume from if needed
-    $MatchedContacts | ConvertTo-Json -depth 100 | Out-File 'MigrationLogs\Contacts.json'
+    $MatchedContacts | ConvertTo-Json -depth 100 | Out-File "$MigrationLogs\Contacts.json"
     Read-Host "Snapshot Point: Contacts Migrated Continue?"
 
 }
@@ -1024,10 +1024,10 @@ if ($ResumeFound -eq $true -and (Test-Path "MigrationLogs\Contacts.json")) {
 	
 ############################### Flexible Asset Layouts and Assets ###############################
 #Check for Layouts Resume
-if ($ResumeFound -eq $true -and (Test-Path "MigrationLogs\AssetLayouts.json")) {
+if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\AssetLayouts.json")) {
     Write-Host "Loading Previous Asset Layouts Migration"
-    $MatchedLayouts = Get-Content 'MigrationLogs\AssetLayouts.json' -raw | Out-String | ConvertFrom-Json -depth 100
-    $AllFields = Get-Content 'MigrationLogs\AssetLayoutsFields.json' -raw | Out-String | ConvertFrom-Json -depth 100
+    $MatchedLayouts = Get-Content "$MigrationLogs\AssetLayouts.json" -raw | Out-String | ConvertFrom-Json -depth 100
+    $AllFields = Get-Content "$MigrationLogs\AssetLayoutsFields.json" -raw | Out-String | ConvertFrom-Json -depth 100
 } else {
 
     $ConfigImportAssetLayoutName = ($MatchedConfigurations.HuduObject | Select-Object name, asset_type | group-object -property asset_type | sort-object count -descending | Select-Object -first 1).name
@@ -1270,19 +1270,19 @@ if ($ResumeFound -eq $true -and (Test-Path "MigrationLogs\AssetLayouts.json")) {
     }
 
 
-    $AllFields | ConvertTo-Json -depth 100 | Out-File 'MigrationLogs\AssetLayoutsFields.json'
-    $MatchedLayouts | ConvertTo-Json -depth 100 | Out-File 'MigrationLogs\AssetLayouts.json'
+    $AllFields | ConvertTo-Json -depth 100 | Out-File "$MigrationLogs\AssetLayoutsFields.json"
+    $MatchedLayouts | ConvertTo-Json -depth 100 | Out-File "$MigrationLogs\AssetLayouts.json"
     Read-Host "Snapshot Point: Layouts Migrated Continue?"
 
 }
 
 ############################### Flexible Assets ###############################
 #Check for Assets Resume
-if ($ResumeFound -eq $true -and (Test-Path "MigrationLogs\Assets.json")) {
+if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Assets.json")) {
     Write-Host "Loading Previous Asset Migration"
-    $MatchedAssets = Get-Content 'MigrationLogs\Assets.json' -raw | Out-String | ConvertFrom-Json -depth 100
-    $MatchedAssetPasswords = Get-Content 'MigrationLogs\AssetPasswords.json' -raw | Out-String | ConvertFrom-Json -depth 100
-    $ManualActions = [System.Collections.ArrayList](Get-Content 'MigrationLogs\ManualActions.json' -raw | Out-String | ConvertFrom-Json -depth 100)
+    $MatchedAssets = Get-Content "$MigrationLogs\Assets.json" -raw | Out-String | ConvertFrom-Json -depth 100
+    $MatchedAssetPasswords = Get-Content "$MigrationLogs\AssetPasswords.json" -raw | Out-String | ConvertFrom-Json -depth 100
+    $ManualActions = [System.Collections.ArrayList](Get-Content "$MigrationLogs\ManualActions.json" -raw | Out-String | ConvertFrom-Json -depth 100)
 } else {
 
     if ($ImportFlexibleAssets -eq $true) {
@@ -1454,9 +1454,9 @@ if ($ResumeFound -eq $true -and (Test-Path "MigrationLogs\Assets.json")) {
         }
 
 
-        $MatchedAssets | ConvertTo-Json -depth 100 | Out-File 'MigrationLogs\Assets.json'
-        $MatchedAssetPasswords | ConvertTo-Json -depth 100 | Out-File 'MigrationLogs\AssetPasswords.json'
-        $ManualActions | ConvertTo-Json -depth 100 | Out-File 'MigrationLogs\ManualActions.json'
+        $MatchedAssets | ConvertTo-Json -depth 100 | Out-File "$MigrationLogs\Assets.json"
+        $MatchedAssetPasswords | ConvertTo-Json -depth 100 | Out-File "$MigrationLogs\AssetPasswords.json"
+        $ManualActions | ConvertTo-Json -depth 100 | Out-File "$MigrationLogs\ManualActions.json"
         Read-Host "Snapshot Point: Assets Migrated Continue?"
     }
 }
@@ -1465,9 +1465,9 @@ if ($ResumeFound -eq $true -and (Test-Path "MigrationLogs\Assets.json")) {
 ############################### Documents / Articles ###############################
 
 #Check for Article Resume
-if ($ResumeFound -eq $true -and (Test-Path "MigrationLogs\ArticleBase.json")) {
+if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\ArticleBase.json")) {
     Write-Host "Loading Article Migration"
-    $MatchedArticles = Get-Content 'MigrationLogs\ArticleBase.json' -raw | Out-String | ConvertFrom-Json -depth 100
+    $MatchedArticles = Get-Content "$MigrationLogs\ArticleBase.json" -raw | Out-String | ConvertFrom-Json -depth 100
 } else {
 
     if ($ImportArticles -eq $true) {
@@ -1565,8 +1565,8 @@ if ($ResumeFound -eq $true -and (Test-Path "MigrationLogs\ArticleBase.json")) {
 	
 
         }
-        $MatchedArticles | ConvertTo-Json -depth 100 | Out-File 'MigrationLogs\ArticleBase.json'
-        $ManualActions | ConvertTo-Json -depth 100 | Out-File 'MigrationLogs\ManualActions.json'
+        $MatchedArticles | ConvertTo-Json -depth 100 | Out-File "$MigrationLogs\ArticleBase.json"
+        $ManualActions | ConvertTo-Json -depth 100 | Out-File "$MigrationLogs\ManualActions.json"
         Read-Host "Snapshot Point: Stub Articles Created Continue?"
     }
 
@@ -1575,9 +1575,9 @@ if ($ResumeFound -eq $true -and (Test-Path "MigrationLogs\ArticleBase.json")) {
 ############################### Documents / Articles Bodies ###############################
 
 #Check for Articles Resume
-if ($ResumeFound -eq $true -and (Test-Path "MigrationLogs\Articles.json")) {
+if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Articles.json")) {
     Write-Host "Loading Article Content Migration"
-    $MatchedArticles = Get-Content 'MigrationLogs\Articles.json' -raw | Out-String | ConvertFrom-Json -depth 100
+    $MatchedArticles = Get-Content "$MigrationLogs\Articles.json" -raw | Out-String | ConvertFrom-Json -depth 100
 } else {
 	
     if ($ImportArticles -eq $true) {
@@ -1733,9 +1733,9 @@ if ($ResumeFound -eq $true -and (Test-Path "MigrationLogs\Articles.json")) {
 			
         } 
 
-        $MatchedArticles | ConvertTo-Json -depth 100 | Out-File 'MigrationLogs\Articles.json'
-        $ArticleErrors | ConvertTo-Json -depth 100 | Out-File 'MigrationLogs\ArticleErrors.json'
-        $ManualActions | ConvertTo-Json -depth 100 | Out-File 'MigrationLogs\ManualActions.json'
+        $MatchedArticles | ConvertTo-Json -depth 100 | Out-File "$MigrationLogs\Articles.json"
+        $ArticleErrors | ConvertTo-Json -depth 100 | Out-File "$MigrationLogs\ArticleErrors.json"
+        $ManualActions | ConvertTo-Json -depth 100 | Out-File "$MigrationLogs\ManualActions.json"
         Read-Host "Snapshot Point: Articles Created Continue?"
 
     }
@@ -1747,9 +1747,9 @@ if ($ResumeFound -eq $true -and (Test-Path "MigrationLogs\Articles.json")) {
 
 
 #Check for Passwords Resume
-if ($ResumeFound -eq $true -and (Test-Path "MigrationLogs\Passwords.json")) {
+if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Passwords.json")) {
     Write-Host "Loading Previous Paswords Migration"
-    $MatchedPasswords = Get-Content 'MigrationLogs\Passwords.json' -raw | Out-String | ConvertFrom-Json
+    $MatchedPasswords = Get-Content "$MigrationLogs\Passwords.json" -raw | Out-String | ConvertFrom-Json
 } else {
 
     #Import Passwords
@@ -1935,8 +1935,8 @@ if ($ResumeFound -eq $true -and (Test-Path "MigrationLogs\Passwords.json")) {
     }
 
     # Save the results to resume from if needed
-    $MatchedPasswords | ConvertTo-Json -depth 100 | Out-File 'MigrationLogs\Passwords.json'
-    $ManualActions | ConvertTo-Json -depth 100 | Out-File 'MigrationLogs\ManualActions.json'
+    $MatchedPasswords | ConvertTo-Json -depth 100 | Out-File "$MigrationLogs\Passwords.json"
+    $ManualActions | ConvertTo-Json -depth 100 | Out-File "$MigrationLogs\ManualActions.json"
 
 }
 

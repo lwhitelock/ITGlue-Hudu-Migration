@@ -56,6 +56,16 @@ function CollectAndSaveSettings {
     Write-Host "The documents from the company $($settings.InternalCompany) will be migrated to Hudu's Global KB section" -ForegroundColor Cyan
     $settings.ITGLueExportPath = Read-Host 'Enter the path of the ITGLue Export. (e.g. C:\Temp\ITGlue\Export)'
     $settings.ITGURL = Read-Host -Prompt 'Set the domain of your ITGlue instance including https:// without a trailing /'
+    $settings.GlobalKBFolder = Read-Host -Prompt 'Do you want all documents in Global KB to be placed into a subfolder? (y/n)'
+
+    # Migration Log Settings
+    $settings.MigrationLogs = Read-Host 'Enter the path for the migration logs, or press enter to accept the Default path (%appdata%\HuduMigration\MigrationLogs)'
+    if (!($settings.MigrationLogs)) {
+        $settings.MigrationLogs = "$ENV:appdata\HuduMigration\$($settings.ITGURL.replace('https://',''))\MigrationLogs"
+    }
+
+    $settings.ConPromptPrefix = Read-Host "Would you like a Prefix in front of Configuration names created in Hudu? This can make it easy to review and you can rename them later. Enter the prefix here, otherwise leave it blank. (e.g. ITGlue-)"
+    $settings.FAPromptPrefix = Read-Host "Would you like a Prefix in front of Asset Layout names created in Hudu? This can make it easy to review and you can rename them later. Enter the prefix here, otherwise leave it blank. (e.g. ITGlue-)"
 
     # Convert the hash table to JSON
     $json = $settings | ConvertTo-Json
@@ -158,10 +168,18 @@ $resumeQuestion = Read-Host "Would you like to resume a previous migration? (yes
 $ResumePrevious = if ($resumeQuestion -eq 'yes') {$true} else {$false}
 
 ############################### Company Settings ###############################
-$ImportCompanies = $true
+while ($ImportCompanies -notin (1,2)) {$ImportCompanies = Read-Host "1) Import Companies `n2) Skip Companies`n(1/2)"}
+switch ($ImportCompanies) {
+    1: {$ImportCompanies = $true}
+    2: {$ImportCompanies = $false}
+}
 
 ############################### Location Settings ###############################
-$ImportLocations = $true
+while ($ImportLocations -notin (1,2)) {$ImportLocations = Read-Host "1) Import Locations `n2) Skip Locations`n(1/2)"}
+switch ($ImportLocations) {
+    1: {$ImportLocations = $true}
+    2: {$ImportLocations = $false}
+}
 
 # The asset layout name how locations will appear in Hudu
 $LocImportAssetLayoutName = "Locations"
@@ -174,22 +192,41 @@ $ITGPrimaryLocationNames = @("Primary Address", "Main", "Head Office", "Main Off
 $HuduPrimaryLocationNames = @("Primary Address")
 
 ############################### Domain / Website Settings ###############################
-$ImportDomains = $true
+while ($ImportDomains -notin (1,2)) {$ImportDomains = Read-Host "Domains are used for Website, DNS and SSL Monitoring.`n 1) Import Domains`n 2) Skip Domains`n(1/2)"}
+switch ($ImportDomains) {
+    1: {$ImportDomains = $true}
+    2: {$ImportDomains = $false}
+}
 
 # Choose if you would like to enable monitoring for the imported websites.
-$DisableWebsiteMonitoring = "false"
+while ($DisableWebsiteMonitoring -notin (1,2)) {$DisableWebsiteMonitoring = Read-Host "1) Disable Website Monitoring `n2) Leave Website Monitoring enabled`n(1/2)"}
+switch ($DisableWebsiteMonitoring) {
+    1: {$DisableWebsiteMonitoring = "true"}
+    2: {$DisableWebsiteMonitoring = "false"}
+}
+
 
 ############################### Configuration Settings ###############################
-$ImportConfigurations = $true
+while ($ImportConfigurations -notin (1,2)) {$ImportConfigurations = Read-Host "1) Import Configurations `n2) Skip Configurations`n(1/2)"}
+switch ($ImportConfigurations) {
+    1: {$ImportConfigurations = $true}
+    2: {$ImportConfigurations = $false}
+}
+
 
 # The font awesome name for the locations icon in Hudu
 $ConfigImportIcon = "fas fa-sitemap"
 
 # Set if you would like a Prefix in front of configuration names created in Hudu. This can make it easy to review and you can rename them later set to "" if you dont want one
-$ConfigurationPrefix = "ITGlue-"
+$ConfigurationPrefix = $environmentSettings.ConPromptPrefix
+
 
 ############################### Contact Settings ###############################
-$ImportContacts = $true
+while ($ImportContacts -notin (1,2)) {$ImportContacts = Read-Host "1) Import Contacts `n2) Skip Contacts`n(1/2)"}
+switch ($ImportContacts) {
+    1: {$ImportContacts = $true}
+    2: {$ImportContacts = $false}
+}
 
 # The asset layout name how locations will appear in Hudu
 $ConImportAssetLayoutName = "People"
@@ -198,18 +235,39 @@ $ConImportAssetLayoutName = "People"
 $ConImportIcon = "fas fa-users"
 
 ############################### Flexible Asset Layouts ###############################
-$ImportFlexibleAssetLayouts = $true
+while ($ImportFlexibleAssetLayouts -notin (1,2)) {$ImportFlexibleAssetLayouts = Read-Host "1) Import Asset Layouts `n2) Skip Asset Layouts`n(1/2)"}
+switch ($ImportFlexibleAssetLayouts) {
+    1: {$ImportFlexibleAssetLayouts = $true}
+    2: {$ImportFlexibleAssetLayouts = $false}
+}
 
 # Set if you would like a Prefix in front of Layout names created in Hudu. This can make it easy to review and you can rename them later set to "" if you don't want one
-$FlexibleLayoutPrefix = "ITGlue-"
+
+$FlexibleLayoutPrefix = $environmentSettings.FAPromptPrefix
 
 ############################### Flexible Assets ###############################
-$ImportFlexibleAssets = $true
+while ($ImportFlexibleAssets -notin (1,2)) {$ImportFlexibleAssets = Read-Host "1) Import Assets `n2) Skip Assets`n(1/2)"}
+switch ($ImportFlexibleAssets) {
+    1: {$ImportFlexibleAssets = $true}
+    2: {$ImportFlexibleAssets = $false}
+}
+
 
 ############################### Articles ###############################
-$ImportArticles = $true
+while ($ImportArticles -notin (1,2)) {$ImportArticles = Read-Host "1) Import Articles `n2) Skip Articles`n(1/2)"}
+switch ($ImportArticles) {
+    1: {$ImportArticles = $true}
+    2: {$ImportArticles = $false}
+}
 
 ############################### Passwords ###############################
-$ImportPasswords = $true
+while ($ImportPasswords -notin (1,2)) {$ImportPasswords = Read-Host "1) Import Passwords `n2) Skip Passwords`n(1/2)"}
+switch ($ImportPasswords) {
+    1: {$ImportPasswords = $true}
+    2: {$ImportPasswords = $false}
+}
+
+############################ Migration Logs Path ##############################
+$MigrationLogs = $environmentSettings.MigrationLogs
 
 ############################### End of Settings ###############################
