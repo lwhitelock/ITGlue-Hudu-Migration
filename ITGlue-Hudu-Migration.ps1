@@ -1,5 +1,5 @@
 # Main settings load
-. .\Initialize-Module.ps1
+. $PSScriptRoot\Initialize-Module.ps1
 
 ############################### Functions ###############################
 # Used to determine if a file is an image and what type of image
