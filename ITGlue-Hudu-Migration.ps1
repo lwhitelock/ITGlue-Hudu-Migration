@@ -3,28 +3,28 @@
 
 ############################### Functions ###############################
 # Used to determine if a file is an image and what type of image
-. .\Private\Test-Image.ps1
+. $PSScriptRoot\Private\Test-Image.ps1
 
 # Confirm Object Import
-. .\Private\Confirm-Import.ps1
+. $PSScriptRoot\Private\Confirm-Import.ps1
 
 # Matches items from IT Glue to Hudu and creates new items in Hudu
-. .\Private\Import-Items.ps1
+. $PSScriptRoot\Private\Import-Items.ps1
 
 # Select Item Import Mode
-. .\Private\Get-ImportMode.ps1
+. $PSScriptRoot\Private\Get-ImportMode.ps1
 
 # Get Configurations Option
-. .\Private\Get-ConfigurationsImportMode.ps1
+. $PSScriptRoot\Private\Get-ConfigurationsImportMode.ps1
 
 # Get Flexible Asset Layout Option
-. .\Private\Get-FlexLayoutImportMode.ps1
+. $PSScriptRoot\Private\Get-FlexLayoutImportMode.ps1
 
 # Fetch Items from ITGlue
-. .\Private\Import-ITGlueItems.ps1
+. $PSScriptRoot\Private\Import-ITGlueItems.ps1
 
 # Find migrated items
-. .\Private\Find-MigratedItem.ps1
+. $PSScriptRoot\Private\Find-MigratedItem.ps1
 
 ############################### Lookup table to upgrade from Font Awesome 4 to 5
 $FontAwesomeUpgrade = [PSCustomObject]@{
