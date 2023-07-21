@@ -167,8 +167,11 @@ $ITGLueExportPath = $environmentSettings.ITGLueExportPath
 
 
 # Choose if you want to resume previous attempts from the last successful section
-$resumeQuestion = Read-Host "Would you like to resume a previous migration? (yes/no)"
+while ($resumeQuestion -notin ('yes','no')) {
+	$resumeQuestion = Read-Host "Would you like to resume a previous migration? (yes/no)"
+}
 $ResumePrevious = if ($resumeQuestion -eq 'yes') {$true} else {$false}
+
 
 ############################### Company Settings ###############################
 while ($ImportCompanies -notin (1,2)) {$ImportCompanies = Read-Host "1) Import Companies `n2) Skip Companies`n(1/2)"}
@@ -274,3 +277,22 @@ switch ($ImportPasswords) {
 $MigrationLogs = $environmentSettings.MigrationLogs
 
 ############################### End of Settings ###############################
+
+############################## Load ImageMagick ###############################
+# Import ImageMagick Modules, prompt for path if the module is missing
+Write-Host "Adding Imagemagick commands from dot NET assemblies" -ForegroundColor Cyan
+$ImageMagickPath = "$PSScriptRoot\Magick.NET-Q16-AnyCPU.dll"
+while (!('ImageMagick.MagickImage' -as [type])) {
+    if (Test-Path "$ImageMagickPath") {
+        try {
+            Add-Type -Path $ImageMagickPath -ErrorAction Stop
+        }
+        catch { 
+            throw "Failed to load ImageMagick, please check the files and try again. `n $_"
+        }
+    }
+    else {
+        $ImageMagickPath = (Read-Host "Failed to load ImageMagick. Please provide path for the three DLLs.") + "\Magick.NET-Q16-AnyCPU.dll"
+    }
+}
+################### Initialization Complete #############################

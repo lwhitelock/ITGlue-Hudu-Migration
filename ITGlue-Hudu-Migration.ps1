@@ -2,8 +2,11 @@
 . $PSScriptRoot\Initialize-Module.ps1
 
 ############################### Functions ###############################
+# Import ImageMagick for Invoke-ImageTest Function
+. $PSScriptRoot\Private\Initialize-ImageMagik.ps1
+
 # Used to determine if a file is an image and what type of image
-. $PSScriptRoot\Private\Test-Image.ps1
+. $PSScriptRoot\Private\Invoke-ImageTest.ps1
 
 # Confirm Object Import
 . $PSScriptRoot\Private\Confirm-Import.ps1
@@ -26,93 +29,10 @@
 # Find migrated items
 . $PSScriptRoot\Private\Find-MigratedItem.ps1
 
-############################### Lookup table to upgrade from Font Awesome 4 to 5
-$FontAwesomeUpgrade = [PSCustomObject]@{
-    "address-book-o"       = "address-book"
-    "address-card-o"       = "address-card"
-    "arrow-circle-o-down"  = "arrow-alt-circle-down"
-    "arrow-circle-o-left"  = "arrow-alt-circle-left"
-    "arrow-circle-o-right" = "arrow-alt-circle-right"
-    "arrow-circle-o-up"    = "arrow-alt-circle-up"
-    "arrows"               = "arrows-alt"
-    "arrows-alt"           = "expand-arrows-alt"
-    "arrows-h"             = "arrows-alt-h"
-    "arrows-v"             = "arrows-alt-v"
-    "bell-o"               = "bell"
-    "bell-slash-o"         = "bell-slash"
-    "bookmark-o"           = "bookmark"
-    "building-o"           = "building"
-    "caret-square-o-right" = "caret-square-right"
-    "check-circle-o"       = "check-circle"
-    "check-square-o"       = "check-square"
-    "circle-o"             = "circle"
-    "circle-thin"          = "circle"
-    "clipboard"            = "clipboard"
-    "cloud-download"       = "cloud-download-alt"
-    "cloud-upload"         = "cloud-upload-alt"
-    "comment-o"            = "comment"
-    "commenting"           = "comment-dots"
-    "commenting-o"         = "comment-dots"
-    "comments-o"           = "comments"
-    "credit-card-alt"      = "credit-card"
-    "cutlery"              = "utensils"
-    "diamond"              = "gem"
-    "envelope-o"           = "envelope"
-    "envelope-open-o"      = "envelope-open"
-    "exchange"             = "exchange-alt"
-    "external-link"        = "external-link-alt"
-    "external-link-square" = "external-link-square-alt"
-    "folder-o"             = "folder"
-    "folder-open-o"        = "folder-open"
-    "file-o"               = "file"
-    "heart-o"              = "heart"
-    "hourglass-o"          = "hourglass"
-    "hand-o-right"         = "hand-point-right"
-    "id-card-o"            = "id-card"
-    "level-down"           = "level-down-alt"
-    "level-up"             = "level-up-alt"
-    "long-arrow-down"      = "long-arrow-alt-down"
-    "long-arrow-left"      = "long-arrow-alt-left"
-    "long-arrow-right"     = "long-arrow-alt-right"
-    "long-arrow-up"        = "long-arrow-alt-up"
-    "map-marker"           = "map-marker-alt"
-    "map-o"                = "map"
-    "minus-square-o"       = "minus-square"
-    "mobile"               = "mobile-alt"
-    "money"                = "money-bill-alt"
-    "paper-plane-o"        = "paper-plane"
-    "pause-circle-o"       = "pause-circle"
-    "pencil"               = "pencil-alt"
-    "play-circle-o"        = "play-circle"
-    "plus-square-o"        = "plus-square"
-    "question-circle-o"    = "question-circle"
-    "share-square-o"       = "share-square"
-    "shield"               = "shield-alt"
-    "sign-in"              = "sign-in-alt"
-    "sign-out"             = "sign-out-alt"
-    "spoon"                = "utensil-spoon"
-    "square-o"             = "square"
-    "star-half-o"          = "star-half"
-    "star-o"               = "star"
-    "sticky-note-o"        = "sticky-note"
-    "stop-circle-o"        = "stop-circle"
-    "tablet"               = "tablet-alt"
-    "tachometer"           = "tachometer-alt"
-    "thumbs-o-down"        = "thumbs-down"
-    "thumbs-o-up"          = "thumbs-up"
-    "ticket"               = "ticket-alt"
-    "times-circle-o"       = "times-circle"
-    "trash"                = "trash-alt"
-    "trash-o"              = "trash-alt"
-    "user-circle-o"        = "user-circle"
-    "user-o"               = "user"
-    "window-close-o"       = "window-close"
-    "calendar"             = "calendar"
-    "reply"                = "reply"
-    "refresh"              = "sync-alt"
-    "window-close"         = "window-close"
+# Lookup table to upgrade from Font Awesome 4 to 5
+. $PSScriptRoot\Private\Get-FontAwesomeMap.ps1
+$FontAwesomeUpgrade = Get-FontAwesomeMap
 
-}
 ############################### End of Functions ###############################
 
 
@@ -142,7 +62,7 @@ Write-Host "# Or log an issue in the Github Respository:          #" -Foreground
 Write-Host "# https://github.com/lwhitelock/ITGlue-Hudu-Migration #" -ForegroundColor Green
 Write-Host "#######################################################" -ForegroundColor Green
 Write-Host " Instructions:                                       " -ForegroundColor Green
-Write-Host " Please view my blog post:                           " -ForegroundColor Green
+Write-Host " Please view Luke's blog post:                       " -ForegroundColor Green
 Write-Host " https://mspp.io/automated-it-glue-to-hudu-migration-script/     " -ForegroundColor Green
 Write-Host " for detailed instructions                           " -ForegroundColor Green
 Write-Host "#######################################################" -ForegroundColor Green
@@ -197,7 +117,7 @@ If ([version]$HuduAppInfo.version -lt [version]$RequiredHuduVersion) {
 }
 
 try {
-    remove-module ITGlueAPI
+    remove-module ITGlueAPI -ErrorAction SilentlyContinue
 } catch {
 }
 #Grabbing ITGlue Module and installing.
@@ -1631,7 +1551,7 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Articles.json")) {
                     $imgPath = ($_.src).substring(6)
                     $basepath = split-path $InFile
                     $imagePath = "$basepath/$imgPath"
-                    $imageType = TestImage($imagePath)
+                    $imageType = Invoke-ImageTest($imagePath)
                     if ($imageType -ne 'NONIMAGE') {
                         $imgPublicUrl = New-HuduPublicPhoto -FilePath $imagePath -RecordId $Article.HuduID -RecordType 'Article'
                         [string]$NewImageURL = $imgPublicUrl.public_photo.url.replace($HuduBaseDomain, '')

@@ -1,3 +1,13 @@
+___
+# Please Read!
+
+_This project relies on external libraries, please read this carefully_
+We use the Magick.NET libraries that you can find here https://github.com/dlemstra/Magick.NET/ for image type validation and metadata building.
+
+Please review the licensed rights for Magick.NET here https://github.com/dlemstra/Magick.NET/blob/main/License.txt
+
+**No modifications have been made to the binaries at this time**
+___
 # ITGlue-Hudu-Migration
 Please see the blog post at: https://mspp.io/automated-it-glue-to-hudu-migration-script/ for details on running this script.
 

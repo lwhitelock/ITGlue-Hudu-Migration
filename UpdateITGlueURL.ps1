@@ -1,18 +1,7 @@
 # This will be used to remake the ITGlue Links to Hudu, and relies on the articles logs existing.
 
-#Enter the Export folder path e.g C:\Clients\company\itglue\export
-$ITGlueExportPath = ''
-# Enter the ITGlue URL to update, e.g https://company.itglue.com/
-$ITGlueURl = ''
+
 $EscapedITGURL = [regex]::Escape($ITGlueURl)
-# Enter your HUDU API Information
-$HuduAPIKey = ''
-$HuduBaseURL = ''
-
-
-Import-Module HuduAPI
-New-HuduAPIKey -ApiKey $HuduAPIKey
-New-HuduBaseURL -BaseURL $HuduBaseURL
 
 # Gather all the Hudu Migration logs
 # This should create $MatchedArticleBase, $MatchedAssetts, $MatchedCompanies, $MatchedConfigurations, $MatchedPasswords etc.
@@ -27,6 +16,7 @@ foreach ($File in (Get-ChildItem  "$ITGlueExportPath\..\MigrationLogs\*.json")) 
 }
 
 $AllArticles = Get-HuduArticles
+# We want to grab all assets, passwords, websites, and companies, filter to fields and notes that have ITGlue URLs in them and prime for replacement.
 
 # Following capture Groups
 # 0 = Entire match found
@@ -115,11 +105,12 @@ Pause
 
 $articlesUpdated = @()
 foreach ($articleFound in $ArticlesWithITGlueLinks) {
-    $NewContent = Replace-StringWithCaptureGroups -inputString $articleFound.content -pattern $RegexPatternToMatchSansAssets
-    $NewContent = Replace-StringWithCaptureGroups -inputString $NewContent -pattern $RegexPatternToMatchWithAssets
+    $NewContent = Update-StringWithCaptureGroups -inputString $articleFound.content -pattern $RegexPatternToMatchSansAssets
+    $NewContent = Update-StringWithCaptureGroups -inputString $NewContent -pattern $RegexPatternToMatchWithAssets
     Write-Host "Updating Article $($articleFound.name) with replaced Content" -ForegroundColor 'Green'
-    $articlesUpdated += Set-HuduArticle -Name $articleFound.name -id $articleFound.id -Content $NewContent
+    $articlesUpdated += @{"original_article" = $articleFound; "updated_article" = Set-HuduArticle -Name $articleFound.name -id $articleFound.id -Content $NewContent}
 
 }
 
-$articlesUpdated | ConvertTo-Json -depth 100 |Out-file "$ITGlueExportPath\..\MigrationLogs\ReplacedArticlesURL.json"
+$articlesUpdated | ConvertTo-Json -depth 100 |Out-file "$MigrationLogs\ReplacedArticlesURL.json"
+
