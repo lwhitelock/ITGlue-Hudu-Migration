@@ -5,6 +5,8 @@ $EscapedITGURL = [regex]::Escape($ITGlueURl)
 
 # Gather all the Hudu Migration logs
 # This should create $MatchedArticleBase, $MatchedAssetts, $MatchedCompanies, $MatchedConfigurations, $MatchedPasswords etc.
+<# 
+Disabling this block to merge this file under the main migration.
 foreach ($File in (Get-ChildItem  "$ITGlueExportPath\..\MigrationLogs\*.json")) {
     try {
         New-Variable -Name "Matched$($file.name.replace('.json',''))" -Value (Get-Content $File.FullName -raw |ConvertFrom-Json -Depth 100) -ErrorAction Stop
@@ -13,11 +15,15 @@ foreach ($File in (Get-ChildItem  "$ITGlueExportPath\..\MigrationLogs\*.json")) 
         "Variable clobbering is occurring. Please clear the variables"
     }
     
-}
+} #>
 
-$AllArticles = Get-HuduArticles
+# Disabling this line, since we'll have article content already.
+# $AllArticles = Get-HuduArticles
+# Disabling this line as we'll have the article content already
+# $ArticlesWithITGlueLinks = $AllArticles | Where-Object {$_.content -like "*$ITGlueURL*"}
+
+
 # We want to grab all assets, passwords, websites, and companies, filter to fields and notes that have ITGlue URLs in them and prime for replacement.
-
 # Following capture Groups
 # 0 = Entire match found
 # 1,5 = A/a (not important)
@@ -27,8 +33,6 @@ $AllArticles = Get-HuduArticles
 
 $RegexPatternToMatchSansAssets = "<(A|a) href=.*$EscapedITGURL\/([0-9]{1,6})\/(docs|passwords|configurations)\/([0-9]{1,10})\S*<\/(A|a)>"
 $RegexPatternToMatchWithAssets = "<(A|a) href=.*$EscapedITGURL\/([0-9]{1,10})\/(assets)\/.*\/([0-9]{1,10})\S*<\/(A|a)>"
-$ArticlesWithITGlueLinks = $AllArticles | Where-Object {$_.content -like "*$ITGlueURL*"}
-
 
 function Update-StringWithCaptureGroups {
     [cmdletbinding()]
@@ -100,6 +104,20 @@ function Update-StringWithCaptureGroups {
   }
   
 
+function ConvertTo-HuduURL {
+    param(
+        $Content
+    )
+    $NewContent = Update-StringWithCaptureGroups -inputString $Content -pattern $RegexPatternToMatchSansAssets
+    $NewContent = Update-StringWithCaptureGroups -inputString $NewContent -pattern $RegexPatternToMatchWithAssets
+
+    return $NewContent
+
+}
+
+
+
+<# Disabled block for merging into main conversion module
 Write-Warning "Found $($ArticlesWithITGlueLinks.count) Articles with ITGlue Links. Cancel now if you don't want to replace them!"
 Pause
 
@@ -113,4 +131,4 @@ foreach ($articleFound in $ArticlesWithITGlueLinks) {
 }
 
 $articlesUpdated | ConvertTo-Json -depth 100 |Out-file "$MigrationLogs\ReplacedArticlesURL.json"
-
+#>

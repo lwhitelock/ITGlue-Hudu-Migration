@@ -1503,8 +1503,6 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Articles.json")) {
     if ($ImportArticles -eq $true) {
         $Attachfiles = Get-ChildItem "$($ITGLueExportPath)attachments\documents" -recurse
 
-        $URLLength = $ITGURL.length
-
         # Now do the actual work of populating the content of articles
         $ArticleErrors = foreach ($Article in $MatchedArticles) {
 
@@ -1545,84 +1543,164 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Articles.json")) {
                 $source = [regex]::replace($rawsource , '\xa0+', ' ')
                 $src = [System.Text.Encoding]::Unicode.GetBytes($source)
                 $html.write($src)
-				
                 $images = @($html.Images)
                 $images | ForEach-Object {
-                    $imgPath = ($_.src).substring(6)
-                    $basepath = split-path $InFile
-                    $imagePath = "$basepath/$imgPath"
-                    $imageType = Invoke-ImageTest($imagePath)
-                    if ($imageType -ne 'NONIMAGE') {
-                        $imgPublicUrl = New-HuduPublicPhoto -FilePath $imagePath -RecordId $Article.HuduID -RecordType 'Article'
-                        [string]$NewImageURL = $imgPublicUrl.public_photo.url.replace($HuduBaseDomain, '')
-                        $_.src = "$NewImageURL"
-                    } else {
-                        [PSCustomObject]@{
-                            ErrorType       = "Image Not Detected"
-                            Details         = "$imagePath not detected as image"
-                            InFile          = "$InFile"
+                    Write-Host "Image found: $($_.outerHTML)"
+                    if ($_.src -notmatch '^http[s]?://') {
+                        $script:HasImages = $true
+                        $basepath = Split-Path $InFile
+                        $imgHTML = ($_.outerHTML)
+                        $fullImgUrl = $imgHTML.split('data-src-original="')[1].split('"')[0]
+                        $tnImgUrl = $imgHTML.split('src="')[1].split('"')[0]
+                        $fullImgPath = $basepath + '\' + $fullImgUrl.replace('/','\')
+                        $tnImgPath = $basepath + '\' + $tnImgUrl.replace('/','\')
+                        
+                        # Some logic to test for the original data source being specified vs the thumbnail. Grab the Thumbnail or final source.
+                        if (Test-Path $fullImgPath) {
+                            $imagePath = $fullImgPath
+                            # Originally planning on using $imageUrl to do a string replace to $NewImageUrl, in the end didn't seem necessary
+                            $imageUrl = $fullImgUrl
+
+                        } elseif (Test-Path $tnImgPath) {
+                            $imagePath = $tnImgPath
+                            $imageUrl = $tnImgUrl
+                        } else { 
+                            Write-Warning "Unable to validate image file."
+                            [PSCustomObject]@{
+                            ErrorType = 'Image missing found'
+                            Details = "Neither $fullImgPath or $tnImgPath were found"
+                            InFile = "$InFile"
                             MigrationObject = $Article
                         }
                     }
+
+                    # Test the path to ensure that a file extension exists, if no file extension we get problems later on. We rename it if there's no ext.
+                        if ((Get-Item -path $imagePath).extension -eq '') {
+                            if ($Magick = New-Object ImageMagick.MagickImage($imagePath)) {
+                                $OriginalFullImagePath = $imagePath
+                                $imagePath = "$($imagePath).$($Magick.format)"
+                                $MovedItem = Move-Item -Path $OriginalFullImagePath -Destination $imagePath
+                            }
+                        }
+
+                        if (Test-Path $imagePath) {
+                            $imageType = TestImage($imagePath)
+                            if ($imageType) {
+                                Write-Host "Uploading new image"
+                                try {
+                                    $UploadImage = New-HuduPublicPhoto -FilePath "$imagePath" -record_id $Article.HuduID -record_type 'Article'
+                                    $NewImageURL = $UploadImage.public_photo.url.replace($HuduBaseDomain, '')
+                                    Write-Host "Setting image to: $NewImageURL"
+                                    $_.src = [string]$NewImageURL
+                                    
+                                    # Update Links for this image
+                                    $ImgLink = $html.Links | Where-Object {$_.innerHTML -eq $imgHTML}
+                                    $ImgLink.href = [string]$NewImageUrl
+
+                                }
+                                catch {
+                                    [PSCustomObject]@{
+                                        ErrorType = 'Failed to Upload to Backend Storage'
+                                        Details = "$imagePath failed to upload to Hudu backend. $_"
+                                        InFile = "$InFile"
+                                        MigrationObject = $Article
+                                    }
+                                }
+                                if ($Magick -and $MovedItem) {
+                                    Move-Item -Path $imagePath -Destination $OriginalFullImagePath
+                                }
+        
+                            }
+                            else {
+                                [PSCustomObject]@{
+                                    ErrorType       = 'Image Not Detected'
+                                    Details         = "$imagePath not detected as image"
+                                    InFile          = "$InFile"
+                                    MigrationObject = $Article
+                                }
+                            }
+                        }
+                        else {
+                            [PSCustomObject]@{
+                                ErrorType       = 'Image File Missing'
+                                Details         = "$imagePath is not present in export"
+                                InFile          = "$InFile"
+                                MigrationObject = $Article
+                            }
+                        }
+                    }
                 }
-
-
+                
+                <# Disabling this so that we can replace URLs at the end of the run with the entire content.
                 $links = @($html.Links)			
                 foreach ($link in $links) { 
                     $LinkHref = "$($link.href)"
                     try {
                         $parsedurl = $LinkHref.SubString(0, $URLLength)
-                    } catch {
+                    }
+                    catch {
                         continue
                     }
                     if ($parsedurl.ToLower() -eq $ITGURL.ToLower()) {
+                        Write-Host "Rewriting ITGlue link - $LinkHref"
                         $ITGPath = $LinkHref.SubString($URLLength + 1)
                         # Handle Documents Linked with their locator
-                        if ($ITGPath.substring(0, 3) -eq 'DOC') {
+                                
+                        try {
+                            $IsDoc = $ITGPath.substring(0, 3) -eq 'DOC'
+                        }
+                        catch {
+                            $IsDoc = $false
+                            Write-Error $_.Exception.Message
+                            $Links
+                        }
+                        if ($IsDoc) {
                             $HuduPath = ($MatchedArticles | Where-Object -filter { $_.ITGLocator -eq $ITGPath }).HuduObject.url
-                        } else {
+                                    
+                            Write-Host "Matched DOC - $HuduPath"
+                        }
+                        else {
                             if ($ITGPath.substring(0, 11) -eq 'attachments') {
                                 $ManualLog = [PSCustomObject]@{
                                     Document_Name = $Article.name
-                                    Field_Name    = "N/A"
+                                    Field_Name    = 'N/A'
                                     Asset_Type    = $Article.HuduObject.asset_type
                                     Company_Name  = $Article.HuduObject.company_name
                                     HuduID        = $Article.HuduID
-                                    Notes         = "Link to Document attachment."
-                                    Action        = "Manually upload document and relink"
+                                    Notes         = 'Link to Document attachment.'
+                                    Action        = 'Manually upload document and relink'
                                     Data          = "$LinkHref"
-                                    Hudu_URL      = "$($HuduBaseDomain)$($Article.HuduObject.url)"
+                                    Hudu_URL      = "$($Article.HuduObject.url)"
                                     ITG_URL       = "$ITGURL/$($Article.ITGLocator)"
                                 }
                                 $null = $ManualActions.add($ManualLog)
-                                $HuduPath = ""
-                            } else {
+                                #$HuduPath = ''
+                            }
+                            else {
                                 # Handle Documents linked manually via their edit URL
                                 $ITGlueID = (($ITGPath.split('/'))[2]).split('#')[0]
                                 $HuduPath = ($MatchedArticles | Where-Object -filter { $_.ITGID -eq $ITGlueID }).HuduObject.url
+                                Write-Host "Matched ID - $HuduPath"
                             }
-
+        
                         }
+                        Write-Host $HuduPath
                         $link.href = "$HuduPath"
                         Write-Host "Link Rewritten to $($link.href)"
-
+        
                     }
-				
-				
-				
-                }
-
-	
+                } #>
+            
                 $page_Source = $html.documentelement.outerhtml
                 $page_out = [regex]::replace($page_Source , '\xa0+', ' ')
-				
+                        
             }
-
+        
             if ($page_out -eq '') {
-                $page_out = "Empty Document in IT Glue Export - Please Check IT Glue"
+                $page_out = 'Empty Document in IT Glue Export - Please Check IT Glue'
                 [PSCustomObject]@{
-                    ErrorType       = "Empty Document"
-                    Details         = "An Empty Document Was Detected"
+                    ErrorType       = 'Empty Document'
+                    Details         = 'An Empty Document Was Detected'
                     InFile          = "$InFile"
                     MigrationObject = $Article
                 }
@@ -1859,6 +1937,81 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Passwords.json")) {
     $ManualActions | ConvertTo-Json -depth 100 | Out-File "$MigrationLogs\ManualActions.json"
 
 }
+
+############################## Update ITGlue URLs on All Areas to Hudu #######################
+$UpdateArticles = $MatchedArticles | Where-Object {$_.HuduObject.content -like "*$ITGURL*"}
+$UpdateAssets = $MatchedAssets | Where-Object {$_.HuduObject.fields.value -like "*$ITGURL*"}
+$UpdatePasswords = $MatchedPasswords | Where-Object {$_.HuduObject.description -like "*$ITGURL*"}
+$UpdateAssetPasswords = $MatchedAssetPasswords | Where-Object {$_.ITGObject.attributes.notes -like "*$ITGURL*"}
+$UpdateCompanyNotes = $MatchedCompanies | Where-Object {$_.HuduCompanyObject.notes -like "*$ITGURL*"}
+
+
+# Articles
+$articlesUpdated = @()
+foreach ($articleFound in $UpdateArticles.HuduObject) {
+    $NewContent = Update-StringWithCaptureGroups -inputString $articleFound.content -pattern $RegexPatternToMatchSansAssets
+    $NewContent = Update-StringWithCaptureGroups -inputString $NewContent -pattern $RegexPatternToMatchWithAssets
+    Write-Host "Updating Article $($articleFound.name) with replaced Content" -ForegroundColor 'Green'
+    $articlesUpdated += @{"original_article" = $articleFound; "updated_article" = Set-HuduArticle -Name $articleFound.name -id $articleFound.id -Content $NewContent}
+
+}
+
+$articlesUpdated | ConvertTo-Json -depth 100 |Out-file "$MigrationLogs\ReplacedArticlesURL.json"
+
+# Assets
+$assetsUpdated = @()
+foreach ($assetFound in $UpdateAssets.HuduObject) {
+    $fieldsFound = $assetFound.fields | Where-Object {$_.value -like "*$ITGURL*"}
+    $originalAsset = $assetFound
+    foreach ($field in $fieldsFound) {
+        $NewContent = Update-StringWithCaptureGroups -inputString $field.value -pattern $RegexPatternToMatchSansAssets
+        $NewContent = Update-StringWithCaptureGroups -inputString $NewContent -pattern $RegexPatternToMatchWithAssets
+        Write-Host "Replacing Asset $($assetFound.name) field $($field.caption) with replaced Content" -ForegroundColor 'Red'
+        ($assetFound.fields | Where-Object {$_.id -eq $field.id}).value = $NewContent
+    }
+    Write-Host "Updating Asset $($assetFound.name) with replaced field values" -ForegroundColor 'Green'
+    $assetsUpdated += @{"original_asset" = $originalAsset; "updated_asset" = Set-HuduAsset @assetFound}
+}
+
+$assetsUpdated | ConvertTo-Json -depth 100 |Out-file "$MigrationLogs\ReplacedAssetsURL.json"
+
+# Passwords
+$passwordsUpdated = @()
+foreach ($passwordFound in $UpdatePasswords.HuduObject) {
+    $NewContent = Update-StringWithCaptureGroups -inputString $passwordFound.description -pattern $RegexPatternToMatchSansAssets
+    $NewContent = Update-StringWithCaptureGroups -inputString $NewContent -pattern $RegexPatternToMatchWithAssets
+    $originalPassword = $passwordFound
+    $passwordFound.description = $NewContent
+    Write-Host "Updating Password $($passwordFound.name) with updated description" -ForegroundColor 'Green'
+    $passwordsUpdated += @{"original_password" = $originalPassword; "updated_password" = Set-HuduPassword @passwordFound}
+}
+$passwordsUpdated | ConvertTo-Json -depth 100 |Out-file "$MigrationLogs\ReplacedPasswordsURL.json"
+
+# Asset Passwords
+$assetPasswordsUpdated = @()
+foreach ($passwordFound in $UpdateAssetPasswords) {
+    $passwordFound = Get-HuduPasswords -id $passwordFound.HuduID
+    $NewContent = Update-StringWithCaptureGroups -inputString $passwordFound.description -pattern $RegexPatternToMatchSansAssets
+    $NewContent = Update-StringWithCaptureGroups -inputString $NewContent -pattern $RegexPatternToMatchWithAssets
+    $originalPassword = $passwordFound
+    $passwordFound.description = $NewContent
+    Write-Host "Updating Asset Password $($passwordFound.name) with updated description" -ForegroundColor 'Green'
+    $assetPasswordsUpdated += @{"original_password" = $originalPassword; "updated_password" = Set-HuduPassword @passwordFound}
+}
+$assetPasswordsUpdated | ConvertTo-Json -depth 100 |Out-file "$MigrationLogs\ReplacedAssetPasswordsURL.json"
+
+# Company Notes
+$companyNotesUpdated = @()
+foreach ($companyFound in $UpdateCompanyNotes.HuduCompanyObject) {
+    $NewContent = Update-StringWithCaptureGroups -inputString $companyFound.notes -pattern $RegexPatternToMatchSansAssets
+    $NewContent = Update-StringWithCaptureGroups -inputString $NewContent -pattern $RegexPatternToMatchWithAssets
+    $originalCompany = $companyFound
+    $companyFound.notes = $NewContent
+    Write-Host "Updating Company $($companyFound.name) with updated notes" -ForegroundColor 'Green'
+    $companyNotesUpdated += @{"original_company" = $originalCompany; "updated_company" = Set-HuduCompany @companyFound}
+}
+$companyNotesUpdated | ConvertTo-Json -depth 100 |Out-file "$MigrationLogs\ReplacedCompaniesURL.json"
+
 
 ############################### Generate Manual Actions Report ###############################
 
