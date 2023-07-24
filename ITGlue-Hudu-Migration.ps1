@@ -1501,7 +1501,7 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Articles.json")) {
 } else {
 	
     if ($ImportArticles -eq $true) {
-        $Attachfiles = Get-ChildItem "$($ITGLueExportPath)attachments\documents" -recurse
+        $Attachfiles = Get-ChildItem (Join-Path -Path $ITGLueExportPath -ChildPath "attachments\documents") -recurse
 
         # Now do the actual work of populating the content of articles
         $ArticleErrors = foreach ($Article in $MatchedArticles) {
@@ -1550,10 +1550,10 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Articles.json")) {
                         $script:HasImages = $true
                         $basepath = Split-Path $InFile
                         $imgHTML = ($_.outerHTML)
-                        $fullImgUrl = $imgHTML.split('data-src-original="')[1].split('"')[0]
+                        if ($fullImgUrl = $imgHTML.split('data-src-original="')[1]) {$fullImgUrl = $fullImgUrl.split('"')[0] }
                         $tnImgUrl = $imgHTML.split('src="')[1].split('"')[0]
-                        $fullImgPath = $basepath + '\' + $fullImgUrl.replace('/','\')
-                        $tnImgPath = $basepath + '\' + $tnImgUrl.replace('/','\')
+                        if ($fullImgUrl) {$fullImgPath = Join-Path -Path $basepath -ChildPath $fullImgUrl.replace('/','\')}
+                        $tnImgPath = Join-Path -Path $basepath -ChildPath $tnImgUrl.replace('/','\')
                         
                         # Some logic to test for the original data source being specified vs the thumbnail. Grab the Thumbnail or final source.
                         if (Test-Path $fullImgPath) {
