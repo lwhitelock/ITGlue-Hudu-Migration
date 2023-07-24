@@ -1556,13 +1556,13 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Articles.json")) {
                         $tnImgPath = Join-Path -Path $basepath -ChildPath $tnImgUrl.replace('/','\')
                         
                         # Some logic to test for the original data source being specified vs the thumbnail. Grab the Thumbnail or final source.
-                        if (Test-Path $fullImgPath) {
-                            $imagePath = $fullImgPath
+                        if ($foundFile = Get-Item -Path "$fullImgPath*" -ErrorAction SilentlyContinue) {
+                            $imagePath = $foundFile.FullName
                             # Originally planning on using $imageUrl to do a string replace to $NewImageUrl, in the end didn't seem necessary
                             $imageUrl = $fullImgUrl
 
-                        } elseif (Test-Path $tnImgPath) {
-                            $imagePath = $tnImgPath
+                        } elseif ($foundFile = Get-Item -Path "$tnImgPath*" -ErrorAction SilentlyContinue) {
+                            $imagePath = $foundFile.FullName
                             $imageUrl = $tnImgUrl
                         } else { 
                             Write-Warning "Unable to validate image file."
