@@ -1584,7 +1584,7 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Articles.json")) {
                         }
 
                         if (Test-Path $imagePath) {
-                            $imageType = TestImage($imagePath)
+                            $imageType = Invoke-ImageTest($imagePath)
                             if ($imageType) {
                                 Write-Host "Uploading new image"
                                 try {
