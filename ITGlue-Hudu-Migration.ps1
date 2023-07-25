@@ -1544,16 +1544,22 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Articles.json")) {
                 $src = [System.Text.Encoding]::Unicode.GetBytes($source)
                 $html.write($src)
                 $images = @($html.Images)
+
                 $images | ForEach-Object {
-                    Write-Host "Image found: $($_.outerHTML)"
+                    Remove-Variable -Name fullImgUrl
+                    Remove-Variable -Name fullImgPath
+                    Remove-Variable -Name foundFile
+                    Remove-Variable -Name imagePath    
+                    Write-Host "Processing HTML: $($_.outerHTML)"
                     if ($_.src -notmatch '^http[s]?://') {
                         $script:HasImages = $true
                         $basepath = Split-Path $InFile
                         $imgHTML = ($_.outerHTML)
                         if ($fullImgUrl = $imgHTML.split('data-src-original="')[1]) {$fullImgUrl = $fullImgUrl.split('"')[0] }
                         $tnImgUrl = $imgHTML.split('src="')[1].split('"')[0]
-                        if ($fullImgUrl) {$fullImgPath = Join-Path -Path $basepath -ChildPath $fullImgUrl.replace('/','\')}
+                        if ($fullImgUrl) {$fullImgPath = Join-Path -Path $basepath -ChildPath $fullImgUrl.replace('/','\'); Write-Host "Processing IMG: $($_.$fullImgUrl)"}
                         $tnImgPath = Join-Path -Path $basepath -ChildPath $tnImgUrl.replace('/','\')
+                        Write-Host "Processing IMG: $($_.$tnImgPath)"
                         
                         # Some logic to test for the original data source being specified vs the thumbnail. Grab the Thumbnail or final source.
                         if ($foundFile = Get-Item -Path "$fullImgPath*" -ErrorAction SilentlyContinue) {
@@ -1565,6 +1571,8 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Articles.json")) {
                             $imagePath = $foundFile.FullName
                             $imageUrl = $tnImgUrl
                         } else { 
+                            Remove-Variable -Name imagePath
+                            Remove-Variable -Name foundFile
                             Write-Warning "Unable to validate image file."
                             [PSCustomObject]@{
                             ErrorType = 'Image missing found'
@@ -1576,6 +1584,7 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Articles.json")) {
 
                     # Test the path to ensure that a file extension exists, if no file extension we get problems later on. We rename it if there's no ext.
                         if ((Get-Item -path $imagePath).extension -eq '') {
+                            Write-Warning "$imagePath is undetermined image. Testing..."
                             if ($Magick = New-Object ImageMagick.MagickImage($imagePath)) {
                                 $OriginalFullImagePath = $imagePath
                                 $imagePath = "$($imagePath).$($Magick.format)"
