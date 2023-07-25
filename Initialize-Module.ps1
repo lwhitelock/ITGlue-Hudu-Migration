@@ -171,7 +171,7 @@ while ($resumeQuestion -notin ('yes','no')) {
 	$resumeQuestion = Read-Host "Would you like to resume a previous migration? (yes/no)"
 }
 $ResumePrevious = if ($resumeQuestion -eq 'yes') {$true} else {$false}
-
+$GlobalKBFolder = $environmentSettings.GlobalKBFolder
 
 ############################### Company Settings ###############################
 while ($ImportCompanies -notin (1,2)) {$ImportCompanies = Read-Host "1) Import Companies `n2) Skip Companies`n(1/2)"}

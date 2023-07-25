@@ -1392,16 +1392,22 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\ArticleBase.json")) {
 
     if ($ImportArticles -eq $true) {
 
+        if ($GlobalKBFolder -in ('y','yes','ye')) {
+            If (-not ($GlobalKBFolder = Get-HuduFolder -name $InternalCompany)) {
+                $GlobalKBFolder = (New-HuduFolder -Name $InternalCompany).folder
+            }
+        }
 
-        $ITGDocuments = Import-CSV -Path "$($ITGLueExportPath)documents.csv"
+        $ITGDocuments = Import-CSV -Path (Join-Path -path $ITGLueExportPath -ChildPath "documents.csv")
+        [string]$ITGDocumentsPath = Join-Path -path $ITGLueExportPath -ChildPath "Documents"
 
-        $files = Get-ChildItem "$($ITGLueExportPath)Documents" -recurse
+        $files = Get-ChildItem -Path $ITGDocumentsPath -recurse
 
         # First lets find each article in the file system and then create blank stubs for them all so we can match relations later
         $MatchedArticles = Foreach ($doc in $ITGDocuments) {
             Write-Host "Starting $($doc.name)" -ForegroundColor Green
             $dir = $files | Where-Object { $_.PSIsContainer -eq $true -and $_.Name -match $doc.locator }
-            $RelativePath = ($dir.FullName).Substring("$($ITGLueExportPath)Documents".Length)
+            $RelativePath = ($dir.FullName).Substring($ITGDocumentsPath.Length)
             $folders = $RelativePath -split '\\'
             $FilenameFromFolder = ($folders[$folders.count - 1] -split ' ', 2)[1]
             $Filename = $FilenameFromFolder
@@ -1442,7 +1448,17 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\ArticleBase.json")) {
                 } else {
                     if (($folders | Measure-Object).count -gt 2) {
                         # Make / Check Folders
-                        $art_folder_id = (Initialize-HuduFolder $folders[1..$($folders.count - 2)]).id
+                        $folders = $folders[1..$($folders.count - 2)]
+                        if ($GlobalKBFolder) {
+                            $folders = @($GlobalKBFolder.name) + $folders
+                        }
+                        $art_folder_id = (Initialize-HuduFolder $folders).id
+                    }
+                    else {
+                        # Check for GlobalKB Folder being set
+                        if ($GlobalKBFolder) {
+                            $art_folder_id = $GlobalKBFolder.id
+                        }
                     }
                     $ArticleSplat = @{
                         name      = $doc.name
