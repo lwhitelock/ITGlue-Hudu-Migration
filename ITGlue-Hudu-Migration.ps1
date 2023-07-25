@@ -33,6 +33,9 @@
 . $PSScriptRoot\Private\Get-FontAwesomeMap.ps1
 $FontAwesomeUpgrade = Get-FontAwesomeMap
 
+# Add Replace URL functions
+. $PSScriptRoot\Private\ConvertTo-HuduURL.ps1
+
 ############################### End of Functions ###############################
 
 
@@ -1573,10 +1576,6 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Articles.json")) {
                 $images = @($html.Images)
 
                 $images | ForEach-Object {
-                    Remove-Variable -Name fullImgUrl
-                    Remove-Variable -Name fullImgPath
-                    Remove-Variable -Name foundFile
-                    Remove-Variable -Name imagePath    
                     Write-Host "Processing HTML: $($_.outerHTML)"
                     if ($_.src -notmatch '^http[s]?://') {
                         $script:HasImages = $true
@@ -1584,22 +1583,18 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Articles.json")) {
                         $imgHTML = ($_.outerHTML)
                         if ($fullImgUrl = $imgHTML.split('data-src-original="')[1]) {$fullImgUrl = $fullImgUrl.split('"')[0] }
                         $tnImgUrl = $imgHTML.split('src="')[1].split('"')[0]
-                        if ($fullImgUrl) {$fullImgPath = Join-Path -Path $basepath -ChildPath $fullImgUrl.replace('/','\'); Write-Host "Processing IMG: $($_.$fullImgUrl)"}
+                        if ($fullImgUrl) {$fullImgPath = Join-Path -Path $basepath -ChildPath $fullImgUrl.replace('/','\')}
                         $tnImgPath = Join-Path -Path $basepath -ChildPath $tnImgUrl.replace('/','\')
-                        Write-Host "Processing IMG: $($_.$tnImgPath)"
+                        Write-Host "Processing IMG: $tnImgPath"
                         
                         # Some logic to test for the original data source being specified vs the thumbnail. Grab the Thumbnail or final source.
-                        if ($foundFile = Get-Item -Path "$fullImgPath*" -ErrorAction SilentlyContinue) {
+                        if ($fullImgUrl -and ($foundFile = Get-Item -Path "$fullImgPath*" -ErrorAction SilentlyContinue)) {
                             $imagePath = $foundFile.FullName
-                            # Originally planning on using $imageUrl to do a string replace to $NewImageUrl, in the end didn't seem necessary
-                            $imageUrl = $fullImgUrl
-
-                        } elseif ($foundFile = Get-Item -Path "$tnImgPath*" -ErrorAction SilentlyContinue) {
+                        } elseif ($tnImgUrl -and ($foundFile = Get-Item -Path "$tnImgPath*" -ErrorAction SilentlyContinue)) {
                             $imagePath = $foundFile.FullName
-                            $imageUrl = $tnImgUrl
                         } else { 
-                            Remove-Variable -Name imagePath
-                            Remove-Variable -Name foundFile
+                            Remove-Variable -Name imagePath -ErrorAction SilentlyContinue
+                            Remove-Variable -Name foundFile -ErrorAction SilentlyContinue
                             Write-Warning "Unable to validate image file."
                             [PSCustomObject]@{
                             ErrorType = 'Image missing found'
@@ -1610,6 +1605,7 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Articles.json")) {
                     }
 
                     # Test the path to ensure that a file extension exists, if no file extension we get problems later on. We rename it if there's no ext.
+                    if ($imagePath -and (Test-Path $imagePath -ErrorAction SilentlyContinue)) {
                         if ((Get-Item -path $imagePath).extension -eq '') {
                             Write-Warning "$imagePath is undetermined image. Testing..."
                             if ($Magick = New-Object ImageMagick.MagickImage($imagePath)) {
@@ -1617,9 +1613,7 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Articles.json")) {
                                 $imagePath = "$($imagePath).$($Magick.format)"
                                 $MovedItem = Move-Item -Path $OriginalFullImagePath -Destination $imagePath
                             }
-                        }
-
-                        if (Test-Path $imagePath) {
+                        }                        
                             $imageType = Invoke-ImageTest($imagePath)
                             if ($imageType) {
                                 Write-Host "Uploading new image"
@@ -1657,9 +1651,10 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Articles.json")) {
                             }
                         }
                         else {
+                            Write-Warning "Image $tnImgUrl file is missing"
                             [PSCustomObject]@{
                                 ErrorType       = 'Image File Missing'
-                                Details         = "$imagePath is not present in export"
+                                Details         = "$tnImgUrl is not present in export"
                                 InFile          = "$InFile"
                                 MigrationObject = $Article
                             }
@@ -1748,20 +1743,18 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Articles.json")) {
                     article_id = $Article.HuduID
                     name       = $Article.name
                     content    = $page_out
-                    company_id = $Article.company.HuduID
-                    #folder_id = $Article.HuduObject.folder_id
+                    company_id = $Article.company.HuduID                   
                 }	
             } else {
                 $ArticleSplat = @{
                     article_id = $Article.HuduID
                     name       = $Article.name
                     content    = $page_out
-                    #folder_id = $Article.HuduObject.folder_id
                 }	
             }
 				
             $null = Set-HuduArticle @ArticleSplat
-            Write-Host "$($Article.name) completed"
+            Write-Host "$($Article.name) completed" -ForegroundColor Green
 		
             $Article.Imported = "Created-By-Script"
 			
@@ -1987,9 +1980,10 @@ $articlesUpdated = @()
 foreach ($articleFound in $UpdateArticles.HuduObject) {
     $NewContent = Update-StringWithCaptureGroups -inputString $articleFound.content -pattern $RegexPatternToMatchSansAssets -type "rich"
     $NewContent = Update-StringWithCaptureGroups -inputString $NewContent -pattern $RegexPatternToMatchWithAssets -type "rich"
-    Write-Host "Updating Article $($articleFound.name) with replaced Content" -ForegroundColor 'Green'
-    $articlesUpdated += @{"original_article" = $articleFound; "updated_article" = Set-HuduArticle -Name $articleFound.name -id $articleFound.id -Content $NewContent}
-
+    if ($NewContent) {
+        Write-Host "Updating Article $($articleFound.name) with replaced Content" -ForegroundColor 'Green'
+        $articlesUpdated += @{"original_article" = $articleFound; "updated_article" = Set-HuduArticle -Name $articleFound.name -id $articleFound.id -Content $NewContent}       
+    }
 }
 
 $articlesUpdated | ConvertTo-Json -depth 100 |Out-file "$MigrationLogs\ReplacedArticlesURL.json"
@@ -2003,8 +1997,10 @@ foreach ($assetFound in $UpdateAssets.HuduObject) {
     foreach ($field in $fieldsFound) {
         $NewContent = Update-StringWithCaptureGroups -inputString $field.value -pattern $RegexPatternToMatchSansAssets -type "rich"
         $NewContent = Update-StringWithCaptureGroups -inputString $NewContent -pattern $RegexPatternToMatchWithAssets -type "rich"
-        Write-Host "Replacing Asset $($assetFound.name) field $($field.caption) with replaced Content" -ForegroundColor 'Red'
-        ($assetFound.fields | Where-Object {$_.id -eq $field.id}).value = $NewContent
+        if ($NewContent) {
+            Write-Host "Replacing Asset $($assetFound.name) field $($field.caption) with replaced Content" -ForegroundColor 'Red'
+            ($assetFound.fields | Where-Object {$_.id -eq $field.id}).value = $NewContent
+        }
     }
     Write-Host "Updating Asset $($assetFound.name) with replaced field values" -ForegroundColor 'Green'
     $assetsUpdated += @{"original_asset" = $originalAsset; "updated_asset" = Set-HuduAsset -Name $assetFound.name -AssetId $assetFound.id -CompanyId $assetFound.company_id -Fields $assetFound.fields}
@@ -2019,9 +2015,11 @@ foreach ($passwordFound in $UpdatePasswords.HuduObject) {
     $NewContent = Update-StringWithCaptureGroups -inputString $passwordFound.description -pattern $RegexPatternToMatchSansAssets -type "plain"
     $NewContent = Update-StringWithCaptureGroups -inputString $NewContent -pattern $RegexPatternToMatchWithAssets -type "plain"
     $originalPassword = $passwordFound
-    $passwordFound.description = $NewContent
-    Write-Host "Updating Password $($passwordFound.name) with updated description" -ForegroundColor 'Green'
-    $passwordsUpdated += @{"original_password" = $originalPassword; "updated_password" = Set-HuduPassword @passwordFound}
+    if ($NewContent) {
+        $passwordFound.description = $NewContent
+        Write-Host "Updating Password $($passwordFound.name) with updated description" -ForegroundColor 'Green'
+        $passwordsUpdated += @{"original_password" = $originalPassword; "updated_password" = Set-HuduPassword @passwordFound}
+    }
 }
 $passwordsUpdated | ConvertTo-Json -depth 100 |Out-file "$MigrationLogs\ReplacedPasswordsURL.json"
 Read-Host "Snapshot Point: Password URLs Replaced. Continue?"
@@ -2033,9 +2031,12 @@ foreach ($passwordFound in $UpdateAssetPasswords) {
     $NewContent = Update-StringWithCaptureGroups -inputString $passwordFound.description -pattern $RegexPatternToMatchSansAssets -type "plain"
     $NewContent = Update-StringWithCaptureGroups -inputString $NewContent -pattern $RegexPatternToMatchWithAssets -type "plain"
     $originalPassword = $passwordFound
-    $passwordFound.description = $NewContent
-    Write-Host "Updating Asset Password $($passwordFound.name) with updated description" -ForegroundColor 'Green'
-    $assetPasswordsUpdated += @{"original_password" = $originalPassword; "updated_password" = Set-HuduPassword @passwordFound}
+    if ($NewContent)   {
+        $passwordFound.description = $NewContent
+        Write-Host "Updating Asset Password $($passwordFound.name) with updated description" -ForegroundColor 'Green'
+        $assetPasswordsUpdated += @{"original_password" = $originalPassword; "updated_password" = Set-HuduPassword @passwordFound}
+    }
+    
 }
 $assetPasswordsUpdated | ConvertTo-Json -depth 100 |Out-file "$MigrationLogs\ReplacedAssetPasswordsURL.json"
 Read-Host "Snapshot Point: Asset Passwords URLs Replaced. Continue?"
@@ -2046,9 +2047,12 @@ foreach ($companyFound in $UpdateCompanyNotes.HuduCompanyObject) {
     $NewContent = Update-StringWithCaptureGroups -inputString $companyFound.notes -pattern $RegexPatternToMatchSansAssets -type "rich"
     $NewContent = Update-StringWithCaptureGroups -inputString $NewContent -pattern $RegexPatternToMatchWithAssets -type "rich"
     $originalCompany = $companyFound
-    $companyFound.notes = $NewContent
-    Write-Host "Updating Company $($companyFound.name) with updated notes" -ForegroundColor 'Green'
-    $companyNotesUpdated += @{"original_company" = $originalCompany; "updated_company" = Set-HuduCompany @companyFound}
+    if ($NewContent) {
+        $companyFound.notes = $NewContent
+        Write-Host "Updating Company $($companyFound.name) with updated notes" -ForegroundColor 'Green'
+        $companyNotesUpdated += @{"original_company" = $originalCompany; "updated_company" = Set-HuduCompany @companyFound}
+    }
+
 }
 $companyNotesUpdated | ConvertTo-Json -depth 100 |Out-file "$MigrationLogs\ReplacedCompaniesURL.json"
 Read-Host "Snapshot Point: Company Notes URLs Replaced. Continue?"
