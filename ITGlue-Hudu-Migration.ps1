@@ -1944,11 +1944,11 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Passwords.json")) {
     # Save the results to resume from if needed
     $MatchedPasswords | ConvertTo-Json -depth 100 | Out-File "$MigrationLogs\Passwords.json"
     $ManualActions | ConvertTo-Json -depth 100 | Out-File "$MigrationLogs\ManualActions.json"
-
+    Read-Host "Snapshot Point: Passwords Finished. Continue?"
 }
 
 ############################## Update ITGlue URLs on All Areas to Hudu #######################
-$UpdateArticles = $MatchedArticles | Where-Object {$_.HuduObject.content -like "*$ITGURL*"}
+$UpdateArticles = (Get-HuduArticles | Where-Object {$_.content -like "*$ITGURL*"})
 $UpdateAssets = $MatchedAssets | Where-Object {$_.HuduObject.fields.value -like "*$ITGURL*"}
 $UpdatePasswords = $MatchedPasswords | Where-Object {$_.HuduObject.description -like "*$ITGURL*"}
 $UpdateAssetPasswords = $MatchedAssetPasswords | Where-Object {$_.ITGObject.attributes.notes -like "*$ITGURL*"}
@@ -1958,14 +1958,15 @@ $UpdateCompanyNotes = $MatchedCompanies | Where-Object {$_.HuduCompanyObject.not
 # Articles
 $articlesUpdated = @()
 foreach ($articleFound in $UpdateArticles.HuduObject) {
-    $NewContent = Update-StringWithCaptureGroups -inputString $articleFound.content -pattern $RegexPatternToMatchSansAssets
-    $NewContent = Update-StringWithCaptureGroups -inputString $NewContent -pattern $RegexPatternToMatchWithAssets
+    $NewContent = Update-StringWithCaptureGroups -inputString $articleFound.content -pattern $RegexPatternToMatchSansAssets -type "rich"
+    $NewContent = Update-StringWithCaptureGroups -inputString $NewContent -pattern $RegexPatternToMatchWithAssets -type "rich"
     Write-Host "Updating Article $($articleFound.name) with replaced Content" -ForegroundColor 'Green'
     $articlesUpdated += @{"original_article" = $articleFound; "updated_article" = Set-HuduArticle -Name $articleFound.name -id $articleFound.id -Content $NewContent}
 
 }
 
 $articlesUpdated | ConvertTo-Json -depth 100 |Out-file "$MigrationLogs\ReplacedArticlesURL.json"
+Read-Host "Snapshot Point: Article URLs Replaced. Continue?"
 
 # Assets
 $assetsUpdated = @()
@@ -1973,54 +1974,57 @@ foreach ($assetFound in $UpdateAssets.HuduObject) {
     $fieldsFound = $assetFound.fields | Where-Object {$_.value -like "*$ITGURL*"}
     $originalAsset = $assetFound
     foreach ($field in $fieldsFound) {
-        $NewContent = Update-StringWithCaptureGroups -inputString $field.value -pattern $RegexPatternToMatchSansAssets
-        $NewContent = Update-StringWithCaptureGroups -inputString $NewContent -pattern $RegexPatternToMatchWithAssets
+        $NewContent = Update-StringWithCaptureGroups -inputString $field.value -pattern $RegexPatternToMatchSansAssets -type "rich"
+        $NewContent = Update-StringWithCaptureGroups -inputString $NewContent -pattern $RegexPatternToMatchWithAssets -type "rich"
         Write-Host "Replacing Asset $($assetFound.name) field $($field.caption) with replaced Content" -ForegroundColor 'Red'
         ($assetFound.fields | Where-Object {$_.id -eq $field.id}).value = $NewContent
     }
     Write-Host "Updating Asset $($assetFound.name) with replaced field values" -ForegroundColor 'Green'
-    $assetsUpdated += @{"original_asset" = $originalAsset; "updated_asset" = Set-HuduAsset @assetFound}
+    $assetsUpdated += @{"original_asset" = $originalAsset; "updated_asset" = Set-HuduAsset -Name $assetFound.name -AssetId $assetFound.id -CompanyId $assetFound.company_id -Fields $assetFound.fields}
 }
 
 $assetsUpdated | ConvertTo-Json -depth 100 |Out-file "$MigrationLogs\ReplacedAssetsURL.json"
+Read-Host "Snapshot Point: Assets URLs Replaced. Continue?"
 
 # Passwords
 $passwordsUpdated = @()
 foreach ($passwordFound in $UpdatePasswords.HuduObject) {
-    $NewContent = Update-StringWithCaptureGroups -inputString $passwordFound.description -pattern $RegexPatternToMatchSansAssets
-    $NewContent = Update-StringWithCaptureGroups -inputString $NewContent -pattern $RegexPatternToMatchWithAssets
+    $NewContent = Update-StringWithCaptureGroups -inputString $passwordFound.description -pattern $RegexPatternToMatchSansAssets -type "plain"
+    $NewContent = Update-StringWithCaptureGroups -inputString $NewContent -pattern $RegexPatternToMatchWithAssets -type "plain"
     $originalPassword = $passwordFound
     $passwordFound.description = $NewContent
     Write-Host "Updating Password $($passwordFound.name) with updated description" -ForegroundColor 'Green'
     $passwordsUpdated += @{"original_password" = $originalPassword; "updated_password" = Set-HuduPassword @passwordFound}
 }
 $passwordsUpdated | ConvertTo-Json -depth 100 |Out-file "$MigrationLogs\ReplacedPasswordsURL.json"
+Read-Host "Snapshot Point: Password URLs Replaced. Continue?"
 
 # Asset Passwords
 $assetPasswordsUpdated = @()
 foreach ($passwordFound in $UpdateAssetPasswords) {
     $passwordFound = Get-HuduPasswords -id $passwordFound.HuduID
-    $NewContent = Update-StringWithCaptureGroups -inputString $passwordFound.description -pattern $RegexPatternToMatchSansAssets
-    $NewContent = Update-StringWithCaptureGroups -inputString $NewContent -pattern $RegexPatternToMatchWithAssets
+    $NewContent = Update-StringWithCaptureGroups -inputString $passwordFound.description -pattern $RegexPatternToMatchSansAssets -type "plain"
+    $NewContent = Update-StringWithCaptureGroups -inputString $NewContent -pattern $RegexPatternToMatchWithAssets -type "plain"
     $originalPassword = $passwordFound
     $passwordFound.description = $NewContent
     Write-Host "Updating Asset Password $($passwordFound.name) with updated description" -ForegroundColor 'Green'
     $assetPasswordsUpdated += @{"original_password" = $originalPassword; "updated_password" = Set-HuduPassword @passwordFound}
 }
 $assetPasswordsUpdated | ConvertTo-Json -depth 100 |Out-file "$MigrationLogs\ReplacedAssetPasswordsURL.json"
+Read-Host "Snapshot Point: Asset Passwords URLs Replaced. Continue?"
 
 # Company Notes
 $companyNotesUpdated = @()
 foreach ($companyFound in $UpdateCompanyNotes.HuduCompanyObject) {
-    $NewContent = Update-StringWithCaptureGroups -inputString $companyFound.notes -pattern $RegexPatternToMatchSansAssets
-    $NewContent = Update-StringWithCaptureGroups -inputString $NewContent -pattern $RegexPatternToMatchWithAssets
+    $NewContent = Update-StringWithCaptureGroups -inputString $companyFound.notes -pattern $RegexPatternToMatchSansAssets -type "rich"
+    $NewContent = Update-StringWithCaptureGroups -inputString $NewContent -pattern $RegexPatternToMatchWithAssets -type "rich"
     $originalCompany = $companyFound
     $companyFound.notes = $NewContent
     Write-Host "Updating Company $($companyFound.name) with updated notes" -ForegroundColor 'Green'
     $companyNotesUpdated += @{"original_company" = $originalCompany; "updated_company" = Set-HuduCompany @companyFound}
 }
 $companyNotesUpdated | ConvertTo-Json -depth 100 |Out-file "$MigrationLogs\ReplacedCompaniesURL.json"
-
+Read-Host "Snapshot Point: Company Notes URLs Replaced. Continue?"
 
 ############################### Generate Manual Actions Report ###############################
 

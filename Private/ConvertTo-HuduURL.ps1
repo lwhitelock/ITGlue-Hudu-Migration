@@ -40,7 +40,9 @@ function Update-StringWithCaptureGroups {
       [Parameter(Mandatory=$true, Position=0)]
       [string]$inputString,
       [Parameter(Mandatory=$true, Position=1)]
-      [string]$pattern
+      [string]$pattern,
+      [Parameter(Mandatory=$true, Position=2)]
+      [string]$type
     )
   
     $regex = [regex]::new($pattern)
@@ -90,9 +92,16 @@ function Update-StringWithCaptureGroups {
     
         if ($HuduUrl) {
             $HuduUrl = $HuduUrl.replace("http://","https://")
+            if ($type -eq 'rich') {
             $ReplacementString = @"
             <A HREF="$HuduUrl">$HuduName</A>
 "@
+            }
+            else {
+                $ReplacementString = @"
+                $HuduUrl
+"@
+            }
             $inputString = $inputString -replace [string]$match.Value,[string]$ReplacementString
         }
 
