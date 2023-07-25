@@ -1978,8 +1978,8 @@ $UpdateCompanyNotes = $MatchedCompanies | Where-Object {$_.HuduCompanyObject.not
 # Articles
 $articlesUpdated = @()
 foreach ($articleFound in $UpdateArticles.HuduObject) {
-    $NewContent = Update-StringWithCaptureGroups -inputString $articleFound.content -pattern $RegexPatternToMatchSansAssets -type "rich"
-    $NewContent = Update-StringWithCaptureGroups -inputString $NewContent -pattern $RegexPatternToMatchWithAssets -type "rich"
+    $NewContent = Update-StringWithCaptureGroups -inputString $articleFound.content -pattern $RichRegexPatternToMatchSansAssets -type "rich"
+    $NewContent = Update-StringWithCaptureGroups -inputString $NewContent -pattern $RichRegexPatternToMatchWithAssets -type "rich"
     if ($NewContent) {
         Write-Host "Updating Article $($articleFound.name) with replaced Content" -ForegroundColor 'Green'
         $articlesUpdated += @{"original_article" = $articleFound; "updated_article" = Set-HuduArticle -Name $articleFound.name -id $articleFound.id -Content $NewContent}       
@@ -1995,8 +1995,8 @@ foreach ($assetFound in $UpdateAssets.HuduObject) {
     $fieldsFound = $assetFound.fields | Where-Object {$_.value -like "*$ITGURL*"}
     $originalAsset = $assetFound
     foreach ($field in $fieldsFound) {
-        $NewContent = Update-StringWithCaptureGroups -inputString $field.value -pattern $RegexPatternToMatchSansAssets -type "rich"
-        $NewContent = Update-StringWithCaptureGroups -inputString $NewContent -pattern $RegexPatternToMatchWithAssets -type "rich"
+        $NewContent = Update-StringWithCaptureGroups -inputString $field.value -pattern $RichRegexPatternToMatchSansAssets -type "rich"
+        $NewContent = Update-StringWithCaptureGroups -inputString $NewContent -pattern $RichRegexPatternToMatchWithAssets -type "rich"
         if ($NewContent) {
             Write-Host "Replacing Asset $($assetFound.name) field $($field.caption) with replaced Content" -ForegroundColor 'Red'
             ($assetFound.fields | Where-Object {$_.id -eq $field.id}).value = $NewContent
@@ -2012,8 +2012,8 @@ Read-Host "Snapshot Point: Assets URLs Replaced. Continue?"
 # Passwords
 $passwordsUpdated = @()
 foreach ($passwordFound in $UpdatePasswords.HuduObject) {
-    $NewContent = Update-StringWithCaptureGroups -inputString $passwordFound.description -pattern $RegexPatternToMatchSansAssets -type "plain"
-    $NewContent = Update-StringWithCaptureGroups -inputString $NewContent -pattern $RegexPatternToMatchWithAssets -type "plain"
+    $NewContent = Update-StringWithCaptureGroups -inputString $passwordFound.description -pattern $TextRegexPatternToMatchSansAssets -type "plain"
+    $NewContent = Update-StringWithCaptureGroups -inputString $NewContent -pattern $TextRegexPatternToMatchWithAssets -type "plain"
     $originalPassword = $passwordFound
     if ($NewContent) {
         $passwordFound.description = $NewContent
@@ -2028,8 +2028,8 @@ Read-Host "Snapshot Point: Password URLs Replaced. Continue?"
 $assetPasswordsUpdated = @()
 foreach ($passwordFound in $UpdateAssetPasswords) {
     $passwordFound = Get-HuduPasswords -id $passwordFound.HuduID
-    $NewContent = Update-StringWithCaptureGroups -inputString $passwordFound.description -pattern $RegexPatternToMatchSansAssets -type "plain"
-    $NewContent = Update-StringWithCaptureGroups -inputString $NewContent -pattern $RegexPatternToMatchWithAssets -type "plain"
+    $NewContent = Update-StringWithCaptureGroups -inputString $passwordFound.description -pattern $TextRegexPatternToMatchSansAssets -type "plain"
+    $NewContent = Update-StringWithCaptureGroups -inputString $NewContent -pattern $TextRegexPatternToMatchWithAssets -type "plain"
     $originalPassword = $passwordFound
     if ($NewContent)   {
         $passwordFound.description = $NewContent
@@ -2044,8 +2044,8 @@ Read-Host "Snapshot Point: Asset Passwords URLs Replaced. Continue?"
 # Company Notes
 $companyNotesUpdated = @()
 foreach ($companyFound in $UpdateCompanyNotes.HuduCompanyObject) {
-    $NewContent = Update-StringWithCaptureGroups -inputString $companyFound.notes -pattern $RegexPatternToMatchSansAssets -type "rich"
-    $NewContent = Update-StringWithCaptureGroups -inputString $NewContent -pattern $RegexPatternToMatchWithAssets -type "rich"
+    $NewContent = Update-StringWithCaptureGroups -inputString $companyFound.notes -pattern $RichRegexPatternToMatchSansAssets -type "rich"
+    $NewContent = Update-StringWithCaptureGroups -inputString $NewContent -pattern $RichRegexPatternToMatchWithAssets -type "rich"
     $originalCompany = $companyFound
     if ($NewContent) {
         $companyFound.notes = $NewContent

@@ -1,7 +1,7 @@
 # This will be used to remake the ITGlue Links to Hudu, and relies on the articles logs existing.
 
 
-$EscapedITGURL = [regex]::Escape($ITGlueURl)
+$EscapedITGURL = [regex]::Escape($ITGURL)
 
 # Gather all the Hudu Migration logs
 # This should create $MatchedArticleBase, $MatchedAssetts, $MatchedCompanies, $MatchedConfigurations, $MatchedPasswords etc.
@@ -31,8 +31,10 @@ foreach ($File in (Get-ChildItem  "$ITGlueExportPath\..\MigrationLogs\*.json")) 
 # 3 = type of Entity (Important for location)
 # 4 = ITGlue Entity ID
 
-$RegexPatternToMatchSansAssets = "<(A|a) href=.*$EscapedITGURL\/([0-9]{1,6})\/(docs|passwords|configurations)\/([0-9]{1,10})\S*<\/(A|a)>"
-$RegexPatternToMatchWithAssets = "<(A|a) href=.*$EscapedITGURL\/([0-9]{1,10})\/(assets)\/.*\/([0-9]{1,10})\S*<\/(A|a)>"
+$RichRegexPatternToMatchSansAssets = "<(A|a) href=.*$EscapedITGURL/([0-9]{1,10})/(docs|passwords|configurations)/([0-9]{1,10})\S.*</(A|a)>"
+$RichRegexPatternToMatchWithAssets = "<(A|a) href=.*$EscapedITGURL/([0-9]{1,10})/(assets)/.*/([0-9]{1,10})\S.*</(A|a)>"
+$TextRegexPatternToMatchSansAssets = "$EscapedITGURL/([0-9]{1,10})/(docs|passwords|configurations)/([0-9]{1,10})"
+$TextRegexPatternToMatchWithAssets = "$EscapedITGURL/([0-9]{1,10})/(assets)/.*/([0-9]{1,10})"
 
 function Update-StringWithCaptureGroups {
     [cmdletbinding()]
