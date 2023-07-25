@@ -244,10 +244,20 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Companies.json")) {
 	
         if (($importCOption -eq "A") -or ($importCOption -eq "S") ) {		
             foreach ($unmatchedcompany in ($MatchedCompanies | Where-Object { $_.Matched -eq $false })) {
+                $unmatchedcompany.ITGCompanyObject.attributes.'quick-notes' = ($ITGCompaniesFromCSV | Where-Object {$_.id -eq $unmatchedcompany.ITGID}).quick_notes
+                $unmatchedcompany.ITGCompanyObject.attributes.alert = ($ITGCompaniesFromCSV | Where-Object {$_.id -eq $unmatchedcompany.ITGID}).alert
                 Confirm-Import -ImportObjectName $unmatchedcompany.CompanyName -ImportObject $unmatchedcompany -ImportSetting $importCOption
 						
                 Write-Host "Starting $($unmatchedcompany.CompanyName)"
                 $PrimaryLocation = $ITGLocations | Where-Object { $unmatchedcompany.ITGID -eq $_.attributes."organization-id" -and $_.attributes.primary -eq $true }
+
+                #Check for alerts in ITGlue on the organization
+                if ($ITGlueAlert = $unmatchedcompany.ITGCompanyObject.attributes.alert) {
+                    $CompanyNotes = "<div class='callout callout-warning'>$ITGlueAlert</div>" + $unmatchedcompany.ITGCompanyObject.attributes."quick-notes"
+                } else {
+                    $CompanyNotes = $unmatchedcompany.ITGCompanyObject.attributes."quick-notes"
+                }
+
                 if ($PrimaryLocation) {
                     $CompanySplat = @{
                         "name"           = $unmatchedcompany.CompanyName
@@ -260,13 +270,14 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Companies.json")) {
                         "country_name"   = $PrimaryLocation.attributes."country-name"
                         "phone_number"   = $PrimaryLocation.attributes.phone
                         "fax_number"     = $PrimaryLocation.attributes.fax
-                        "notes"          = $unmatchedcompany.ITGCompanyObject.attributes."quick-notes"
+                        "notes"          = $CompanyNotes
+                        "CompanyType"    = $unmatchedcompany.ITGCompanyObject.attributes.'organization-type-name'
                     }
                     $HuduNewCompany = (New-HuduCompany @CompanySplat).company
                     $CompaniesMigrated = $CompaniesMigrated + 1
                 } else {
                     Write-Host "No Location Found, creating company without address details"
-                    $HuduNewCompany = (New-HuduCompany -name $unmatchedcompany.CompanyName -nickname $unmatchedcompany.ITGCompanyObject.attributes."short-name" -notes $unmatchedcompany.ITGCompanyObject.attributes."quick-notes").company
+                    $HuduNewCompany = (New-HuduCompany -name $unmatchedcompany.CompanyName -nickname $unmatchedcompany.ITGCompanyObject.attributes."short-name" -notes $CompanyNotes -CompanyType $unmatchedcompany.attributes.'organization-type-name').company
                     $CompaniesMigrated = $CompaniesMigrated + 1
                 }
 			
