@@ -1576,15 +1576,26 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Articles.json")) {
                 $images = @($html.Images)
 
                 $images | ForEach-Object {
-                    Write-Host "Processing HTML: $($_.outerHTML)"
-                    if ($_.src -notmatch '^http[s]?://') {
+                    
+                    
+                    if ($_.src -notmatch [regex]::Escape($ITGURL)) {
                         $script:HasImages = $true
-                        $basepath = Split-Path $InFile
-                        $imgHTML = ($_.outerHTML)
-                        if ($fullImgUrl = $imgHTML.split('data-src-original="')[1]) {$fullImgUrl = $fullImgUrl.split('"')[0] }
-                        $tnImgUrl = $imgHTML.split('src="')[1].split('"')[0]
-                        if ($fullImgUrl) {$fullImgPath = Join-Path -Path $basepath -ChildPath $fullImgUrl.replace('/','\')}
-                        $tnImgPath = Join-Path -Path $basepath -ChildPath $tnImgUrl.replace('/','\')
+                        $imgHTML = $_.outerHTML
+                        Write-Host "Processing HTML: $imgHTML"
+                        if ($_.src -match [regex]::Escape($ITGURL)) {
+                            $matchedImage = Update-StringWithCaptureGroups -inputString $imgHTML -type 'img' -pattern $ImgRegexPatternToMatch
+                            $tnImgUrl = $matchedImage.url
+                            $tnImgPath = $matchedImage.path
+                        }
+                        else {
+                            $basepath = Split-Path $InFile
+                            
+                            if ($fullImgUrl = $imgHTML.split('data-src-original="')[1]) {$fullImgUrl = $fullImgUrl.split('"')[0] }
+                            $tnImgUrl = $imgHTML.split('src="')[1].split('"')[0]
+                            if ($fullImgUrl) {$fullImgPath = Join-Path -Path $basepath -ChildPath $fullImgUrl.replace('/','\')}
+                            $tnImgPath = Join-Path -Path $basepath -ChildPath $tnImgUrl.replace('/','\')
+                        }
+                        
                         Write-Host "Processing IMG: $tnImgPath"
                         
                         # Some logic to test for the original data source being specified vs the thumbnail. Grab the Thumbnail or final source.
@@ -1982,7 +1993,8 @@ foreach ($articleFound in $UpdateArticles) {
     $NewContent = Update-StringWithCaptureGroups -inputString $NewContent -pattern $RichRegexPatternToMatchWithAssets -type "rich"
     if ($NewContent) {
         Write-Host "Updating Article $($articleFound.name) with replaced Content" -ForegroundColor 'Green'
-        $articlesUpdated += @{"original_article" = $articleFound; "updated_article" = Set-HuduArticle -Name $articleFound.name -id $articleFound.id -Content $NewContent}       
+        $ArticlePost = Set-HuduArticle -Name $articleFound.name -id $articleFound.id -Content $NewContent
+        $articlesUpdated = $articlesUpdates + @{"original_article" = $articleFound; "updated_article" = $ArticlePost.article}       
     }
 }
 
@@ -2003,7 +2015,8 @@ foreach ($assetFound in $UpdateAssets.HuduObject) {
         }
     }
     Write-Host "Updating Asset $($assetFound.name) with replaced field values" -ForegroundColor 'Green'
-    $assetsUpdated += @{"original_asset" = $originalAsset; "updated_asset" = Set-HuduAsset -asset_layout_id $assetFound.asset_layout_id -Name $assetFound.name -AssetId $assetFound.id -CompanyId $assetFound.company_id -Fields $assetFound.fields}
+    $AssetPost = Set-HuduAsset -asset_layout_id $assetFound.asset_layout_id -Name $assetFound.name -AssetId $assetFound.id -CompanyId $assetFound.company_id -Fields $assetFound.fields
+    $assetsUpdated = $assetsUpdated + @{"original_asset" = $originalAsset; "updated_asset" = $AssetPost }
 }
 
 $assetsUpdated | ConvertTo-Json -depth 100 |Out-file "$MigrationLogs\ReplacedAssetsURL.json"
