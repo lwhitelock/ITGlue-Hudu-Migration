@@ -101,11 +101,10 @@ function Update-StringWithCaptureGroups {
 "@
             }
             else {
-                $ReplacementString = @"
-                $HuduUrl
-"@
+                $ReplacementString = $HuduUrl
             }
-            $inputString = $inputString -replace [string]$match.Value,[string]$ReplacementString
+            
+            $inputString = $inputString -replace [regex]::Escape([string]$match.Value),[string]$ReplacementString
         }
 
       

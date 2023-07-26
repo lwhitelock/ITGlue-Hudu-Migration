@@ -1977,7 +1977,7 @@ $UpdateCompanyNotes = $MatchedCompanies | Where-Object {$_.HuduCompanyObject.not
 
 # Articles
 $articlesUpdated = @()
-foreach ($articleFound in $UpdateArticles.HuduObject) {
+foreach ($articleFound in $UpdateArticles) {
     $NewContent = Update-StringWithCaptureGroups -inputString $articleFound.content -pattern $RichRegexPatternToMatchSansAssets -type "rich"
     $NewContent = Update-StringWithCaptureGroups -inputString $NewContent -pattern $RichRegexPatternToMatchWithAssets -type "rich"
     if ($NewContent) {
@@ -2003,7 +2003,7 @@ foreach ($assetFound in $UpdateAssets.HuduObject) {
         }
     }
     Write-Host "Updating Asset $($assetFound.name) with replaced field values" -ForegroundColor 'Green'
-    $assetsUpdated += @{"original_asset" = $originalAsset; "updated_asset" = Set-HuduAsset -Name $assetFound.name -AssetId $assetFound.id -CompanyId $assetFound.company_id -Fields $assetFound.fields}
+    $assetsUpdated += @{"original_asset" = $originalAsset; "updated_asset" = Set-HuduAsset -asset_layout_id $assetFound.asset_layout_id -Name $assetFound.name -AssetId $assetFound.id -CompanyId $assetFound.company_id -Fields $assetFound.fields}
 }
 
 $assetsUpdated | ConvertTo-Json -depth 100 |Out-file "$MigrationLogs\ReplacedAssetsURL.json"
