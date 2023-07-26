@@ -31,10 +31,11 @@ foreach ($File in (Get-ChildItem  "$ITGlueExportPath\..\MigrationLogs\*.json")) 
 # 3 = type of Entity (Important for location)
 # 4 = ITGlue Entity ID
 
-$RichRegexPatternToMatchSansAssets = "<(A|a) href=.*$EscapedITGURL/([0-9]{1,10})/(docs|passwords|configurations)/([0-9]{1,10})\S.*</(A|a)>"
-$RichRegexPatternToMatchWithAssets = "<(A|a) href=.*$EscapedITGURL/([0-9]{1,10})/(assets)/.*/([0-9]{1,10})\S.*</(A|a)>"
+$RichRegexPatternToMatchSansAssets = "<(A|a) href=\S$EscapedITGURL/([0-9]{1,10})/(docs|passwords|configurations)/([0-9]{1,10})\S.*?</(A|a)>"
+$RichRegexPatternToMatchWithAssets = "<(A|a) href=\S$EscapedITGURL/([0-9]{1,10})/(assets)/.*?/([0-9]{1,10})\S.*?</(A|a)>"
 $TextRegexPatternToMatchSansAssets = "$EscapedITGURL/([0-9]{1,10})/(docs|passwords|configurations)/([0-9]{1,10})"
-$TextRegexPatternToMatchWithAssets = "$EscapedITGURL/([0-9]{1,10})/(assets)/.*/([0-9]{1,10})"
+$TextRegexPatternToMatchWithAssets = "$EscapedITGURL/([0-9]{1,10})/(assets)/.*?/([0-9]{1,10})"
+
 
 function Update-StringWithCaptureGroups {
     [cmdletbinding()]
@@ -59,7 +60,7 @@ function Update-StringWithCaptureGroups {
 
         switch ($match.groups[3].value) {
 
-            "articles" {
+            "docs" {
                 Write-Host "Matched an $($match.groups[3].value) URL to replace" -ForegroundColor 'Blue'
                $HuduUrl = ($MatchedArticleBase |Where-Object {$_.ITGID -eq $match.groups[4].value}).HuduObject.url
                $HuduName = ($MatchedArticleBase |Where-Object {$_.ITGID -eq $match.groups[4].value}).HuduObject.name
