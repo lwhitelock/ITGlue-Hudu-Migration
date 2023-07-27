@@ -1407,7 +1407,7 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\ArticleBase.json")) {
     if ($ImportArticles -eq $true) {
 
         if ($GlobalKBFolder -in ('y','yes','ye')) {
-            If (-not ($GlobalKBFolder = Get-HuduFolder -name $InternalCompany)) {
+            If (-not ($GlobalKBFolder = Get-HuduFolders -name $InternalCompany)) {
                 $GlobalKBFolder = (New-HuduFolder -Name $InternalCompany).folder
             }
         }

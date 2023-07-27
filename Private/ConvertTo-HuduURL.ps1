@@ -34,7 +34,7 @@ foreach ($File in (Get-ChildItem  "$ITGlueExportPath\..\MigrationLogs\*.json")) 
 $RichRegexPatternToMatchSansAssets = "<(A|a) href=\S$EscapedITGURL/([0-9]{1,10})/(docs|passwords|configurations)/([0-9]{1,10})\S.*?</(A|a)>"
 $RichRegexPatternToMatchWithAssets = "<(A|a) href=\S$EscapedITGURL/([0-9]{1,10})/(assets)/.*?/([0-9]{1,10})\S.*?</(A|a)>"
 $ImgRegexPatternToMatch = @"
-$EscapedITGURL/([0-9]{1,10}/docs/([0-9]{1,10})/(images)/([0-9]{1,10}).*?)(?="")
+$EscapedITGURL/([0-9]{1,10}/docs/([0-9]{1,10})/(images)/([0-9]{1,10}).*?)(?=")
 "@
 
 $TextRegexPatternToMatchSansAssets = "$EscapedITGURL/([0-9]{1,10})/(docs|passwords|configurations)/([0-9]{1,10})"
@@ -95,7 +95,7 @@ function Update-StringWithCaptureGroups {
 
             "images" {
                 Write-Host "Matched an external image using a Direct ITGlue link" -ForegroundColor 'Blue'
-                $OriginalArticle = ($MatchedArticleBase | Where-Object {$_.ITGID -eq $match.groups[1].value}).Path
+                $OriginalArticle = ($MatchedArticleBase | Where-Object {$_.ITGID -eq $match.groups[2].value}).Path
                 $ImagePath = $match.groups[1].replace('/','\')
                 $FullImagePath = Join-Path -Path $OriginalArticle -ChildPath $ImagePath
                 $ImageItem = Get-Item -Path "$FullImagePath*" -ErrorAction SilentlyContinue
