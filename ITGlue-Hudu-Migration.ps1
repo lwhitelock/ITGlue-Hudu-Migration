@@ -1587,6 +1587,8 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Articles.json")) {
                             if ($matchedImage) {
                                 $tnImgUrl = $matchedImage.url
                                 $tnImgPath = $matchedImage.path
+                            } else {
+                                $tnImgPath = $_.src
                             }
                         }
                         else {
