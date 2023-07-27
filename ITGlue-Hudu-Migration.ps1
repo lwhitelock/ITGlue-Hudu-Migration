@@ -1635,11 +1635,11 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Articles.json")) {
                                 try {
                                     $UploadImage = New-HuduPublicPhoto -FilePath "$imagePath" -record_id $Article.HuduID -record_type 'Article'
                                     $NewImageURL = $UploadImage.public_photo.url.replace($HuduBaseDomain, '')
+                                    $ImgLink = $html.Links | Where-Object {$_.innerHTML -eq $imgHTML}
                                     Write-Host "Setting image to: $NewImageURL"
                                     $_.src = [string]$NewImageURL
                                     
                                     # Update Links for this image
-                                    $ImgLink = $html.Links | Where-Object {$_.innerHTML -eq $imgHTML}
                                     $ImgLink.href = [string]$NewImageUrl
 
                                 }
