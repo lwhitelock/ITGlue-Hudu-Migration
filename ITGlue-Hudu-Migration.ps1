@@ -1993,12 +1993,15 @@ $UpdateCompanyNotes = $MatchedCompanies | Where-Object {$_.HuduCompanyObject.not
 # Articles
 $articlesUpdated = @()
 foreach ($articleFound in $UpdateArticles) {
-    $NewContent = Update-StringWithCaptureGroups -inputString $articleFound.content -pattern $RichRegexPatternToMatchSansAssets -type "rich"
-    $NewContent = Update-StringWithCaptureGroups -inputString $NewContent -pattern $RichRegexPatternToMatchWithAssets -type "rich"
-    if ($NewContent) {
+    if ($NewContent = Update-StringWithCaptureGroups -inputString $articleFound.content -pattern $RichRegexPatternToMatchSansAssets -type "rich") {
+        $NewContent = Update-StringWithCaptureGroups -inputString $NewContent -pattern $RichRegexPatternToMatchWithAssets -type "rich"
         Write-Host "Updating Article $($articleFound.name) with replaced Content" -ForegroundColor 'Green'
         $ArticlePost = Set-HuduArticle -Name $articleFound.name -id $articleFound.id -Content $NewContent
-        $articlesUpdated = $articlesUpdates + @{"original_article" = $articleFound; "updated_article" = $ArticlePost.article}       
+        $articlesUpdated = $articlesUpdated + @{"status" = "replaced"; "original_article" = $articleFound; "updated_article" = $ArticlePost.article}       
+        }
+    else {
+        Write-Warning "Article $articleFound.id found ITGlue URL but didn't match"
+        $articlesUpdated = $articlesUpdated + @{"status" = "clean"; "original_article" = $articleFound}
     }
 }
 
@@ -2016,11 +2019,16 @@ foreach ($assetFound in $UpdateAssets.HuduObject) {
         if ($NewContent) {
             Write-Host "Replacing Asset $($assetFound.name) field $($field.caption) with replaced Content" -ForegroundColor 'Red'
             ($assetFound.fields | Where-Object {$_.id -eq $field.id}).value = $NewContent
+            $replacedStatus = 'replaced'
         }
     }
-    Write-Host "Updating Asset $($assetFound.name) with replaced field values" -ForegroundColor 'Green'
-    $AssetPost = Set-HuduAsset -asset_layout_id $assetFound.asset_layout_id -Name $assetFound.name -AssetId $assetFound.id -CompanyId $assetFound.company_id -Fields $assetFound.fields
-    $assetsUpdated = $assetsUpdated + @{"original_asset" = $originalAsset; "updated_asset" = $AssetPost }
+    if ($replacedStatus -ne 'replaced') {$replacedStatus = 'clean'}
+    else {
+        Write-Host "Updating Asset $($assetFound.name) with replaced field values" -ForegroundColor 'Green'
+        $AssetPost = Set-HuduAsset -asset_layout_id $assetFound.asset_layout_id -Name $assetFound.name -AssetId $assetFound.id -CompanyId $assetFound.company_id -Fields $assetFound.fields
+    }
+    $assetsUpdated = $assetsUpdated + @{"status" = $replacedStatus; "original_asset" = $originalAsset; "updated_asset" = $AssetPost}
+
 }
 
 $assetsUpdated | ConvertTo-Json -depth 100 |Out-file "$MigrationLogs\ReplacedAssetsURL.json"
@@ -2035,7 +2043,9 @@ foreach ($passwordFound in $UpdatePasswords.HuduObject) {
     if ($NewContent) {
         $passwordFound.description = $NewContent
         Write-Host "Updating Password $($passwordFound.name) with updated description" -ForegroundColor 'Green'
-        $passwordsUpdated += @{"original_password" = $originalPassword; "updated_password" = Set-HuduPassword @passwordFound}
+        $moddedPasswordFound = [pscustomobject]@{}
+        $passwordFound.PSObject.Properties | ForEach-Object {$moddedPasswordFound[$_.Name -replace '_'] = $_.Value}
+        $passwordsUpdated = $passwordsUpdated + @{"original_password" = $originalPassword; "updated_password" = Set-HuduPassword @moddedPasswordFound}
     }
 }
 $passwordsUpdated | ConvertTo-Json -depth 100 |Out-file "$MigrationLogs\ReplacedPasswordsURL.json"
@@ -2050,8 +2060,10 @@ foreach ($passwordFound in $UpdateAssetPasswords) {
     $originalPassword = $passwordFound
     if ($NewContent)   {
         $passwordFound.description = $NewContent
+        $moddedPasswordFound = [pscustomobject]@{}
+        $passwordFound.PSObject.Properties | ForEach-Object {$moddedPasswordFound[$_.Name -replace '_'] = $_.Value}
         Write-Host "Updating Asset Password $($passwordFound.name) with updated description" -ForegroundColor 'Green'
-        $assetPasswordsUpdated += @{"original_password" = $originalPassword; "updated_password" = Set-HuduPassword @passwordFound}
+        $assetPasswordsUpdated = $assetPasswordsUpdated + @{"original_password" = $originalPassword; "updated_password" = Set-HuduPassword @moddedPasswordFound}
     }
     
 }
@@ -2067,7 +2079,7 @@ foreach ($companyFound in $UpdateCompanyNotes.HuduCompanyObject) {
     if ($NewContent) {
         $companyFound.notes = $NewContent
         Write-Host "Updating Company $($companyFound.name) with updated notes" -ForegroundColor 'Green'
-        $companyNotesUpdated += @{"original_company" = $originalCompany; "updated_company" = Set-HuduCompany @companyFound}
+        $companyNotesUpdated = $companyNotesUpdated + @{"original_company" = $originalCompany; "updated_company" = Set-HuduCompany @companyFound}
     }
 
 }
