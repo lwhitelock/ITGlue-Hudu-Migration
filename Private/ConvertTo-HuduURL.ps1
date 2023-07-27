@@ -104,6 +104,7 @@ function Update-StringWithCaptureGroups {
                         "path" = $ImageItem.FullName
                         "url" = $match.Groups[1]
                     }
+                else { return $false}
                 }
 
                 
