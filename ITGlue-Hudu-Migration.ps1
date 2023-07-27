@@ -1578,14 +1578,16 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Articles.json")) {
                 $images | ForEach-Object {
                     
                     
-                    if ($_.src -notmatch [regex]::Escape($ITGURL)) {
+                    if (($_.src -notmatch '^http[s]?://') -or ($_.src -match [regex]::Escape($ITGURL))) {
                         $script:HasImages = $true
                         $imgHTML = $_.outerHTML
                         Write-Host "Processing HTML: $imgHTML"
                         if ($_.src -match [regex]::Escape($ITGURL)) {
                             $matchedImage = Update-StringWithCaptureGroups -inputString $imgHTML -type 'img' -pattern $ImgRegexPatternToMatch
-                            $tnImgUrl = $matchedImage.url
-                            $tnImgPath = $matchedImage.path
+                            if ($matchedImage) {
+                                $tnImgUrl = $matchedImage.url
+                                $tnImgPath = $matchedImage.path
+                            }
                         }
                         else {
                             $basepath = Split-Path $InFile
