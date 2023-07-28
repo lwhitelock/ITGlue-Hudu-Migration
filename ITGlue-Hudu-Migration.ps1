@@ -2044,7 +2044,7 @@ foreach ($passwordFound in $UpdatePasswords.HuduObject) {
         $passwordFound.description = $NewContent
         Write-Host "Updating Password $($passwordFound.name) with updated description" -ForegroundColor 'Green'
         $moddedPasswordFound = [pscustomobject]@{}
-        $passwordFound.PSObject.Properties | ForEach-Object {$moddedPasswordFound[$_.Name -replace '_'] = $_.Value}
+        ($passwordFound | Get-Member | Where-Object {$_.MemberType -eq 'NoteProperty'}).Name | ForEach-Object {$moddedPasswordFound[$_.Name -replace '_'] = $_.Value}
         $passwordsUpdated = $passwordsUpdated + @{"original_password" = $originalPassword; "updated_password" = Set-HuduPassword @moddedPasswordFound}
     }
 }
@@ -2061,7 +2061,7 @@ foreach ($passwordFound in $UpdateAssetPasswords) {
     if ($NewContent)   {
         $passwordFound.description = $NewContent
         $moddedPasswordFound = [pscustomobject]@{}
-        $passwordFound.PSObject.Properties | ForEach-Object {$moddedPasswordFound[$_.Name -replace '_'] = $_.Value}
+        ($passwordFound | Get-Member | Where-Object {$_.MemberType -eq 'NoteProperty'}).Name | ForEach-Object {$moddedPasswordFound[$_.Name -replace '_'] = $_.Value}
         Write-Host "Updating Asset Password $($passwordFound.name) with updated description" -ForegroundColor 'Green'
         $assetPasswordsUpdated = $assetPasswordsUpdated + @{"original_password" = $originalPassword; "updated_password" = Set-HuduPassword @moddedPasswordFound}
     }
