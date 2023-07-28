@@ -18,7 +18,7 @@ function Import-Items {
 	
     Write-Host "Processing $ImportAssetLayoutName"
 
-    # Lets try to match itemss
+    # Lets try to match Asset Layouts
     $ImportLayout = Get-HuduAssetLayouts -name $ImportAssetLayoutName
 	
     if ($ImportLayout) {

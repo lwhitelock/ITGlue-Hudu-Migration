@@ -133,7 +133,7 @@ switch ($choice) {
         } else {
             $settingsPath = PromptForSettingsPath
             Write-Host "Importing settings from $settingsPath" -ForegroundColor Yellow
-            $environmentSettings = Get-Content -Path $defaultSettingsPath | ConvertFrom-Json -Depth 50
+            $environmentSettings = Get-Content -Path $settingsPath | ConvertFrom-Json -Depth 50
         }
     }
     'N' {

@@ -253,7 +253,7 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Companies.json")) {
 						
                 Write-Host "Starting $($unmatchedcompany.CompanyName)"
                 $PrimaryLocation = $ITGLocations | Where-Object { $unmatchedcompany.ITGID -eq $_.attributes."organization-id" -and $_.attributes.primary -eq $true }
-
+                
                 #Check for alerts in ITGlue on the organization
                 if ($ITGlueAlert = $unmatchedcompany.ITGCompanyObject.attributes.alert) {
                     $CompanyNotes = "<div class='callout callout-warning'>$ITGlueAlert</div>" + $unmatchedcompany.ITGCompanyObject.attributes."quick-notes"
@@ -261,7 +261,7 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Companies.json")) {
                     $CompanyNotes = $unmatchedcompany.ITGCompanyObject.attributes."quick-notes"
                 }
 
-                if ($PrimaryLocation) {
+                if ($PrimaryLocation -and $PrimaryLocation.count -eq 1) {
                     $CompanySplat = @{
                         "name"           = $unmatchedcompany.CompanyName
                         "nickname"       = $unmatchedcompany.ITGCompanyObject.attributes."short-name"
