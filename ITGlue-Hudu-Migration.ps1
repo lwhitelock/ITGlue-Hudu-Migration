@@ -146,7 +146,7 @@ if (Test-Path -Path "$MigrationLogs") {
     }
 } else {
     Write-Host "No previous runs found creating log directory"
-    $null = New-Item -Name "$MigrationLogs" -ItemType "directory"
+    $null = New-Item "$MigrationLogs" -ItemType "directory"
     $ResumeFound = $false
 }
 
