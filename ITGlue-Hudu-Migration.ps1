@@ -100,11 +100,11 @@ if ((get-host).version.major -ne 7) {
 
 
 #Get the Hudu API Module if not installed
-if ((Get-Module -ListAvailable -Name HuduAPI).version -eq '2.4.1') {
-    Import-Module HuduAPI -Version 2.4.1
+if ((Get-Module -ListAvailable -Name HuduAPI).version -eq '2.4.4') {
+    Import-Module HuduAPI -Version 2.4.4
 } else {
-    Install-Module HuduAPI -RequiredVersion 2.4.1
-    Import-Module HuduAPI -Version 2.4.1
+    Install-Module HuduAPI -RequiredVersion 2.4.4
+    Import-Module HuduAPI -Version 2.4.4
 }
   
 #Login to Hudu
