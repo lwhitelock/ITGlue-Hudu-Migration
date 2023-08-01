@@ -1236,7 +1236,7 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Assets.json")) {
 } else {
 
     if ($ImportFlexibleAssets -eq $true) {
-        $RelationsToCreate  = [Systems.Collections.ArrayList]@()
+        $RelationsToCreate = [System.Collections.ArrayList]@()
         $MatchedAssets = [System.Collections.ArrayList]@()
         $MatchedAssetPasswords = [System.Collections.ArrayList]@()
 
