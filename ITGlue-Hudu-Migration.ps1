@@ -2036,7 +2036,7 @@ foreach ($assetFound in $UpdateAssets.HuduObject) {
         Write-Host "Updating Asset $($assetFound.name) with replaced field values" -ForegroundColor 'Green'
         $AssetPost = Set-HuduAsset -asset_layout_id $assetFound.asset_layout_id -Name $assetFound.name -AssetId $assetFound.id -CompanyId $assetFound.company_id -Fields $assetFound.fields
     }
-    $assetsUpdated = $assetsUpdated + @{"status" = $replacedStatus; "original_asset" = $originalAsset; "updated_asset" = $AssetPost}
+    $assetsUpdated = $assetsUpdated + @{"status" = $replacedStatus; "original_asset" = $originalAsset; "updated_asset" = $AssetPost.asset}
 
 }
 
@@ -2050,7 +2050,7 @@ foreach ($passwordFound in $UpdatePasswords.HuduObject) {
     $NewContent = Update-StringWithCaptureGroups -inputString $NewContent -pattern $TextRegexPatternToMatchWithAssets -type "plain"
     if ($NewContent) {
         Write-Host "Updating Password $($passwordFound.name) with updated description" -ForegroundColor 'Green'
-        $passwordsUpdated = $passwordsUpdated + @{"original_password" = $passwordFound; "updated_password" = Set-HuduPassword -id $passwordFound.id -Description = $NewContent}
+        $passwordsUpdated = $passwordsUpdated + @{"original_password" = $passwordFound; "updated_password" = (Set-HuduPassword -id $passwordFound.id -Description $NewContent).asset_password}
     }
 }
 $passwordsUpdated | ConvertTo-Json -depth 100 |Out-file "$MigrationLogs\ReplacedPasswordsURL.json"
@@ -2064,7 +2064,7 @@ foreach ($passwordFound in $UpdateAssetPasswords) {
     $NewContent = Update-StringWithCaptureGroups -inputString $NewContent -pattern $TextRegexPatternToMatchWithAssets -type "plain"
     if ($NewContent)   {
         Write-Host "Updating Asset Password $($passwordFound.name) with updated description" -ForegroundColor 'Green'
-        $assetPasswordsUpdated = $assetPasswordsUpdated + @{"original_password" = $passwordFound; "updated_password" = Set-HuduPassword -Id $passwordFound.id -Description $NewContent}
+        $assetPasswordsUpdated = $assetPasswordsUpdated + @{"original_password" = $passwordFound; "updated_password" = (Set-HuduPassword -Id $passwordFound.id -Description $NewContent).asset_password}
     }
     
 }
@@ -2078,7 +2078,7 @@ foreach ($companyFound in $UpdateCompanyNotes.HuduCompanyObject) {
     $NewContent = Update-StringWithCaptureGroups -inputString $NewContent -pattern $RichRegexPatternToMatchWithAssets -type "rich"
     if ($NewContent) {
         Write-Host "Updating Company $($companyFound.name) with updated notes" -ForegroundColor 'Green'
-        $companyNotesUpdated = $companyNotesUpdated + @{"original_company" = $companyFound; "updated_company" = Set-HuduCompany -id $companyFound.id -Notes = $NewContent}
+        $companyNotesUpdated = $companyNotesUpdated + @{"original_company" = $companyFound; "updated_company" = (Set-HuduCompany -id $companyFound.id -Notes $NewContent).company}
     }
 
 }
