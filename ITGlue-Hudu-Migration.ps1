@@ -818,8 +818,11 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Configurations.json")
             }
 	
             $ReturnedConfigurations = Import-Items @ConfigImportSplat
-            $MatchedConfigurations.addrange($ReturnedConfigurations)
-
+            if (($ReturnedConfigurations | measure-object).count -gt 1) {
+                $MatchedConfigurations.addrange($ReturnedConfigurations)
+            } else {
+                $MatchedConfigurations.add($ReturnedConfigurations)
+            }
         }
 
 
