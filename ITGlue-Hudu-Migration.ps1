@@ -1220,7 +1220,7 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Assets.json")) {
 } else {
 
     if ($ImportFlexibleAssets -eq $true) {
-
+        $RelationsToCreate  = [Systems.Collections.ArrayList]@()
         $MatchedAssets = [System.Collections.ArrayList]@()
         $MatchedAssetPasswords = [System.Collections.ArrayList]@()
 
@@ -1295,9 +1295,18 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Assets.json")) {
                                 $null = $AssetFields.add("$($field.HuduParsedName)", ("$ReturnData"))
 											
                             }
-                            "Documents" { Write-Host "Tags to SSL Certificates are not supported $($field.FieldName) in $($UpdateAsset.Name) will need to be manually migrated, Sorry!"; $supported = $false }
-                            "Domains" { Write-Host "Tags to Domains are not supported $($field.FieldName) in $($UpdateAsset.Name) will need to be manually migrated, Sorry!"; $supported = $false }
-                            "Passwords" { Write-Host "Tags to Passwords are not supported $($field.FieldName) in $($UpdateAsset.Name) will need to be manually migrated, Sorry!"; $supported = $false }
+                            "Documents" { $RelationsToCreate += foreach ($IDMatch in $ITGValues.values) { @{hudu_from_id = $UpdateAsset.HuduID; relation_type = 'Article'; itg_to_id = $IDMatch.id}} ;Write-Host "Tags to Articles are not supported $($field.FieldName) in $($UpdateAsset.Name) will need to be manually migrated, Sorry!"; $supported = $false }
+                            "Domains" { 
+                                $DomainsLinked = foreach ($IDMatch in $ITGValues.values) {
+                                    $MatchedWebsites | Where-Object -filter { $_.ITGID -eq $IDMatch.id }
+                                } 
+                                $DomainsLinked | ForEach-Object {
+                                     if ($WebsiteRelation = New-HuduRelation -FromableType 'Asset' -ToableType 'Website' -FromableID $UpdateAsset.HuduID -ToableID $_.HuduID) {
+                                        Write-Host "Successully Created relation to $($WebsiteRelation.relation.name)"
+                                     } else { Write-Host "Tags to Websites are not supported $($field.FieldName) in $($UpdateAsset.Name) will need to be manually migrated, Sorry!"; $supported = $false }
+                                    }
+                            }
+                            "Passwords" { $RelationsToCreate += foreach ($IDMatch in $ITGValues.values) { @{hudu_from_id = $UpdateAsset.HuduID; relation_type = 'AssetPassword'; itg_to_id = $IDMatch.id}}; Write-Host "Tags to Passwords are not supported $($field.FieldName) in $($UpdateAsset.Name) will need to be manually migrated, Sorry!"; $supported = $false }
                             "Locations" {
                                 $LocationsLinked = foreach ($IDMatch in $ITGValues.values) {
                                     $($MatchedLocations | where-object -filter { $_.ITGID -eq $IDMatch.id } | Select-Object @{N = 'id'; E = { $_.HuduID } }, @{N = 'name'; E = { $_.Name } })
@@ -1306,7 +1315,7 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Assets.json")) {
                                 $null = $AssetFields.add("$($field.HuduParsedName)", ("$ReturnData"))
 											
                             }
-                            "Organizations" { Write-Host "Tags to Companies are not supported $($field.FieldName) in $($UpdateAsset.Name) will need to be manually migrated, Sorry!"; $supported = $false }
+                            "Organizations" { $RelationsToCreate += foreach ($IDMatch in $ITGValues.values) {@{hudu_from_id = $UpdateAsset.HuduID; relation_type = 'Company'; itg_to_id = $IDMatch.id}}; Write-Host "Tags to Companies are not supported $($field.FieldName) in $($UpdateAsset.Name) will need to be manually migrated, Sorry!"; $supported = $false }
                             "SslCertificates" { Write-Host "Tags to SSL Certificates are not supported $($field.FieldName) in $($UpdateAsset.Name) will need to be manually migrated, Sorry!"; $supported = $false }
                             "Tickets" { Write-Host "Tags to Tickets are not supported $($field.FieldName) in $($UpdateAsset.Name) will need to be manually migrated, Sorry!"; $supported = $false }
                             "FlexibleAssetType" {	
@@ -2039,13 +2048,9 @@ $passwordsUpdated = @()
 foreach ($passwordFound in $UpdatePasswords.HuduObject) {
     $NewContent = Update-StringWithCaptureGroups -inputString $passwordFound.description -pattern $TextRegexPatternToMatchSansAssets -type "plain"
     $NewContent = Update-StringWithCaptureGroups -inputString $NewContent -pattern $TextRegexPatternToMatchWithAssets -type "plain"
-    $originalPassword = $passwordFound
     if ($NewContent) {
-        $passwordFound.description = $NewContent
         Write-Host "Updating Password $($passwordFound.name) with updated description" -ForegroundColor 'Green'
-        $moddedPasswordFound = [pscustomobject]@{}
-        ($passwordFound | Get-Member | Where-Object {$_.MemberType -eq 'NoteProperty'}).Name | ForEach-Object {$moddedPasswordFound[$_.Name -replace '_'] = $_.Value}
-        $passwordsUpdated = $passwordsUpdated + @{"original_password" = $originalPassword; "updated_password" = Set-HuduPassword @moddedPasswordFound}
+        $passwordsUpdated = $passwordsUpdated + @{"original_password" = $passwordFound; "updated_password" = Set-HuduPassword -id $passwordFound.id -Description = $NewContent}
     }
 }
 $passwordsUpdated | ConvertTo-Json -depth 100 |Out-file "$MigrationLogs\ReplacedPasswordsURL.json"
@@ -2057,13 +2062,9 @@ foreach ($passwordFound in $UpdateAssetPasswords) {
     $passwordFound = Get-HuduPasswords -id $passwordFound.HuduID
     $NewContent = Update-StringWithCaptureGroups -inputString $passwordFound.description -pattern $TextRegexPatternToMatchSansAssets -type "plain"
     $NewContent = Update-StringWithCaptureGroups -inputString $NewContent -pattern $TextRegexPatternToMatchWithAssets -type "plain"
-    $originalPassword = $passwordFound
     if ($NewContent)   {
-        $passwordFound.description = $NewContent
-        $moddedPasswordFound = [pscustomobject]@{}
-        ($passwordFound | Get-Member | Where-Object {$_.MemberType -eq 'NoteProperty'}).Name | ForEach-Object {$moddedPasswordFound[$_.Name -replace '_'] = $_.Value}
         Write-Host "Updating Asset Password $($passwordFound.name) with updated description" -ForegroundColor 'Green'
-        $assetPasswordsUpdated = $assetPasswordsUpdated + @{"original_password" = $originalPassword; "updated_password" = Set-HuduPassword @moddedPasswordFound}
+        $assetPasswordsUpdated = $assetPasswordsUpdated + @{"original_password" = $passwordFound; "updated_password" = Set-HuduPassword -Id $passwordFound.id -Description $NewContent}
     }
     
 }
@@ -2075,11 +2076,9 @@ $companyNotesUpdated = @()
 foreach ($companyFound in $UpdateCompanyNotes.HuduCompanyObject) {
     $NewContent = Update-StringWithCaptureGroups -inputString $companyFound.notes -pattern $RichRegexPatternToMatchSansAssets -type "rich"
     $NewContent = Update-StringWithCaptureGroups -inputString $NewContent -pattern $RichRegexPatternToMatchWithAssets -type "rich"
-    $originalCompany = $companyFound
     if ($NewContent) {
-        $companyFound.notes = $NewContent
         Write-Host "Updating Company $($companyFound.name) with updated notes" -ForegroundColor 'Green'
-        $companyNotesUpdated = $companyNotesUpdated + @{"original_company" = $originalCompany; "updated_company" = Set-HuduCompany @companyFound}
+        $companyNotesUpdated = $companyNotesUpdated + @{"original_company" = $companyFound; "updated_company" = Set-HuduCompany -id $companyFound.id -Notes = $NewContent}
     }
 
 }
