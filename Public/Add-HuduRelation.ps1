@@ -14,6 +14,6 @@ function Add-HuduRelation {
     }
 
     if ($HuduLinkedObject) {
-        return = (New-HuduRelation -FromableType 'Asset' -FromableID $relation.hudu_from_id -ToableType $relation.relation_type -ToableID $HuduLinkedObject.HuduID).relation
+        return (New-HuduRelation -FromableType 'Asset' -FromableID $relation.hudu_from_id -ToableType $relation.relation_type -ToableID $HuduLinkedObject.HuduID).relation
     }
 }
