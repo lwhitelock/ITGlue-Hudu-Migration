@@ -36,6 +36,9 @@ $FontAwesomeUpgrade = Get-FontAwesomeMap
 # Add Replace URL functions
 . $PSScriptRoot\Private\ConvertTo-HuduURL.ps1
 
+# Add Hudu Relations Function
+. $PSScriptRoot\Public\Add-HuduRelation.ps1
+
 ############################### End of Functions ###############################
 
 
