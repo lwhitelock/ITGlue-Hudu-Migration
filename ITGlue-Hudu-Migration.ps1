@@ -1,5 +1,5 @@
 # Main settings load
-. $PSScriptRoot\Initialize-Module.ps1
+. $PSScriptRoot\Initialize-Module.ps1 -InitType 'Full'
 
 ############################### Functions ###############################
 # Import ImageMagick for Invoke-ImageTest Function
