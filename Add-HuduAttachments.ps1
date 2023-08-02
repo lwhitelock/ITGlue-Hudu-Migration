@@ -7,6 +7,9 @@
 # Staging Directory
 $StagingRoot = (Get-Item $MigrationLogs).Parent.FullName
 
+# Attachments Path
+$AttachmentsPath = (Join-Path -Path $ITGLueExportPath -ChildPath "attachments")
+
 ###################### Initial Setup and Confirmations ###############################
 Write-Host "#######################################################" -ForegroundColor Yellow
 Write-Host "#                                                     #" -ForegroundColor Yellow
@@ -215,7 +218,8 @@ param(
         Write-Host "Finding attachments for $($FoundAsset.name) with ITGlueID $($FoundAsset.itgid) to Hudu $($UploadType) $($FoundAsset.HuduID)" -ForegroundColor Cyan
         Write-Host "Checking existing attachments from database"
         $CurrentAssetAttachments = $UploadedAttachments | Where-Object {$_.id -eq $FoundAsset.HuduID}
-        $FilesToUpload = Get-ChildItem -path "$($ITGlueExportPath)attachments\*\$($FoundAsset.ITGID)\*" -Recurse
+        
+        $FilesToUpload = Get-ChildItem -path "$AttachmentsPath\*\$($FoundAsset.ITGID)\*" -Recurse
         foreach ($FoundFile in $FilesToUpload) {
             if ($FoundFile.PSIsContainer -ne $True) {
                 if ($FoundFile.name -in $CurrentAssetAttachments.file) {
@@ -261,7 +265,7 @@ $Conn = Connect-PSQL @Connection
 
 # Check if we have a logs folder. Logs are required to match attachments to entity
 if (Test-Path -Path "$MigrationLogs") {
-        Write-Host "A previous attempt has been found job will be used to match asset attachments" -ForegroundColor Green
+        Write-Host "Migration Logs successfully found" -ForegroundColor Green
     }
 else {
     Write-Host "No previous runs found creating log directory. Unable to proceed"
@@ -269,15 +273,21 @@ else {
 }
 
 ## Starting main script
-Write-Host "Starting script. Press CTRL+C to cancel" -ForegroundColor Yellow
-Write-Host "Files will be saved into $StagingRoot" -ForegroundColor DarkYellow
+Write-Host "Starting script. Files will be saved into $StagingRoot Press CTRL+C to cancel" -ForegroundColor Yellow
 Pause
 
+Write-host "Loading Asset Log"
 $ITGlueAssets = Get-Content "$MigrationLogs\Assets.json" | ConvertFrom-json
+Write-host "Loading Articles Log"
 $ITGlueDocuments = Get-Content "$MigrationLogs\Articles.json" | ConvertFrom-json
+Write-host "Loading Configuration Log"
 $ITGlueConfigurations = Get-Content "$MigrationLogs\Configurations.json" | ConvertFrom-json
+Write-Host "Loading Locations Log"
+$ITGlueLocations = Get-Content "$MigrationLogs\Locations.json" | ConvertFrom-json
+Write-Host "Loading Websites Log"
+$ITGlueWebsites = Get-Content "$MigrationLogs\Websites.json" | ConvertFrom-json
 
-$AttachmentsToUpload = Get-ChildItem (Join-Path -Path $ITGLueExportPath -ChildPath "attachments") -Recurse
+$AttachmentsToUpload = Get-ChildItem $AttachmentsPath -Recurse
 $FoundAssetsToAttach = $ITGlueAssets |Where-Object {$_.itgid -in $AttachmentsToUpload.name -and $_.HuduID -eq $null}
 $FoundDocumentsToAttach = $ITGlueDocuments |Where-Object {$_.itgid -in $AttachmentsToUpload.name}
 $FoundConfigurationsToAttach = $ITGlueConfigurations | Where-Object {$_.itgid -in $AttachmentsToUpload.name}
