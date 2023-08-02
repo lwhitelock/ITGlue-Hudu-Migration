@@ -4,35 +4,8 @@ param(
     [parameter(ParameterSetName='RunSome')][int]$NumberofArticlesToLoop
 )
 
-
-# Detect MimeType for uploading to Hudu
-function Get-MimeType {
-    param($Extension = $null)
-    $mimeType = $null
-    if ( $null -ne $Extension ) {
-        $drive = Get-PSDrive HKCR -ErrorAction SilentlyContinue
-        if ( $null -eq $drive ) {
-            $drive = New-PSDrive -Name HKCR -PSProvider Registry -Root HKEY_CLASSES_ROOT
-        }
-        $mimeType = (Get-ItemProperty HKCR:$extension).'Content Type'
-    }
-    $mimeType
-}
-
-# Upload to Hudu with S3 AWS Powershell Module
-function New-HuduImage {
-    Param(
-        $FilePath,
-        $ArticleId
-    )
-
-    if (! (Test-Path $FilePath)) {
-        Write-Error "$FilePath does not exist"
-        return
-    }
-
-    
-}
+# Main settings load
+. $PSScriptRoot\Initialize-Module.ps1 -InitType 'Lite'
 
 # Pull an article, strip content apart searching for base64, use New-HuduImage to upload, and return a built string of HTML with the updated image sources
 function Repair-Base64ImagesFromArticle {
@@ -105,23 +78,6 @@ function Repair-Base64ImagesFromArticle {
 
     }
 
-}
-
-# Import ImageMagic Modules, prompt for path if the module is missing
-try {
-    if (!('ImageMagick.MagickImage' -as [type])) {
-        Add-Type -Path '.\Magick.NET-Q16-AnyCPU.dll'
-    }
-}
-catch {
-    $ImageMagickPath = (Read-Host "Failed to load ImageMagick. Please provide path for the three DLLs.") + "\Magick.NET-Q16-AnyCPU.dll"
-    if (Test-Path "$ImageMagickPath") {
-        Add-Type -Path $ImageMagickPath
-    }
-    else {
-        throw "ImageMagick wasn't found at the location specified"
-
-    }
 }
 
 # Setup Temporary location for workspace
