@@ -125,7 +125,7 @@ function Get-MimeType {
         if ( $null -eq $drive ) {
             $drive = New-PSDrive -Name HKCR -PSProvider Registry -Root HKEY_CLASSES_ROOT
         }
-        $mimeType = (Get-ItemProperty HKCR:$extension).'Content Type'
+        $mimeType = (Get-ItemProperty HKCR:$extension -ErrorAction SilentlyContinue).'Content Type'
     }
     $mimeType
 }
@@ -291,6 +291,9 @@ $AttachmentsToUpload = Get-ChildItem $AttachmentsPath -Recurse
 $FoundAssetsToAttach = $ITGlueAssets |Where-Object {$_.itgid -in $AttachmentsToUpload.name -and $_.HuduID -eq $null}
 $FoundDocumentsToAttach = $ITGlueDocuments |Where-Object {$_.itgid -in $AttachmentsToUpload.name}
 $FoundConfigurationsToAttach = $ITGlueConfigurations | Where-Object {$_.itgid -in $AttachmentsToUpload.name}
+$FoundLocationsToAttach = $ITGlueLocations | Where-Object {$_.itgid -in $AttachmentsToUpload.name}
+$FoundWebsitesToAttach = $ITGlueWebsites | Where-Object {$_.itgid -in $AttachmentsToUpload.name}
+
 if ($FoundAssetsToAttach) {Add-HuduAttachment -FoundAssetsToAttach $FoundAssetsToAttach -UploadType "Asset"}
 if ($FoundConfigurationsToAttach) {Add-HuduAttachment -FoundAssetsToAttach $FoundConfigurationsToAttach -UploadType "Asset"}
 if ($FoundDocumentsToAttach) {Add-HuduAttachment -FoundAssetsToAttach $FoundDocumentsToAttach -UploadType "Article"}
@@ -301,14 +304,15 @@ if (!($CSVMapping = Get-Content "$MigrationLogs\AttachmentFields-CSVMap.json"|Co
 
 if ($CSVMapping) {
     foreach ($n in $CSVMapping) { 
-        $CSV = Import-Csv -Path "$($ITGLueExportPath)$($n.csv_file)" 
+        $CSVPath = Join-Path -Path $ITGLueExportPath -ChildPath $n.csv_file
+        $CSV = Import-Csv -Path $CSVPath
         $CSVHeader = $n.csv_header 
     
         $CSVAttachmentsToUpload = $CSV | Where-Object {$_.$CSVHeader}
         foreach ($record in $CSVAttachmentsToUpload) {
             $FileReferences = $record.$CSVHeader.split(',').trim()
             foreach ($fr in $FileReferences) {
-                $FileToUpload = Get-Item -path "$($ITGlueExportPath)$($n.foldername)\$($fr)"
+                $FileToUpload = Get-Item -path (Join-Path -Path $ITGlueExportPath -ChildPath "$($n.foldername)\$($fr)")
                 $HuduAssetID = $ITGlueAssets |Where-Object {$_.itgid -eq $record.id}  |Select-Object -ExpandProperty HuduID
                 $HuduAssetName = $ITGlueAssets |Where-Object {$_.itgid -eq $record.id}  |Select-Object -ExpandProperty Name
                 Write-Host "Uploading $($FileToUpload.fullname) to Hudu Asset $($HuduAssetName) - $($HuduAssetID)" -ForegroundColor Blue
