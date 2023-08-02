@@ -55,3 +55,6 @@ You will then need to sync the staging directory to the correct location (either
 Once the files are placed in the correct place the dead links will start working.
 The script will let you know where the Staging files will be located, they'll be created in the directory where MigrationLogs are stored.
 You will need to enter Database connection details, expose the Database in Docker, and install the ODBC Drivers for Postgres on the computer you're running the script from. That computer will need to be able to connect to the database directly.
+
+##### Local Storage
+You'll have to inspect the container to see where the files are placed however by default it is `/var/lib/docker/volumes/hudu2_app_data/_data` and the `upload` folder that the script creates should be merged into the `upload` folder within that location.

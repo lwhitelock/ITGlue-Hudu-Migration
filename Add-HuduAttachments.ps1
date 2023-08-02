@@ -170,10 +170,10 @@ function New-HuduUpload {
 
     $OrigGuid = [guid]::newguid() -replace '-'
     $OriginalName = '{0}{1}' -f $OrigGuid, $File.Extension
-    $OrigKey = ('{0}{1}' -f $S3Path, $OriginalName)
+    $OrigKey = ('{0}{1}' -f $StagingPath, $OriginalName)
 
     $CopyItem = @{
-        Destination  = $Destination
+        Destination  = "$($Destination)\$($OriginalName)"
         Force = $true
         Path        = $FilePath
     }
