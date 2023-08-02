@@ -194,10 +194,17 @@ function New-HuduUpload {
             FileHref  = "/file/$UploadIndex"
             ArticleId = $ArticleId
             FileData  = $UploadData
+            status  = "Staged Successfully"
         }
     }
     catch {
         Write-Error ('Insert exception: {0}' -f $_.Exception.Message)
+        [PSCustomObject]@{
+            FileHref  = "/file/$UploadIndex"
+            ArticleId = $ArticleId
+            FileData  = $UploadData
+            status  = "FAILED: $($_.Exception.Message)"
+        }
     }
 }
 
