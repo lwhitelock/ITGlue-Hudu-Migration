@@ -114,44 +114,48 @@ function PromptForSettingsPath {
 }
 
 # Ask the user what they want to do
-$choice = Read-Host -Prompt 'Do you want to (I)mport settings or start from (N)ew?'
+if ($environmentSettings -and $InitType -eq 'Lite') {
+    Write-Host "Lite init and settings detected."
+ }
+ else {
+    $choice = Read-Host -Prompt 'Do you want to (I)mport settings or start from (N)ew?'
 
-switch ($choice) {
-    'I' { 
-        if (Test-Path -Path $defaultSettingsPath) {
-            Write-Host "Default settings file found at $defaultSettingsPath" -ForegroundColor Cyan
-            $importChoice = Read-Host -Prompt 'Do you want to use the (D)efault settings file or (S)pecify a different path?'
-            
-            switch ($importChoice) {
-                'D' {
-                    Write-Host "Importing settings from $defaultSettingsPath" -ForegroundColor Yellow
-                    $environmentSettings = Get-Content -Path $defaultSettingsPath | ConvertFrom-Json -Depth 50
+    switch ($choice) {
+        'I' { 
+            if (Test-Path -Path $defaultSettingsPath) {
+                Write-Host "Default settings file found at $defaultSettingsPath" -ForegroundColor Cyan
+                $importChoice = Read-Host -Prompt 'Do you want to use the (D)efault settings file or (S)pecify a different path?'
+                
+                switch ($importChoice) {
+                    'D' {
+                        Write-Host "Importing settings from $defaultSettingsPath" -ForegroundColor Yellow
+                        $environmentSettings = Get-Content -Path $defaultSettingsPath | ConvertFrom-Json -Depth 50
+                    }
+                    'S' {
+                        $settingsPath = PromptForSettingsPath -Default
+                        Write-Host "Importing settings from $settingsPath" -ForegroundColor Yellow
+                        $environmentSettings = Get-Content -Path $settingsPath | ConvertFrom-Json -Depth 50
+                    }
+                    default {
+                        Write-Host 'Invalid choice. Please choose (D)efault or (S)pecify.'
+                    }
                 }
-                'S' {
-                    $settingsPath = PromptForSettingsPath -Default
-                    Write-Host "Importing settings from $settingsPath" -ForegroundColor Yellow
-                    $environmentSettings = Get-Content -Path $settingsPath | ConvertFrom-Json -Depth 50
-                }
-                default {
-                    Write-Host 'Invalid choice. Please choose (D)efault or (S)pecify.'
-                }
+            } else {
+                $settingsPath = PromptForSettingsPath
+                Write-Host "Importing settings from $settingsPath" -ForegroundColor Yellow
+                $environmentSettings = Get-Content -Path $settingsPath | ConvertFrom-Json -Depth 50
             }
-        } else {
-            $settingsPath = PromptForSettingsPath
-            Write-Host "Importing settings from $settingsPath" -ForegroundColor Yellow
-            $environmentSettings = Get-Content -Path $settingsPath | ConvertFrom-Json -Depth 50
+        }
+        'N' {
+            Write-Host "Starting with a new settings file" -ForegroundColor Cyan
+            CollectAndSaveSettings
+            $environmentSettings = Get-Content -Path $defaultSettingsPath | ConvertFrom-Json -Depth 50
+        }
+        default {
+            Write-Host 'Invalid choice. Please choose (I)mport or (N)ew.' -ForegroundColor Red
         }
     }
-    'N' {
-        Write-Host "Starting with a new settings file" -ForegroundColor Cyan
-        CollectAndSaveSettings
-        $environmentSettings = Get-Content -Path $defaultSettingsPath | ConvertFrom-Json -Depth 50
-    }
-    default {
-        Write-Host 'Invalid choice. Please choose (I)mport or (N)ew.' -ForegroundColor Red
-    }
 }
-
 ############################### API Settings ###############################
 # Hudu
 # Get a Hudu API Key from https://yourhududomain.com/admin/api_keys
