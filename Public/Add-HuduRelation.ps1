@@ -11,6 +11,9 @@ function Add-HuduRelation {
         "Article" {
             $HuduLinkedObject = $MatchedArticles | Where-Object {$_.ITGID -eq $relation.itg_to_id}
         }
+        "Company" {
+            $HuduLinkedObject = $MatchedCompanies | Where-Object {$_.ITGID -eq $relation.itg_to_id}
+        }
     }
 
     if ($HuduLinkedObject) {
