@@ -29,12 +29,12 @@ Settings that will be saved include API Keys, URLs, Prefixes, and so on. You can
 - MigrationLogs are stored by default in `%APPDATA%\HuduMigration` make sure you keep these safe!
 - URL Rewrites have been updated to apply to all Rich Text asset fields, articles, Company Quick Notes, and Password notes
 - Image Upload has been improved to use the Hudu API endpoint instead of Base64 and will include the best quality image available
+- `Add-HuduAttachments.ps1` can be used to upload and connect attachments to Hudu (NOT READY YET). This will be updated as this gets completed and more instructions are provided.
 ___
 **COMING SOON:** 
 - Archived Companies, Articles, and Assets will be archived even after migration
 - Previously unsupported tagged relations have been supplemented by doing regular related items instead of tags (Articles, AssetPasswords)
 - `Replace-HuduBase64images.ps1` has been updated to use the API and will be available for fixing completed imports that placed base64 images in articles.
-- `Add-HuduAttachments.ps1` can be used to upload and connect attachments to Hudu (NOT READY YET). This will be updated as this gets completed and more instructions are provided.
 ___
 ## Version 1.2
 Small bug fixes
@@ -43,8 +43,15 @@ Small bug fixes
 ## Version 2.0.0-beta
 This is under development right now and should not be used.
 
-# Replace Base64 Images
+### Replace Base64 Images
+Use this script to replace previous migrations that embedded Base64 images into your articles. If your Hudu is crashing or running out of memory trying to retrieve articles, this wil generally fix it. If API isn't sufficient for collecting the articles you can switch to direct database access with an older version of this script.
+
 ## NON-SUPPORTED BY HUDU
 ## Please see https://mspbook.mspgeek.org/books/hudu-database for more details
 
-Use this script to replace previous migrations that embedded Base64 images into your articles. If your Hudu is crashing or running out of memory trying to retrieve articles, this wil fix it.
+### Attachment Uploads
+The attachments script will use direct database access to create non-working links inside of Hudu
+You will then need to sync the staging directory to the correct location (either S3 or Local storage)
+Once the files are placed in the correct place the dead links will start working.
+The script will let you know where the Staging files will be located, they'll be created in the directory where MigrationLogs are stored.
+You will need to enter Database connection details, expose the Database in Docker, and install the ODBC Drivers for Postgres on the computer you're running the script from. That computer will need to be able to connect to the database directly.

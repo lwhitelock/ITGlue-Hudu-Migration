@@ -4,18 +4,43 @@
 # Replace TestImage() with Invoke-ImageTest()
 . $PSScriptRoot\Private\Invoke-ImageTest.ps1
 
-############################### Settings ###############################
-# S3 settings
-$S3Endpoint = ''
-$S3Bucket = ''
+# Staging Directory
+$StagingRoot = (Get-Item $MigrationLogs).Parent.FullName
 
+###################### Initial Setup and Confirmations ###############################
+Write-Host "#######################################################" -ForegroundColor Yellow
+Write-Host "#                                                     #" -ForegroundColor Yellow
+Write-Host "#          IT Glue to Hudu Migration Script           #" -ForegroundColor Yellow
+Write-Host "#           - File Attachment Uploads                 #" -ForegroundColor Yellow
+Write-Host "#          Version: 2.0  -Beta                        #" -ForegroundColor Yellow
+Write-Host "#          Date: 01/08/2023                           #" -ForegroundColor Yellow
+Write-Host "#                                                     #" -ForegroundColor Yellow
+Write-Host "#          THIS SCRIPT REQUIRES DIRECT DB ACCESS      #" -ForegroundColor Yellow
+Write-Host "#             AND PostgreSQL ODBC Driver              #" -ForegroundColor Yellow
+Write-Host "#         The script creates a staging dir with all   #" -ForegroundColor Yellow
+Write-Host "#         files you will need to upload, maintaining  #" -ForegroundColor Yellow
+Write-Host "#         using sFTP/SSH or S3 tools to Hudu          #" -ForegroundColor Yellow
+Write-Host "#           backend storage. USE AT YOUR OWN RISK     #" -ForegroundColor Yellow
+Write-Host "#                                                     #" -ForegroundColor Yellow
+Write-Host "#######################################################" -ForegroundColor Yellow
+Write-Host "# Note: This is an unofficial script, please do not   #" -ForegroundColor Yellow
+Write-Host "# contact Hudu support if you run into issues.        #" -ForegroundColor Yellow
+Write-Host "# For support please visit the Hudu Sub-Reddit:       #" -ForegroundColor Yellow
+Write-Host "# https://www.reddit.com/r/hudu/                      #" -ForegroundColor Yellow
+Write-Host "# The #v-hudu channel on the MSPGeek Slack/Discord:   #" -ForegroundColor Yellow
+Write-Host "# https://join.mspgeek.com/                           #" -ForegroundColor Yellow
+Write-Host "# Or log an issue in the Github Respository:          #" -ForegroundColor Yellow
+Write-Host "# https://github.com/lwhitelock/ITGlue-Hudu-Migration #" -ForegroundColor Yellow
+Write-Host "#######################################################" -ForegroundColor Yellow
+
+############################### Settings ###############################
 # Postgres settings
-$MyPort = 5432
+$MyPort = Read-Host "Enter the Port number the PostresDB Engine is available on"
 $Connection = @{
-    dbhost = ''
-    dbname = 'hudu2'
+    dbhost = Read-Host "What is your PostresDB Engine Host name or IP Address"
+    dbname = Read-Host "What is your Database name (normally hudu_production)"
     dbuser = 'postgres'
-    dbpass = ''
+    dbpass = Read-Host "What is your postgres user password. Leave blank for none."
 }
 
 ################### Supporting Functions ###############################
@@ -107,8 +132,6 @@ function New-HuduUpload {
     Param(
         $Connection,
         $FilePath,
-        $BucketName,
-        $EndpointUri,
         $ArticleId,
         $UploadType = 'Article'
     )
@@ -132,9 +155,8 @@ function New-HuduUpload {
     $Timestamp = Get-Date -Format 'yyyy-MM-dd HH:mm:ss.ffffff'
 
     $UploadIndex = (Get-PSQLData -Connection $Connection -Query "INSERT INTO public.uploads (file_data,uploadable_type,uploadable_id,account_id,created_at,updated_at) VALUES ('{}','$UploadType',$ArticleId,1,'$Timestamp','$Timestamp') RETURNING id").id
-
-    $S3Path = "upload/$UploadIndex/file/"
-
+    $StagingPath = "upload/$UploadIndex/file/"
+    $Destination = (New-Item "$($StagingRoot)\$($StagingPath)" -ItemType Directory -Force).FullName
     $OriginalMetadata = [PSCustomObject]@{
         filename  = $File.Name
         size      = $File.Length
@@ -147,13 +169,12 @@ function New-HuduUpload {
     $OriginalName = '{0}{1}' -f $OrigGuid, $File.Extension
     $OrigKey = ('{0}{1}' -f $S3Path, $OriginalName)
 
-    $WriteS3Orig = @{
-        BucketName  = $BucketName
-        EndpointUrl = $EndpointUri
-        File        = $FilePath
-        Key         = "uploads/$OrigKey"
+    $CopyItem = @{
+        Destination  = $Destination
+        Force = $true
+        Path        = $FilePath
     }
-    Write-S3Object @WriteS3Orig | Out-Null
+    Copy-Item @CopyItem | Out-Null
 
     $UploadData = [PSCustomObject]@{
         id       = $OrigKey
@@ -201,15 +222,15 @@ param(
                     Write-Host "Skipping $($FoundFile.name) because its already uploaded as an attachment" -ForegroundColor Yellow
                     continue
                 }
-                Write-Host "Uploading $($FoundFile.name) to Hudu $($UploadType) $($FoundAsset.name) - $($FoundAsset.HuduID)" -ForegroundColor Blue
-                $HuduUpload = New-HuduUpload -Connection $Conn -FilePath $FoundFile.fullname -BucketName $S3Bucket -EndpointUri $S3Endpoint -ArticleId $FoundAsset.HuduID -UploadType $UploadType
+                Write-Host "Staging $($FoundFile.name) for Hudu $($UploadType) $($FoundAsset.name) - $($FoundAsset.HuduID)" -ForegroundColor Blue
+                $HuduUpload = New-HuduUpload -Connection $Conn -FilePath $FoundFile.fullname -ArticleId $FoundAsset.HuduID -UploadType $UploadType
                 $HuduUpload
             }
         }
 
     }
 
-    $Results |ConvertTo-Json -Compress -Depth 10 |Out-File ".\$($UploadType)-attachments-upload.json"
+    $Results |ConvertTo-Json -Compress -Depth 10 |Out-File "$($MigrationLogs)\$($UploadType)-attachments-upload.json"
 
 }
 
@@ -230,31 +251,13 @@ function Build-CSVMapping {
             csv_header=$HeaderName
         }
     }
-    $CSVMapping | ConvertTo-Json -Depth 50 -Compress |Out-File ".\MigrationLogs\AttachmentFields-CSVMap.json"
+    $CSVMapping | ConvertTo-Json -Depth 50 -Compress |Out-File "$MigrationLogs\AttachmentFields-CSVMap.json"
+    return $CSVMapping
 }
 ################ END FUNCTIONS REGION #################
 
 # Connect to the Database
 $Conn = Connect-PSQL @Connection
-
-# Import AWS Tools, and confirm credentials are saved as your default profile
-Write-Host "Checking for AWS Tools" -ForegroundColor Cyan
-try {
-    Remove-Module AWS.Tools.Common
-    Import-Module AWSPowerShell.NetCore
-    while ($ConfirmAWsCredential -notin 'Y','N') {
-        $ConfirmAWsCredential = Read-Host "Did you add your S3 API Access Keys as your default profile? (Y/n)"
-    }
-
-    if ($ConfirmAWsCredential -eq 'N') {
-        Set-AWSCredential -StoreAs default -AccessKey (Read-Host "Please enter your access key") -SecretKey (Read-Host "Please enter your secret key")
-    }
-    
-}
-catch {
-    Install-Module AWSPowerShell.NetCore -Scope CurrentUser -ErrorAction Stop
-    Set-AWSCredential -StoreAs default -AccessKey (Read-Host "Please enter your access key") -SecretKey (Read-Host "Please enter your secret key")
-}
 
 # Check if we have a logs folder. Logs are required to match attachments to entity
 if (Test-Path -Path "$MigrationLogs") {
@@ -267,21 +270,24 @@ else {
 
 ## Starting main script
 Write-Host "Starting script. Press CTRL+C to cancel" -ForegroundColor Yellow
+Write-Host "Files will be saved into $StagingRoot" -ForegroundColor DarkYellow
 Pause
 
 $ITGlueAssets = Get-Content "$MigrationLogs\Assets.json" | ConvertFrom-json
-#$ITGlueDocuments = Get-Content "$MigrationLogs\Articles.json" | ConvertFrom-json
+$ITGlueDocuments = Get-Content "$MigrationLogs\Articles.json" | ConvertFrom-json
 $ITGlueConfigurations = Get-Content "$MigrationLogs\Configurations.json" | ConvertFrom-json
 
-$AttachmentsToUpload = Get-ChildItem "$($ITGLueExportPath)attachments\" -Recurse
+$AttachmentsToUpload = Get-ChildItem (Join-Path -Path $ITGLueExportPath -ChildPath "attachments") -Recurse
 $FoundAssetsToAttach = $ITGlueAssets |Where-Object {$_.itgid -in $AttachmentsToUpload.name -and $_.HuduID -eq $null}
-#$FoundDocumentsToAttach = $ITGlueDocuments |Where-Object {$_.itgid -in $AttachmentsToUpload.name}
+$FoundDocumentsToAttach = $ITGlueDocuments |Where-Object {$_.itgid -in $AttachmentsToUpload.name}
 $FoundConfigurationsToAttach = $ITGlueConfigurations | Where-Object {$_.itgid -in $AttachmentsToUpload.name}
 if ($FoundAssetsToAttach) {Add-HuduAttachment -FoundAssetsToAttach $FoundAssetsToAttach -UploadType "Asset"}
 if ($FoundConfigurationsToAttach) {Add-HuduAttachment -FoundAssetsToAttach $FoundConfigurationsToAttach -UploadType "Asset"}
-#if ($FoundDocumentsToAttach) {Add-HuduAttachment -FoundAssetsToAttach $FoundDocumentsToAttach -UploadType "Article"}
+if ($FoundDocumentsToAttach) {Add-HuduAttachment -FoundAssetsToAttach $FoundDocumentsToAttach -UploadType "Article"}
 
-$CSVMapping = Get-Content ".\MigrationLogs\AttachmentFields-CSVMap.json"
+if (!($CSVMapping = Get-Content "$MigrationLogs\AttachmentFields-CSVMap.json"|ConvertFrom-Json -Depth 10)) {
+    $CSVMapping = Build-CSVMapping
+}
 
 if ($CSVMapping) {
     foreach ($n in $CSVMapping) { 
@@ -296,8 +302,12 @@ if ($CSVMapping) {
                 $HuduAssetID = $ITGlueAssets |Where-Object {$_.itgid -eq $record.id}  |Select-Object -ExpandProperty HuduID
                 $HuduAssetName = $ITGlueAssets |Where-Object {$_.itgid -eq $record.id}  |Select-Object -ExpandProperty Name
                 Write-Host "Uploading $($FileToUpload.fullname) to Hudu Asset $($HuduAssetName) - $($HuduAssetID)" -ForegroundColor Blue
-                $HuduUpload = New-HuduUpload -Connection $Conn -FilePath $FileToUpload.fullname -BucketName $S3Bucket -EndpointUri $S3Endpoint -ArticleId $HuduAssetID -UploadType 'Asset'
+                $HuduUpload = New-HuduUpload -Connection $Conn -FilePath $FileToUpload.fullname -ArticleId $HuduAssetID -UploadType 'Asset'
             }
         }
     }
 }
+
+Write-Host "You will need to take $StagingRoot and sync it to the appropriate backend storage"
+Write-Host "All attachments have been processed."
+Pause
