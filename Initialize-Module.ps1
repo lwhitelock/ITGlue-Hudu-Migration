@@ -84,6 +84,38 @@ function CollectAndSaveSettings {
     $json | Out-File -FilePath $defaultSettingsPath
 }
 
+function UpdateSavedSettings {
+    param(
+        $newSettings
+    )
+    if ($settingsPath) {
+        if (Test-Path $settingsPath) {
+            # Convert the hash table to JSON
+            Write-Host "Overwriting existing settings file with updated settings." -ForegroundColor Cyan
+            $json = $newSettings | ConvertTo-Json
+            $json | Out-File -FilePath $settingsPath
+        }
+        else {
+            Write-Host "Creating new settings file in $settingsPath" -ForegroundColor Yellow
+            $json = $newSettings | ConvertTo-Json
+            $json | Out-File -FilePath $settingsPath
+        }
+    }
+    else {
+        if (Test-Path $defaultSettingsPath) {
+            # Convert the hash table to JSON
+            Write-Host "Overwriting existing settings file with updated settings." -ForegroundColor Cyan
+            $json = $newSettings | ConvertTo-Json
+            $json | Out-File -FilePath $defaultSettingsPath
+        }
+        else {
+            Write-Host "Creating new settings file in $defaultSettingsPath" -ForegroundColor Yellow
+            $json = $newSettings | ConvertTo-Json
+            $json | Out-File -FilePath $defaultSettingsPath
+        }
+    }
+}
+
 
 # Prompt the user for a settings file
 # Prompt the user for a settings file
@@ -159,13 +191,31 @@ if ($environmentSettings -and $InitType -eq 'Lite') {
 ############################### API Settings ###############################
 # Hudu
 # Get a Hudu API Key from https://yourhududomain.com/admin/api_keys
-$HuduAPIKey = ConvertSecureStringToPlainText -SecureString ($environmentSettings.HuduAPIKey|ConvertTo-SecureString)
+try {
+    $HuduAPIKey = ConvertSecureStringToPlainText -SecureString ($environmentSettings.HuduAPIKey|ConvertTo-SecureString)
+}
+catch {
+    Write-Host "Your Hudu API Key is not readable!!!" -ForegroundColor Yellow
+    $HuduAPIKey = Read-Host -Prompt "Enter the Hudu API Key from $($environmentSettings.HuduBaseDomain)/admin/api_keys"
+    $environmentSettings.HuduAPIKey = ConvertTo-SecureString -String $HuduAPIKey -AsPlainText -Force | ConvertFrom-SecureString
+    UpdateSavedSettings -newSettings $environmentSettings
+}
+
 # Set the base domain of your Hudu instance without a trailing /
 $HuduBaseDomain = $environmentSettings.HuduBaseDomain
 
 # IT Glue - MAKE SURE TO USE AN API KEY WITH PASSWORD ACCESS
 $ITGAPIEndpoint = $environmentSettings.ITGAPIEndpoint
-$ITGKey = ConvertSecureStringToPlainText -SecureString ($environmentSettings.ITGKey|ConvertTo-SecureString)
+
+try {
+    $ITGKey = ConvertSecureStringToPlainText -SecureString ($environmentSettings.ITGKey|ConvertTo-SecureString)
+}
+catch {
+    Write-Host "Your ITG API Key is not readable!!!" -ForegroundColor Yellow
+    $ITGKey = Read-Host 'Enter your ITGlue API Key. MAKE SURE TO USE AN API KEY WITH PASSWORD ACCESS'
+    $environmentSettings.ITGKey = ConvertTo-SecureString -String $ITGKey -AsPlainText -Force | ConvertFrom-SecureString
+    UpdateSavedSettings -newSettings $environmentSettings
+}
 
 #Enter your primary IT Glue internal URL
 $ITGURL = $environmentSettings.ITGURL
