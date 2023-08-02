@@ -19,6 +19,12 @@
 # Convert to a full blown module, prompts for interactive migration experience, save settings to an outside file for secure sharing
 # Add/enhance the migration areas to use the new API features of Hudu
 
+param(
+    [Parameter(Mandatory=$true)]
+    [ValidateSet("Full", "Lite")]
+    [string] $InitType
+)
+
 ############################### Settings ###############################
 # Define the path to the settings.json file in the user's AppData folder
   # Something awesome will be here soon.
@@ -173,106 +179,108 @@ while ($resumeQuestion -notin ('yes','no')) {
 $ResumePrevious = if ($resumeQuestion -eq 'yes') {$true} else {$false}
 $GlobalKBFolder = $environmentSettings.GlobalKBFolder
 
-############################### Company Settings ###############################
-while ($ImportCompanies -notin (1,2)) {$ImportCompanies = Read-Host "1) Import Companies `n2) Skip Companies`n(1/2)"}
-switch ($ImportCompanies) {
-    "1" {$ImportCompanies = $true}
-    "2" {$ImportCompanies = $false}
+# These settings should only run when doing a full settings initialization.
+if ($InitType -eq 'Full') {
+    ############################### Company Settings ###############################
+    while ($ImportCompanies -notin (1,2)) {$ImportCompanies = Read-Host "1) Import Companies `n2) Skip Companies`n(1/2)"}
+    switch ($ImportCompanies) {
+        "1" {$ImportCompanies = $true}
+        "2" {$ImportCompanies = $false}
+    }
+
+    ############################### Location Settings ###############################
+    while ($ImportLocations -notin (1,2)) {$ImportLocations = Read-Host "1) Import Locations `n2) Skip Locations`n(1/2)"}
+    switch ($ImportLocations) {
+        "1" {$ImportLocations = $true}
+        "2" {$ImportLocations = $false}
+    }
+
+    # The asset layout name how locations will appear in Hudu
+    $LocImportAssetLayoutName = "Locations"
+
+    # The font awesome name for the locations icon in Hudu
+    $LocImportIcon = "fas fa-building"
+
+    # Here set two arrays of the different names you have used to identify the primary location in both ITGlue And Hudu
+    $ITGPrimaryLocationNames = @("Primary Address", "Main", "Head Office", "Main Office")
+    $HuduPrimaryLocationNames = @("Primary Address")
+
+    ############################### Domain / Website Settings ###############################
+    while ($ImportDomains -notin (1,2)) {$ImportDomains = Read-Host "Domains are used for Website, DNS and SSL Monitoring.`n 1) Import Domains`n 2) Skip Domains`n(1/2)"}
+    switch ($ImportDomains) {
+        "1" {$ImportDomains = $true}
+        "2" {$ImportDomains = $false}
+    }
+
+    # Choose if you would like to enable monitoring for the imported websites.
+    while ($DisableWebsiteMonitoring -notin (1,2)) {$DisableWebsiteMonitoring = Read-Host "1) Disable Website Monitoring `n2) Leave Website Monitoring enabled`n(1/2)"}
+    switch ($DisableWebsiteMonitoring) {
+        "1" {$DisableWebsiteMonitoring = "true"}
+        "2" {$DisableWebsiteMonitoring = "false"}
+    }
+
+
+    ############################### Configuration Settings ###############################
+    while ($ImportConfigurations -notin (1,2)) {$ImportConfigurations = Read-Host "1) Import Configurations `n2) Skip Configurations`n(1/2)"}
+    switch ($ImportConfigurations) {
+        "1" {$ImportConfigurations = $true}
+        "2" {$ImportConfigurations = $false}
+    }
+
+
+    # The font awesome name for the locations icon in Hudu
+    $ConfigImportIcon = "fas fa-sitemap"
+
+    # Set if you would like a Prefix in front of configuration names created in Hudu. This can make it easy to review and you can rename them later set to "" if you dont want one
+    $ConfigurationPrefix = $environmentSettings.ConPromptPrefix
+
+
+    ############################### Contact Settings ###############################
+    while ($ImportContacts -notin (1,2)) {$ImportContacts = Read-Host "1) Import Contacts `n2) Skip Contacts`n(1/2)"}
+    switch ($ImportContacts) {
+        "1" {$ImportContacts = $true}
+        "2" {$ImportContacts = $false}
+    }
+
+    # The asset layout name how locations will appear in Hudu
+    $ConImportAssetLayoutName = "People"
+
+    # The font awesome name for the locations icon in Hudu
+    $ConImportIcon = "fas fa-users"
+
+    ############################### Flexible Asset Layouts ###############################
+    while ($ImportFlexibleAssetLayouts -notin (1,2)) {$ImportFlexibleAssetLayouts = Read-Host "1) Import Asset Layouts `n2) Skip Asset Layouts`n(1/2)"}
+    switch ($ImportFlexibleAssetLayouts) {
+        "1" {$ImportFlexibleAssetLayouts = $true}
+        "2" {$ImportFlexibleAssetLayouts = $false}
+    }
+
+    # Set if you would like a Prefix in front of Layout names created in Hudu. This can make it easy to review and you can rename them later set to "" if you don't want one
+
+    $FlexibleLayoutPrefix = $environmentSettings.FAPromptPrefix
+
+    ############################### Flexible Assets ###############################
+    while ($ImportFlexibleAssets -notin (1,2)) {$ImportFlexibleAssets = Read-Host "1) Import Assets `n2) Skip Assets`n(1/2)"}
+    switch ($ImportFlexibleAssets) {
+        "1" {$ImportFlexibleAssets = $true}
+        "2" {$ImportFlexibleAssets = $false}
+    }
+
+
+    ############################### Articles ###############################
+    while ($ImportArticles -notin (1,2)) {$ImportArticles = Read-Host "1) Import Articles `n2) Skip Articles`n(1/2)"}
+    switch ($ImportArticles) {
+        "1" {$ImportArticles = $true}
+        "2" {$ImportArticles = $false}
+    }
+
+    ############################### Passwords ###############################
+    while ($ImportPasswords -notin (1,2)) {$ImportPasswords = Read-Host "1) Import Passwords `n2) Skip Passwords`n(1/2)"}
+    switch ($ImportPasswords) {
+        "1" {$ImportPasswords = $true}
+        "2" {$ImportPasswords = $false}
+    }
 }
-
-############################### Location Settings ###############################
-while ($ImportLocations -notin (1,2)) {$ImportLocations = Read-Host "1) Import Locations `n2) Skip Locations`n(1/2)"}
-switch ($ImportLocations) {
-    "1" {$ImportLocations = $true}
-    "2" {$ImportLocations = $false}
-}
-
-# The asset layout name how locations will appear in Hudu
-$LocImportAssetLayoutName = "Locations"
-
-# The font awesome name for the locations icon in Hudu
-$LocImportIcon = "fas fa-building"
-
-# Here set two arrays of the different names you have used to identify the primary location in both ITGlue And Hudu
-$ITGPrimaryLocationNames = @("Primary Address", "Main", "Head Office", "Main Office")
-$HuduPrimaryLocationNames = @("Primary Address")
-
-############################### Domain / Website Settings ###############################
-while ($ImportDomains -notin (1,2)) {$ImportDomains = Read-Host "Domains are used for Website, DNS and SSL Monitoring.`n 1) Import Domains`n 2) Skip Domains`n(1/2)"}
-switch ($ImportDomains) {
-    "1" {$ImportDomains = $true}
-    "2" {$ImportDomains = $false}
-}
-
-# Choose if you would like to enable monitoring for the imported websites.
-while ($DisableWebsiteMonitoring -notin (1,2)) {$DisableWebsiteMonitoring = Read-Host "1) Disable Website Monitoring `n2) Leave Website Monitoring enabled`n(1/2)"}
-switch ($DisableWebsiteMonitoring) {
-    "1" {$DisableWebsiteMonitoring = "true"}
-    "2" {$DisableWebsiteMonitoring = "false"}
-}
-
-
-############################### Configuration Settings ###############################
-while ($ImportConfigurations -notin (1,2)) {$ImportConfigurations = Read-Host "1) Import Configurations `n2) Skip Configurations`n(1/2)"}
-switch ($ImportConfigurations) {
-    "1" {$ImportConfigurations = $true}
-    "2" {$ImportConfigurations = $false}
-}
-
-
-# The font awesome name for the locations icon in Hudu
-$ConfigImportIcon = "fas fa-sitemap"
-
-# Set if you would like a Prefix in front of configuration names created in Hudu. This can make it easy to review and you can rename them later set to "" if you dont want one
-$ConfigurationPrefix = $environmentSettings.ConPromptPrefix
-
-
-############################### Contact Settings ###############################
-while ($ImportContacts -notin (1,2)) {$ImportContacts = Read-Host "1) Import Contacts `n2) Skip Contacts`n(1/2)"}
-switch ($ImportContacts) {
-    "1" {$ImportContacts = $true}
-    "2" {$ImportContacts = $false}
-}
-
-# The asset layout name how locations will appear in Hudu
-$ConImportAssetLayoutName = "People"
-
-# The font awesome name for the locations icon in Hudu
-$ConImportIcon = "fas fa-users"
-
-############################### Flexible Asset Layouts ###############################
-while ($ImportFlexibleAssetLayouts -notin (1,2)) {$ImportFlexibleAssetLayouts = Read-Host "1) Import Asset Layouts `n2) Skip Asset Layouts`n(1/2)"}
-switch ($ImportFlexibleAssetLayouts) {
-    "1" {$ImportFlexibleAssetLayouts = $true}
-    "2" {$ImportFlexibleAssetLayouts = $false}
-}
-
-# Set if you would like a Prefix in front of Layout names created in Hudu. This can make it easy to review and you can rename them later set to "" if you don't want one
-
-$FlexibleLayoutPrefix = $environmentSettings.FAPromptPrefix
-
-############################### Flexible Assets ###############################
-while ($ImportFlexibleAssets -notin (1,2)) {$ImportFlexibleAssets = Read-Host "1) Import Assets `n2) Skip Assets`n(1/2)"}
-switch ($ImportFlexibleAssets) {
-    "1" {$ImportFlexibleAssets = $true}
-    "2" {$ImportFlexibleAssets = $false}
-}
-
-
-############################### Articles ###############################
-while ($ImportArticles -notin (1,2)) {$ImportArticles = Read-Host "1) Import Articles `n2) Skip Articles`n(1/2)"}
-switch ($ImportArticles) {
-    "1" {$ImportArticles = $true}
-    "2" {$ImportArticles = $false}
-}
-
-############################### Passwords ###############################
-while ($ImportPasswords -notin (1,2)) {$ImportPasswords = Read-Host "1) Import Passwords `n2) Skip Passwords`n(1/2)"}
-switch ($ImportPasswords) {
-    "1" {$ImportPasswords = $true}
-    "2" {$ImportPasswords = $false}
-}
-
 ############################ Migration Logs Path ##############################
 $MigrationLogs = $environmentSettings.MigrationLogs
 
