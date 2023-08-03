@@ -29,12 +29,12 @@ Settings that will be saved include API Keys, URLs, Prefixes, and so on. You can
 - MigrationLogs are stored by default in `%APPDATA%\HuduMigration` make sure you keep these safe!
 - URL Rewrites have been updated to apply to all Rich Text asset fields, articles, Company Quick Notes, and Password notes
 - Image Upload has been improved to use the Hudu API endpoint instead of Base64 and will include the best quality image available
-- `Add-HuduAttachments.ps1` can be used to upload and connect attachments to Hudu (NOT READY YET). This will be updated as this gets completed and more instructions are provided.
+- `Add-HuduAttachments.ps1` can be used to upload and connect attachments to Hudu. You will need direct PostgresDB access either through SSH Tunneling or directly. You will need to expose the DB port in Docker. Finally you'll have to sync the staged upload folder with your backend storage (either S3 or Local) into the correct place.
 ___
 **COMING SOON:** 
 - Archived Companies, Articles, and Assets will be archived even after migration
 - Previously unsupported tagged relations have been supplemented by doing regular related items instead of tags (Articles, AssetPasswords)
-- `Replace-HuduBase64images.ps1` has been updated to use the API and will be available for fixing completed imports that placed base64 images in articles.
+- `Replace-HuduBase64images.ps1` has been updated to use the API and will be fully adapted for fixing completed imports that placed base64 images in articles.
 ___
 ## Version 1.2
 Small bug fixes
