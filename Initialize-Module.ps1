@@ -184,7 +184,7 @@ if ($environmentSettings -and $InitType -eq 'Lite') {
             $environmentSettings = Get-Content -Path $defaultSettingsPath | ConvertFrom-Json -Depth 50
         }
         default {
-            Write-Host 'Invalid choice. Please choose (I)mport or (N)ew.' -ForegroundColor Red
+            throw 'Invalid choice. Please choose (I)mport or (N)ew.'
         }
     }
 }
