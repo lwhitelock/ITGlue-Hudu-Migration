@@ -10,7 +10,7 @@ Please review the licensed rights for Magick.NET here https://github.com/dlemstr
 ___
 # ITGlue-Hudu-Migration
 
-**For the early beta version of the script, 2024-dev branch, the blog post may still be relevant in some cases but is mostly outdated.**
+**For the early beta version of the script, 2024-dev branch, the blog post may still be relevant in some cases but is mostly outdated.** See [this link instead](https://mspbook.mspgeek.org/books/hudu-scripts-in-progress/page/itglue-to-hudu-migration)
 
 **For the current stable version of the script please see the following directions.**
 Please see the blog post at: https://mspp.io/automated-it-glue-to-hudu-migration-script/ for details on running this script.
