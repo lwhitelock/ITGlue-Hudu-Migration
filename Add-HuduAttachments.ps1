@@ -293,6 +293,8 @@ Write-Host "Loading Locations Log"
 $ITGlueLocations = Get-Content "$MigrationLogs\Locations.json" | ConvertFrom-json
 Write-Host "Loading Websites Log"
 $ITGlueWebsites = Get-Content "$MigrationLogs\Websites.json" | ConvertFrom-json
+Write-Host "Loading Passwords Log"
+$ITGluePasswords = Get-Content "$MigrationLogs\Passwords.json" | ConvertFrom-json
 
 $AttachmentsToUpload = Get-ChildItem $AttachmentsPath -Recurse
 $FoundAssetsToAttach = $ITGlueAssets |Where-Object {$_.itgid -in $AttachmentsToUpload.name -and $_.HuduID -eq $null}
@@ -300,10 +302,14 @@ $FoundDocumentsToAttach = $ITGlueDocuments |Where-Object {$_.itgid -in $Attachme
 $FoundConfigurationsToAttach = $ITGlueConfigurations | Where-Object {$_.itgid -in $AttachmentsToUpload.name}
 $FoundLocationsToAttach = $ITGlueLocations | Where-Object {$_.itgid -in $AttachmentsToUpload.name}
 $FoundWebsitesToAttach = $ITGlueWebsites | Where-Object {$_.itgid -in $AttachmentsToUpload.name}
+$FoundPasswordsToAttach = $ITGluePasswords | Where-Object {$_.itgid -in $AttachmentsToUpload.name}
 
 if ($FoundAssetsToAttach) {Add-HuduAttachment -FoundAssetsToAttach $FoundAssetsToAttach -UploadType "Asset"}
 if ($FoundConfigurationsToAttach) {Add-HuduAttachment -FoundAssetsToAttach $FoundConfigurationsToAttach -UploadType "Asset"}
 if ($FoundDocumentsToAttach) {Add-HuduAttachment -FoundAssetsToAttach $FoundDocumentsToAttach -UploadType "Article"}
+if ($FoundLocationsToAttach) {Add-HuduAttachment -FoundAssetsToAttach $FoundAssetsToAttach -UploadType "Asset"}
+if ($FoundWebsitesToAttach) {Add-HuduAttachment -FoundAssetsToAttach $FoundAssetsToAttach -UploadType "Website"}
+if ($FoundPasswordsToAttach) {Add-HuduAttachment -FoundAssetsToAttach $FoundAssetsToAttach -UploadType "AssetPassword"}
 
 if (!($CSVMapping = Get-Content "$MigrationLogs\AttachmentFields-CSVMap.json"|ConvertFrom-Json -Depth 10)) {
     $CSVMapping = Build-CSVMapping
