@@ -10,7 +10,7 @@ Please review the licensed rights for Magick.NET here https://github.com/dlemstr
 ___
 # ITGlue-Hudu-Migration
 
-**For the early beta version of the script, 2024-dev branch, the blog post may still be relevant in some cases but is mostly outdated.**
+**For the early beta version of the script, 2024-dev branch, the blog post may still be relevant in some cases but is mostly outdated.** See [this link instead](https://mspbook.mspgeek.org/books/hudu-scripts-in-progress/page/itglue-to-hudu-migration)
 
 **For the current stable version of the script please see the following directions.**
 Please see the blog post at: https://mspp.io/automated-it-glue-to-hudu-migration-script/ for details on running this script.
@@ -30,10 +30,11 @@ Settings that will be saved include API Keys, URLs, Prefixes, and so on. You can
 - URL Rewrites have been updated to apply to all Rich Text asset fields, articles, Company Quick Notes, and Password notes
 - Image Upload has been improved to use the Hudu API endpoint instead of Base64 and will include the best quality image available
 - `Add-HuduAttachments.ps1` can be used to upload and connect attachments to Hudu. You will need direct PostgresDB access either through SSH Tunneling or directly. You will need to expose the DB port in Docker. Finally you'll have to sync the staged upload folder with your backend storage (either S3 or Local) into the correct place.
+- Previously unsupported tagged relations have been supplemented by doing regular related items instead of tags (Articles, AssetPasswords)
+
 ___
 **COMING SOON:** 
 - Archived Companies, Articles, and Assets will be archived even after migration
-- Previously unsupported tagged relations have been supplemented by doing regular related items instead of tags (Articles, AssetPasswords)
 - `Replace-HuduBase64images.ps1` has been updated to use the API and will be fully adapted for fixing completed imports that placed base64 images in articles.
 ___
 ## Version 1.2
