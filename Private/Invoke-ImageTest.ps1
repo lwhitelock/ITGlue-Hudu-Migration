@@ -10,7 +10,7 @@ function Invoke-ImageTest {
         [Parameter(Mandatory = $true, Position = 0, ValueFromPipeline = $true)]
         [ValidateNotNullOrEmpty()]
         [Alias('PSPath')]
-        [string] $Path
+        [string] $FilePath
     )
 
     try {
