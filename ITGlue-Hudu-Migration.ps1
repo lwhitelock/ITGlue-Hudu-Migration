@@ -1666,16 +1666,16 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Articles.json")) {
                         }
                     }
 
-                    # Test the path to ensure that a file extension exists, if no file extension we get problems later on. We rename it if there's no ext.
-                    if ($imagePath -and (Test-Path $imagePath -ErrorAction SilentlyContinue)) {
-                        if ((Get-Item -path $imagePath).extension -eq '') {
-                            Write-Warning "$imagePath is undetermined image. Testing..."
-                            if ($Magick = New-Object ImageMagick.MagickImage($imagePath)) {
-                                $OriginalFullImagePath = $imagePath
-                                $imagePath = "$($imagePath).$($Magick.format)"
-                                $MovedItem = Move-Item -Path $OriginalFullImagePath -Destination $imagePath
-                            }
-                        }                        
+                        # Test the path to ensure that a file extension exists, if no file extension we get problems later on. We rename it if there's no ext.
+                        if ($imagePath -and (Test-Path $imagePath -ErrorAction SilentlyContinue)) {
+                            if ((Get-Item -path $imagePath).extension -eq '') {
+                                Write-Warning "$imagePath is undetermined image. Testing..."
+                                if ($Magick = New-Object ImageMagick.MagickImage($imagePath)) {
+                                    $OriginalFullImagePath = $imagePath
+                                    $imagePath = "$($imagePath).$($Magick.format)"
+                                    $MovedItem = Move-Item -Path $OriginalFullImagePath -Destination $imagePath
+                                }
+                            }                        
                             $imageType = Invoke-ImageTest($imagePath)
                             if ($imageType) {
                                 Write-Host "Uploading new image"
