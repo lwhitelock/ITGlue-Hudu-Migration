@@ -120,11 +120,18 @@ function Update-StringWithCaptureGroups {
                         "path" = $ImageItem.FullName
                         "url" = $match.Groups[1]
                     }
+                }
                 else { return $false}
                 }
-
-                
-
+            default {
+                if ($match.groups[1].value -like 'DOC-*') {
+                    Write-Host "Matched a DOC Locator link for locator $($match.groups[1].value)" -ForegroundColor 'Blue'
+                    $HuduUrl = ($MatchedArticleBase |Where-Object {$_.ITGLocator -eq $match.groups[1].value}).HuduObject.url
+                    $HuduName = ($MatchedArticleBase |Where-Object {$_.ITGLocator -eq $match.groups[1].value}).HuduObject.name
+                    if ($HuduURL -and $HuduName) {
+                        Write-Host "Matched $($match.groups[1].value) Locator to $HuduName" -ForegroundColor 'Cyan'
+                    } else { Remove-Variable HuduName,HuduURL; Write-Warning "The matched regex did not resolve to a Hudu article" }
+                }
             }
 
 
