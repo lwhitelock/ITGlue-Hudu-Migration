@@ -36,10 +36,16 @@ $RichRegexPatternToMatchWithAssets = "<(A|a) href=\S$EscapedITGURL/([0-9]{1,10})
 $ImgRegexPatternToMatch = @"
 $EscapedITGURL/([0-9]{1,10}/docs/([0-9]{1,10})/(images)/([0-9]{1,10}).*?)(?=")
 "@
+$RichDocLocatorUrlPatternToMatch = @"
+<(A|a) href=\S$EscapedITGURL/(DOC-.*?)(?="")\S.*?</(A|a)>
+"@
+$RichDocLocatorRelativeURLPatternToMatch = @"
+<(A|a) href=\S/(DOC-.*?)(?="")\S.*?</(A|a)>
+"@
 
 $TextRegexPatternToMatchSansAssets = "$EscapedITGURL/([0-9]{1,10})/(docs|passwords|configurations)/([0-9]{1,10})"
 $TextRegexPatternToMatchWithAssets = "$EscapedITGURL/([0-9]{1,10})/(assets)/.*?/([0-9]{1,10})"
-
+$TextDocLocatorUrlPatternToMatch = "$EscapedITGURL/(DOC-[0-9]{0,10}-[0-9]{0,10}).*(?= )"
 
 function Update-StringWithCaptureGroups {
     [cmdletbinding()]
@@ -66,10 +72,20 @@ function Update-StringWithCaptureGroups {
 
             "docs" {
                 Write-Host "Matched an $($match.groups[3].value) URL to replace" -ForegroundColor 'Blue'
-               $HuduUrl = ($MatchedArticleBase |Where-Object {$_.ITGID -eq $match.groups[4].value}).HuduObject.url
-               $HuduName = ($MatchedArticleBase |Where-Object {$_.ITGID -eq $match.groups[4].value}).HuduObject.name
-               Write-Host "Matched $($match.groups[3].value) URL to $HuduName" -ForegroundColor 'Cyan'
+                $HuduUrl = ($MatchedArticleBase |Where-Object {$_.ITGID -eq $match.groups[4].value}).HuduObject.url
+                $HuduName = ($MatchedArticleBase |Where-Object {$_.ITGID -eq $match.groups[4].value}).HuduObject.name
+                Write-Host "Matched $($match.groups[3].value) URL to $HuduName" -ForegroundColor 'Cyan'
                
+            }
+
+            "a" {
+                Write-Host "Matched a DOC Locator link for locator $($match.groups[2].value)" -ForegroundColor 'Blue'
+                $HuduUrl = ($MatchedArticleBase |Where-Object {$_.ITGLocator -eq $match.groups[2].value}).HuduObject.url
+                $HuduName = ($MatchedArticleBase |Where-Object {$_.ITGLocator -eq $match.groups[2].value}).HuduObject.name
+                if ($HuduURL -and $HuduName) {
+                    Write-Host "Matched $($match.groups[2].value) Locator to $HuduName" -ForegroundColor 'Cyan'
+                } else { Remove-Variable HuduName,HuduURL; Write-Warning "The matched regex did not resolve to a Hudu article" }
+
             }
 
             "passwords" {
