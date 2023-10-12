@@ -71,46 +71,54 @@ function Update-StringWithCaptureGroups {
         switch ($match.groups[3].value) {
 
             "docs" {
-                Write-Host "Matched an $($match.groups[3].value) URL to replace" -ForegroundColor 'Blue'
+                Write-Host "Found an $($match.groups[3].value) URL to replace for ITGID $($match.groups[4].value)..." -ForegroundColor 'Blue'
                 $HuduUrl = ($MatchedArticles |Where-Object {$_.ITGID -eq $match.groups[4].value}).HuduObject.url
                 $HuduName = ($MatchedArticles |Where-Object {$_.ITGID -eq $match.groups[4].value}).HuduObject.name
-                Write-Host "Matched $($match.groups[3].value) URL to $HuduName" -ForegroundColor 'Cyan'
+                if ($HuduUrl -and $HuduName) {
+                Write-Host "Matched $($match.groups[3].value) URL to Hudu doc: $HuduName" -ForegroundColor 'Cyan'
+                } else { Remove-Variable HuduName,HuduURL; Write-Warning "The matched regex did not resolve to a Hudu article" }
                
             }
 
             "a" {
-                Write-Host "Matched a DOC Locator link for locator $($match.groups[2].value)" -ForegroundColor 'Blue'
+                Write-Host "Found a DOC Locator link for locator $($match.groups[2].value)" -ForegroundColor 'Blue'
                 $HuduUrl = ($MatchedArticles |Where-Object {$_.ITGLocator -eq $match.groups[2].value}).HuduObject.url
                 $HuduName = ($MatchedArticles |Where-Object {$_.ITGLocator -eq $match.groups[2].value}).HuduObject.name
                 if ($HuduURL -and $HuduName) {
-                    Write-Host "Matched $($match.groups[2].value) Locator to $HuduName" -ForegroundColor 'Cyan'
+                    Write-Host "Matched $($match.groups[2].value) Locator to Hudu doc: $HuduName" -ForegroundColor 'Cyan'
                 } else { Remove-Variable HuduName,HuduURL; Write-Warning "The matched regex did not resolve to a Hudu article" }
 
             }
 
             "passwords" {
-                Write-Host "Matched an $($match.groups[3].value) URL to replace" -ForegroundColor 'Blue'
+                Write-Host "Found an $($match.groups[3].value) URL to replace" -ForegroundColor 'Blue'
                 $HuduUrl = ($MatchedPasswords |Where-Object {$_.ITGID -eq $match.groups[4].value}).HuduObject.url
                 $HuduName = ($MatchedPasswords |Where-Object {$_.ITGID -eq $match.groups[4].value}).HuduObject.name
-                Write-Host "Matched $($match.groups[3].value) URL to $HuduName" -ForegroundColor 'Cyan'
+                if ($HuduUrl -and $HuduName) {
+                Write-Host "Matched $($match.groups[3].value) URL to Hudu Passsword: $HuduName" -ForegroundColor 'Cyan'
+                } else { Remove-Variable HuduName,HuduURL; Write-Warning "The matched regex did not resolve to a Hudu article" }
             }
 
             "configurations" {
-                Write-Host "Matched an $($match.groups[3].value) URL to replace" -ForegroundColor 'Blue'
+                Write-Host "Found an $($match.groups[3].value) URL to replace" -ForegroundColor 'Blue'
                 $HuduUrl = ($MatchedConfigurations |Where-Object {$_.ITGID -eq $match.groups[4].value}).HuduObject.url
                 $HuduName = ($MatchedConfigurations |Where-Object {$_.ITGID -eq $match.groups[4].value}).HuduObject.name
-                Write-Host "Matched $($match.groups[3].value) URL to $HuduName" -ForegroundColor 'Cyan'
+                if ($HuduUrl -and $HuduName) {
+                Write-Host "Matched $($match.groups[3].value) URL to Hudu Asset: $HuduName" -ForegroundColor 'Cyan'
+                } else { Remove-Variable HuduName,HuduURL; Write-Warning "The matched regex did not resolve to a Hudu article" }
             }
 
             "assets" {
-                Write-Host "Matched an $($match.groups[3].value) URL to replace" -ForegroundColor 'Blue'
+                Write-Host "Found an $($match.groups[3].value) URL to replace" -ForegroundColor 'Blue'
                 $HuduUrl = ($MatchedAssets |Where-Object {$_.ITGID -eq $match.groups[4].value}).HuduObject.url
                 $HuduName = ($MatchedAssets |Where-Object {$_.ITGID -eq $match.groups[4].value}).HuduObject.name
-                Write-Host "Matched $($match.groups[3].value) URL to $HuduName" -ForegroundColor 'Cyan'
+                if ($HuduUrl -and $HuduName) {
+                Write-Host "Matched $($match.groups[3].value) URL to Hudu Asset: $HuduName" -ForegroundColor 'Cyan'
+                } else { Remove-Variable HuduName,HuduURL; Write-Warning "The matched regex did not resolve to a Hudu article" }
             }
 
             "images" {
-                Write-Host "Matched an external image using a Direct ITGlue link" -ForegroundColor 'Blue'
+                Write-Host "Found an external image using a Direct ITGlue link" -ForegroundColor 'Blue'
                 $OriginalArticle = ($MatchedArticles | Where-Object {$_.ITGID -eq $match.groups[2].value}).Path
                 $ImagePath = $match.groups[1].value.replace('/','\')
                 $FullImagePath = Join-Path -Path $OriginalArticle -ChildPath $ImagePath
@@ -125,11 +133,11 @@ function Update-StringWithCaptureGroups {
                 }
             default {
                 if ($match.groups[1].value -like 'DOC-*') {
-                    Write-Host "Matched a DOC Locator link for locator $($match.groups[1].value)" -ForegroundColor 'Blue'
+                    Write-Host "Found a DOC Locator link for locator $($match.groups[1].value)" -ForegroundColor 'Blue'
                     $HuduUrl = ($MatchedArticles |Where-Object {$_.ITGLocator -eq $match.groups[1].value}).HuduObject.url
                     $HuduName = ($MatchedArticles |Where-Object {$_.ITGLocator -eq $match.groups[1].value}).HuduObject.name
                     if ($HuduURL -and $HuduName) {
-                        Write-Host "Matched $($match.groups[1].value) Locator to $HuduName" -ForegroundColor 'Cyan'
+                        Write-Host "Matched $($match.groups[1].value) Locator to Hudu doc: $HuduName" -ForegroundColor 'Cyan'
                     } else { Remove-Variable HuduName,HuduURL; Write-Warning "The matched regex did not resolve to a Hudu article" }
                 }
             }
