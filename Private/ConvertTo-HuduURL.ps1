@@ -7,7 +7,7 @@ $EscapedITGURL = [regex]::Escape($ITGURL)
 # This should create $MatchedArticleBase, $MatchedAssetts, $MatchedCompanies, $MatchedConfigurations, $MatchedPasswords etc.
 <# 
 Disabling this block to merge this file under the main migration.
-foreach ($File in (Get-ChildItem  "$ITGlueExportPath\..\MigrationLogs\*.json")) {
+foreach ($File in (Get-ChildItem  "$MigrationLogs\*.json")) {
     try {
         New-Variable -Name "Matched$($file.name.replace('.json',''))" -Value (Get-Content $File.FullName -raw |ConvertFrom-Json -Depth 100) -ErrorAction Stop
     }
@@ -15,7 +15,9 @@ foreach ($File in (Get-ChildItem  "$ITGlueExportPath\..\MigrationLogs\*.json")) 
         "Variable clobbering is occurring. Please clear the variables"
     }
     
-} #>
+}
+$MatchedArticles = $MatchedArticleBase
+#>
 
 # Disabling this line, since we'll have article content already.
 # $AllArticles = Get-HuduArticles
