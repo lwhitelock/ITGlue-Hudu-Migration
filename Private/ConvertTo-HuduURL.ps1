@@ -3,6 +3,11 @@
 
 $EscapedITGURL = [regex]::Escape($ITGURL)
 
+if ($environmentSettings.ITGCustomDomains) {
+    $combinedEscapedURLs = ($environmentSettings.ITGCustomDomains -split "," | ForEach-Object { [regex]::Escape($_) }) -join "|"
+    $EscapedITGURL = "(?:$EscapedITGURL|$combinedEscapedURLs)"
+}
+
 # Gather all the Hudu Migration logs
 # This should create $MatchedArticleBase, $MatchedAssetts, $MatchedCompanies, $MatchedConfigurations, $MatchedPasswords etc.
 <# 
