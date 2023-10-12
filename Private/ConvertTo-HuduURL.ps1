@@ -37,10 +37,10 @@ $ImgRegexPatternToMatch = @"
 $EscapedITGURL/([0-9]{1,10}/docs/([0-9]{1,10})/(images)/([0-9]{1,10}).*?)(?=")
 "@
 $RichDocLocatorUrlPatternToMatch = @"
-<(A|a) href=\S$EscapedITGURL/(DOC-.*?)(?="")\S.*?</(A|a)>
+<(A|a) href=\S$EscapedITGURL/(DOC-.*?)(?=")\S.*?</(A|a)>
 "@
 $RichDocLocatorRelativeURLPatternToMatch = @"
-<(A|a) href=\S/(DOC-.*?)(?="")\S.*?</(A|a)>
+<(A|a) href=\S/(DOC-.*?)(?=")\S.*?</(A|a)>
 "@
 
 $TextRegexPatternToMatchSansAssets = "$EscapedITGURL/([0-9]{1,10})/(docs|passwords|configurations)/([0-9]{1,10})"
