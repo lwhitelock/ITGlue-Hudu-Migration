@@ -66,6 +66,10 @@ function CollectAndSaveSettings {
     $settings.ITGURL = Read-Host -Prompt 'Set the domain of your ITGlue instance including https:// without a trailing /'
     $instance = $settings.ITGURL.replace('https://','')
     $settings.GlobalKBFolder = Read-Host -Prompt 'Do you want all documents in Global KB to be placed into a subfolder? (y/n)'
+    $customBrandedDomain = Read-Host -Prompt 'Do you have additional hostnames you'd like to include in the URL Replacement? For example custom branded ITGlue Domain Name. (y/n)'
+    if ($customBrandedDomain -eq 'y') {
+    	$settings.ITGCustomDomains = Read-Host -Prompt "Please enter comma separated list of domain names to check for. If only one, don't include the comma."
+     }
 
     # Migration Log Settings
     $settings.MigrationLogs = Read-Host "Enter the path for the migration logs, or press enter to accept the Default path (%appdata%\HuduMigration\$instance\MigrationLogs)"
