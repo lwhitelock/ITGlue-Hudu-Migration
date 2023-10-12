@@ -68,7 +68,7 @@ function CollectAndSaveSettings {
     $settings.GlobalKBFolder = Read-Host -Prompt 'Do you want all documents in Global KB to be placed into a subfolder? (y/n)'
     $customBrandedDomain = Read-Host -Prompt 'Do you have additional hostnames you'd like to include in the URL Replacement? For example custom branded ITGlue Domain Name. (y/n)'
     if ($customBrandedDomain -eq 'y') {
-    	$settings.ITGCustomDomains = Read-Host -Prompt "Please enter comma separated list of domain names to check for. If only one, don't include the comma."
+    	$settings.ITGCustomDomains = Read-Host -Prompt "Please enter comma separated list of URLs to check for, following the same format of the main domain URL. If only one, don't include the comma."
      }
 
     # Migration Log Settings
