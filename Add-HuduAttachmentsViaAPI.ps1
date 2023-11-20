@@ -18,12 +18,12 @@ Write-Host "#           - File Attachment Uploads                 #" -Foreground
 Write-Host "#          Version: 2.0  -Beta                        #" -ForegroundColor Yellow
 Write-Host "#          Date: 01/08/2023                           #" -ForegroundColor Yellow
 Write-Host "#                                                     #" -ForegroundColor Yellow
-Write-Host "#          THIS SCRIPT REQUIRES DIRECT DB ACCESS      #" -ForegroundColor Yellow
-Write-Host "#             AND PostgreSQL ODBC Driver              #" -ForegroundColor Yellow
-Write-Host "#         The script creates a staging dir with all   #" -ForegroundColor Yellow
-Write-Host "#         files you will need to upload, maintaining  #" -ForegroundColor Yellow
-Write-Host "#         using sFTP/SSH or S3 tools to Hudu          #" -ForegroundColor Yellow
-Write-Host "#           backend storage. USE AT YOUR OWN RISK     #" -ForegroundColor Yellow
+Write-Host "#                                                     #" -ForegroundColor Yellow
+Write-Host "#                                                     #" -ForegroundColor Yellow
+Write-Host "#         The script will attempt to upload your      #" -ForegroundColor Yellow
+Write-Host "#         files directly to Hudu using the API.       #" -ForegroundColor Yellow
+Write-Host "#         Performance will depend on the Hudu         #" -ForegroundColor Yellow
+Write-Host "#           backend, such as API Limits and WAN       #" -ForegroundColor Yellow
 Write-Host "#                                                     #" -ForegroundColor Yellow
 Write-Host "#######################################################" -ForegroundColor Yellow
 Write-Host "# Note: This is an unofficial script, please do not   #" -ForegroundColor Yellow
@@ -36,86 +36,7 @@ Write-Host "# Or log an issue in the Github Respository:          #" -Foreground
 Write-Host "# https://github.com/lwhitelock/ITGlue-Hudu-Migration #" -ForegroundColor Yellow
 Write-Host "#######################################################" -ForegroundColor Yellow
 
-############################### Settings ###############################
-# Postgres settings
-$MyPort = Read-Host "Enter the Port number the PostresDB Engine is available on"
-$Connection = @{
-    dbhost = Read-Host "What is your PostresDB Engine Host name or IP Address"
-    dbname = Read-Host "What is your Database name (normally hudu_production)"
-    dbuser = 'postgres'
-    dbpass = Read-Host "What is your postgres user password. Leave blank for none."
-}
-
 ################### Supporting Functions ###############################
-# PSQL Functions
-function Connect-PSQL {
-    param (
-        [Parameter(Mandatory = $true)]
-        [string]$dbhost,
-        [Parameter(Mandatory = $true)]
-        [string]$dbname,
-        [Parameter(Mandatory = $true)]
-        [string]$dbuser,
-        [string]$dbpass = ''
-    )
-    try {
-        $conn = New-Object System.Data.Odbc.OdbcConnection
-        $conn.ConnectionString = "Driver={PostgreSQL UNICODE(x64)};Server=$dbhost;Port=$MyPort;Database=$dbname;Uid=$dbuser;Pwd=$dbpass;"
-        $conn.open()
-        $conn
-    }
-    catch {
-        Write-Error "Unable to connect to database: $($_.Exception.Message)"
-    }
-}
-
-function Disconnect-PSQL {
-    Param(
-        [Parameter(Mandatory = $true)]
-        [psobject]$Connection
-    )
-    if ($Connection.state -eq 'Open') {
-        $Connection.close()
-    }
-}
-
-function Get-PSQLData {
-    param(
-        [Parameter(Mandatory = $true)]
-        [string]$Query,
-        [Parameter(Mandatory = $true)]
-        [psobject]$Connection
-    )
-    try {
-        Write-Verbose $Query
-        $cmd = New-Object System.Data.Odbc.OdbcCommand($Query, $Connection)
-        $cmd.CommandTimeout = 300
-        $ds = New-Object system.Data.DataSet
-        (New-Object system.Data.odbc.odbcDataAdapter($cmd)).fill($ds) | Out-Null
-        $ds.Tables[0]
-    }
-    catch {
-        Write-Error "Error getting query result: $($_.Exception.Message)"
-    }
-}
- 
-function Set-PSQLData {
-    param(
-        [Parameter(Mandatory = $true)]
-        [string]$Query,
-        [Parameter(Mandatory = $true)]
-        [psobject]$Connection
-    )
-    try {
-        Write-Verbose $Query
-        $cmd = New-Object System.Data.Odbc.OdbcCommand($Query, $Connection)
-        $cmd.ExecuteNonQuery()
-    }
-    catch {
-        Write-Error "Error executing query: $($_.Exception.Message)"
-    } 
-}
-
 # Uses migration computer to determine file types (not required, but improved QOL)
 function Get-MimeType {
     param($Extension = $null)
@@ -217,30 +138,48 @@ param(
     $HuduUpload = @()
 
     # Grab existing attachments.
-    $Query = "select uploadable_id, file_data from uploads where uploadable_type = '$UploadType'"
-    $ExistingAttachments = $ExistingAttachments = Get-PSQLData -Query $Query -Connection $Conn
-    $UploadedAttachments = $ExistingAttachments | Select-Object @{n='id'; e={ $_.uploadable_id}},@{n='file';e={($_.file_data|Convertfrom-json).metadata.filename}},@{n='url';e={($_.file_data|Convertfrom-json).id}}
-
+    ##### Commenting out, no database access
+    # $Query = "select uploadable_id, file_data from uploads where uploadable_type = '$UploadType'"
+    # $ExistingAttachments = $ExistingAttachments = Get-PSQLData -Query $Query -Connection $Conn
+    # $UploadedAttachments = $ExistingAttachments | Select-Object @{n='id'; e={ $_.uploadable_id}},@{n='file';e={($_.file_data|Convertfrom-json).metadata.filename}},@{n='url';e={($_.file_data|Convertfrom-json).id}}
+    ##### Replace above lines with new method that doesn't require database. Also commenting lines 149 and 150, 155-158
+    
     $Results = foreach ($FoundAsset in $FoundAssetsToAttach) {
         Write-Host "Finding attachments for $($FoundAsset.name) with ITGlueID $($FoundAsset.itgid) to Hudu $($UploadType) $($FoundAsset.HuduID)" -ForegroundColor Cyan
-        Write-Host "Checking existing attachments from database"
-        $CurrentAssetAttachments = $UploadedAttachments | Where-Object {$_.id -eq $FoundAsset.HuduID}
+        # Write-Host "Checking existing attachments from database"
+        # $CurrentAssetAttachments = $UploadedAttachments | Where-Object {$_.id -eq $FoundAsset.HuduID}
         
         $FilesToUpload = Get-ChildItem -path "$AttachmentsPath\*\$($FoundAsset.ITGID)\*" -Recurse
         foreach ($FoundFile in $FilesToUpload) {
             if ($FoundFile.PSIsContainer -ne $True) {
-                if ($FoundFile.name -in $CurrentAssetAttachments.file) {
+                <# if ($FoundFile.name -in $CurrentAssetAttachments.file) {
                     Write-Host "Skipping $($FoundFile.name) because its already uploaded as an attachment" -ForegroundColor Yellow
                     continue
+                } #>
+                Write-Host "Pushing $($FoundFile.name) to Hudu $($UploadType) $($FoundAsset.name) - $($FoundAsset.HuduID)" -ForegroundColor Blue
+                try {
+                    $HuduUpload = New-HuduUpload -FilePath $FoundFile.fullname -uploadable_id $FoundAsset.HuduID -uploadable_type $UploadType
+                    [PSCustomObject]@{
+                        FileHref  = "/file/$UploadIndex"
+                        Uploadable_ID = $FoundAsset.HuduID
+                        Uploadable_Type = $UploadType
+                        FilePath  = $FoundFile.fullname
+                        status  = "Uploaded Successfully"
+                    }
                 }
-                Write-Host "Staging $($FoundFile.name) for Hudu $($UploadType) $($FoundAsset.name) - $($FoundAsset.HuduID)" -ForegroundColor Blue
-                $HuduUpload = New-HuduUpload -Connection $Conn -FilePath $FoundFile.fullname -ArticleId $FoundAsset.HuduID -UploadType $UploadType
-                $HuduUpload
+                catch {
+                Write-Error ('Insert exception: {0}' -f $_.Exception.Message)
+                [PSCustomObject]@{
+                    FileHref  = "/file/$UploadIndex"
+                    ArticleId = $ArticleId
+                    FileData  = $UploadData
+                    status  = "FAILED: $($_.Exception.Message)"
+                    }
+                }
             }
         }
-
     }
-
+    
     $Results |ConvertTo-Json -Compress -Depth 10 |Out-File "$($MigrationLogs)\$($UploadType)-attachments-upload.json"
 
 }
@@ -266,9 +205,6 @@ function Build-CSVMapping {
     return $CSVMapping
 }
 ################ END FUNCTIONS REGION #################
-
-# Connect to the Database
-$Conn = Connect-PSQL @Connection
 
 # Check if we have a logs folder. Logs are required to match attachments to entity
 if (Test-Path -Path "$MigrationLogs") {
@@ -335,6 +271,6 @@ if ($CSVMapping) {
     }
 }
 
-Write-Host "You will need to take $StagingRoot and sync it to the appropriate backend storage"
+# Write-Host "You will need to take $StagingRoot and sync it to the appropriate backend storage"
 Write-Host "All attachments have been processed."
 Pause
