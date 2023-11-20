@@ -160,7 +160,7 @@ param(
                 try {
                     $HuduUpload = New-HuduUpload -FilePath $FoundFile.fullname -uploadable_id $FoundAsset.HuduID -uploadable_type $UploadType
                     [PSCustomObject]@{
-                        FileHref  = "/file/$UploadIndex"
+                        URL  = $HuduUpload.url
                         Uploadable_ID = $FoundAsset.HuduID
                         Uploadable_Type = $UploadType
                         FilePath  = $FoundFile.fullname
