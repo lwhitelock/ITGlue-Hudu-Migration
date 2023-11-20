@@ -121,8 +121,9 @@ if ((get-host).version.major -ne 7) {
 }
 
 
-#Get the Hudu API Module if not installed
-if ((Get-Module -ListAvailable -Name HuduAPI).version -gt '2.4.5') {
+# Get the Hudu API Module if not installed
+## 2.4.5 is required for the New-HuduUpload function
+if ((Get-Module -ListAvailable -Name HuduAPI).version -ge '2.4.5') {
     Import-Module HuduAPI
 } else {
     Install-Module HuduAPI -Latest
