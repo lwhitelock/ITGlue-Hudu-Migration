@@ -115,6 +115,20 @@ function Build-CSVMapping {
 }
 ################ END FUNCTIONS REGION #################
 
+if ((get-host).version.major -ne 7) {
+    Write-Host "Powershell 7 Required" -foregroundcolor Red
+    exit 1
+}
+
+
+#Get the Hudu API Module if not installed
+if ((Get-Module -ListAvailable -Name HuduAPI).version -gt '2.4.5') {
+    Import-Module HuduAPI
+} else {
+    Install-Module HuduAPI -Latest
+    Import-Module HuduAPI
+}
+
 #Login to Hudu
 New-HuduAPIKey $HuduAPIKey
 New-HuduBaseUrl $HuduBaseDomain
