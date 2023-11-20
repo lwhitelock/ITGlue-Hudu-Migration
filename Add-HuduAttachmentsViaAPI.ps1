@@ -37,99 +37,6 @@ Write-Host "# https://github.com/lwhitelock/ITGlue-Hudu-Migration #" -Foreground
 Write-Host "#######################################################" -ForegroundColor Yellow
 
 ################### Supporting Functions ###############################
-# Uses migration computer to determine file types (not required, but improved QOL)
-function Get-MimeType {
-    param($Extension = $null)
-    $mimeType = $null
-    if ( $null -ne $Extension ) {
-        $drive = Get-PSDrive HKCR -ErrorAction SilentlyContinue
-        if ( $null -eq $drive ) {
-            $drive = New-PSDrive -Name HKCR -PSProvider Registry -Root HKEY_CLASSES_ROOT
-        }
-        $mimeType = (Get-ItemProperty HKCR:$extension -ErrorAction SilentlyContinue).'Content Type'
-    }
-    $mimeType
-}
-
-<# Upload to Hudu with S3 Storage 
-COMMENTED OUT TO USE THE Powershell HuduAPI FUNCTION
-function New-HuduUpload {
-    Param(
-        $Connection,
-        $FilePath,
-        $ArticleId,
-        $UploadType = 'Article'
-    )
-
-    if (! (Test-Path $FilePath)) {
-        Write-Error "$FilePath does not exist"
-        return
-    }
-
-    $File = Get-Item $FilePath
-    try {
-        $Magick = New-Object ImageMagick.MagickImage($FilePath)
-        $Width = $Magick.Width
-        $Height = $Magick.Height
-    }
-    catch {
-        $Width = $null
-        $Height = $null        
-    }
-    $MimeType = Get-MimeType -extension $File.Extension
-    $Timestamp = Get-Date -Format 'yyyy-MM-dd HH:mm:ss.ffffff'
-
-    $UploadIndex = (Get-PSQLData -Connection $Connection -Query "INSERT INTO public.uploads (file_data,uploadable_type,uploadable_id,account_id,created_at,updated_at) VALUES ('{}','$UploadType',$ArticleId,1,'$Timestamp','$Timestamp') RETURNING id").id
-    $StagingPath = "upload/$UploadIndex/file/"
-    $Destination = (New-Item "$($StagingRoot)\$($StagingPath)" -ItemType Directory -Force).FullName
-    $OriginalMetadata = [PSCustomObject]@{
-        filename  = $File.Name
-        size      = $File.Length
-        width     = $Width
-        height    = $Height
-        mime_type = $MimeType
-    }
-
-    $OrigGuid = [guid]::newguid() -replace '-'
-    $OriginalName = '{0}{1}' -f $OrigGuid, $File.Extension
-    $OrigKey = ('{0}{1}' -f $StagingPath, $OriginalName)
-
-    $CopyItem = @{
-        Destination  = "$($Destination)\$($OriginalName)"
-        Force = $true
-        Path        = $FilePath
-    }
-    Copy-Item @CopyItem | Out-Null
-
-    $UploadData = [PSCustomObject]@{
-        id       = $OrigKey
-        storage  = 'store'
-        metadata = $OriginalMetadata 
-    } 
-    $Upload = $UploadData | ConvertTo-Json -Depth 10 -Compress
-    $Query = "UPDATE public.uploads SET file_data = '$Upload' where id = $UploadIndex"
-    
-    try {
-        Set-PSQLData -Connection $Connection -Query $Query | Out-Null
-
-        [PSCustomObject]@{
-            FileHref  = "/file/$UploadIndex"
-            ArticleId = $ArticleId
-            FileData  = $UploadData
-            status  = "Staged Successfully"
-        }
-    }
-    catch {
-        Write-Error ('Insert exception: {0}' -f $_.Exception.Message)
-        [PSCustomObject]@{
-            FileHref  = "/file/$UploadIndex"
-            ArticleId = $ArticleId
-            FileData  = $UploadData
-            status  = "FAILED: $($_.Exception.Message)"
-        }
-    }
-}
-#>
 
 # Function for looping over found assets and attachments. Requires PSQL Connection
 function Add-HuduAttachment {
@@ -207,6 +114,18 @@ function Build-CSVMapping {
     return $CSVMapping
 }
 ################ END FUNCTIONS REGION #################
+
+#Login to Hudu
+New-HuduAPIKey $HuduAPIKey
+New-HuduBaseUrl $HuduBaseDomain
+
+# Check we have the correct version
+$RequiredHuduVersion = "2.1.5.9"
+$HuduAppInfo = Get-HuduAppInfo
+If ([version]$HuduAppInfo.version -lt [version]$RequiredHuduVersion) {
+    Write-Host "This script requires at least version $RequiredHuduVersion. Please update your version of Hudu and run the script again. Your version is $($HuduAppInfo.version)"
+    exit 1
+}
 
 # Check if we have a logs folder. Logs are required to match attachments to entity
 if (Test-Path -Path "$MigrationLogs") {
