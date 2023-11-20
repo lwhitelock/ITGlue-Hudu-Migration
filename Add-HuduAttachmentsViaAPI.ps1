@@ -126,7 +126,7 @@ if ((get-host).version.major -ne 7) {
 if ((Get-Module -ListAvailable -Name HuduAPI).version -ge '2.4.5') {
     Import-Module HuduAPI
 } else {
-    Install-Module HuduAPI -Latest
+    Install-Module HuduAPI -MinimumVersion '2.4.5'
     Import-Module HuduAPI
 }
 
