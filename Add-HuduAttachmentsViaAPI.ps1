@@ -51,7 +51,8 @@ function Get-MimeType {
     $mimeType
 }
 
-# Upload to Hudu with S3 Storage
+<# Upload to Hudu with S3 Storage 
+COMMENTED OUT TO USE THE Powershell HuduAPI FUNCTION
 function New-HuduUpload {
     Param(
         $Connection,
@@ -128,6 +129,7 @@ function New-HuduUpload {
         }
     }
 }
+#>
 
 # Function for looping over found assets and attachments. Requires PSQL Connection
 function Add-HuduAttachment {
