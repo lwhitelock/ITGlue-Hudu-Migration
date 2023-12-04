@@ -201,7 +201,8 @@ if ($CSVMapping) {
                 $HuduAssetID = $ITGlueAssets |Where-Object {$_.itgid -eq $record.id}  |Select-Object -ExpandProperty HuduID
                 $HuduAssetName = $ITGlueAssets |Where-Object {$_.itgid -eq $record.id}  |Select-Object -ExpandProperty Name
                 Write-Host "Uploading $($FileToUpload.fullname) to Hudu Asset $($HuduAssetName) - $($HuduAssetID)" -ForegroundColor Blue
-                $HuduUpload = New-HuduUpload -Connection $Conn -FilePath $FileToUpload.fullname -ArticleId $HuduAssetID -UploadType 'Asset'
+                $HuduUpload = New-HuduUpload -FilePath $FileToUpload.fullname -uploadable_id $HuduAssetID -uploadable_type 'Asset'
+
             }
         }
     }
