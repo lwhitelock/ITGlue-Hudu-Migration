@@ -1,7 +1,7 @@
 ___
 # Please Read!
 
-_This project relies on external libraries, please read this carefully_
+_This project currently distributes but no longer relies on external libraries, please read this carefully_
 We use the Magick.NET libraries that you can find here https://github.com/dlemstra/Magick.NET/ for image type validation and metadata building.
 
 Please review the licensed rights for Magick.NET here https://github.com/dlemstra/Magick.NET/blob/main/License.txt
@@ -14,6 +14,10 @@ ___
 
 **For the current stable version of the script please see the following directions.**
 Please see the blog post at: https://mspp.io/automated-it-glue-to-hudu-migration-script/ for details on running this script.
+# Known Issues
+ - Password Relations to Articles and SSL Certificates are not currently included
+
+Password relations are only available from ITGlue when querying the API directly for each password individually. Since this will increase the runtime of the script by hours or days potentially we'll be making a script to run at the end which will loop through passwords and update the relations at that time. For right now relationships between Passwords and any entity that is not available in the API (Articles, and SSL Certificates) is completely invisbile to this migration script (both previous and new versions).
 
 # Release Notes
 ## Version 2.x - NON-STABLE EARLY VERSION
