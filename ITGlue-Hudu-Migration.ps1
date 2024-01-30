@@ -1250,11 +1250,11 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Assets.json")) {
             Write-Host "Creating base assets for $($layout.name)"
             foreach ($ITGAsset in $Layout.ITGAssets) {
                 # Match Company
-                $HuduCompanyID = ($HuduCompanies | where-object -filter { $_.name -eq $ITGAsset.attributes.'organization-name' }).id
+                $HuduCompanyID = ($MatchedCompanies | where-object -filter { $_.ITGID -eq $ITGAsset.attributes.'organization-id' }).HuduID
 
                 $AssetFields = @{ 
                     'imported_from_itglue' = Get-Date -Format "o"
-                    'itglue_url' = $ITGAsset.attributes.'resource_url'
+                    'itglue_url' = $ITGAsset.attributes.'resource-url'
                     'itglue_id' = $ITGAsset.id
                 }
 			
