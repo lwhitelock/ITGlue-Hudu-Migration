@@ -346,9 +346,9 @@ $MigrationLogs = $environmentSettings.MigrationLogs
 
 ############################## Load ImageMagick ###############################
 # Import ImageMagick Modules, prompt for path if the module is missing
-Write-Host "Adding Imagemagick commands from dot NET assemblies" -ForegroundColor Cyan
-$ImageMagickPath = "$PSScriptRoot\Magick.NET-Q16-AnyCPU.dll"
-while (!('ImageMagick.MagickImage' -as [type])) {
+#Write-Host "Adding Imagemagick commands from dot NET assemblies" -ForegroundColor Cyan
+#$ImageMagickPath = "$PSScriptRoot\Magick.NET-Q16-AnyCPU.dll"
+<# while (!('ImageMagick.MagickImage' -as [type])) {
     if (Test-Path "$ImageMagickPath") {
         try {
             Add-Type -Path $ImageMagickPath -ErrorAction Stop
@@ -360,5 +360,5 @@ while (!('ImageMagick.MagickImage' -as [type])) {
     else {
         $ImageMagickPath = (Read-Host "Failed to load ImageMagick. Please provide path for the three DLLs.") + "\Magick.NET-Q16-AnyCPU.dll"
     }
-}
+} #>
 ################### Initialization Complete #############################
