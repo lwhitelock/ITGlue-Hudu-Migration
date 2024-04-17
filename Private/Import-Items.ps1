@@ -86,6 +86,8 @@ function Import-Items {
             Write-Host "Creating New Asset Layout $ImportAssetLayoutName"
             $Null = New-HuduAssetLayout -name $ImportAssetLayoutName -icon $ImportIcon -color "#6e00d5" -icon_color "#ffffff" -include_passwords $true -include_photos $true -include_comments $true -include_files $true -fields $AssetLayoutFields
             $ImportLayout = Get-HuduAssetLayouts -name $ImportAssetLayoutName
+	    # Activate Asset Layouts once Created
+	    $Null = Set-HuduAssetLayout -id $ImportLayout.id -Active $true
 		
         }
 	
@@ -109,6 +111,10 @@ function Import-Items {
                     $HuduAssetName = $($unmatchedImport.Name)
 					
                     $HuduNewImport = (New-HuduAsset -name $HuduAssetName -company_id $company.HuduCompanyObject.ID -asset_layout_id $ImportLayout.id -fields $AssetFields).asset
+		    if ($itgimport.attributes.archived) {
+      			Write-Host "WARNING: $($HuduAssetName) is archived in ITGlue and is being archived in Hudu" -ForegroundColor Magenta
+      			$Null = Set-HuduAssetArchive -Id $HuduNewImport.id -CompanyId $HuduNewImport.company_id -Archive $false
+	 	 	}
 	
                     $unmatchedImport.matched = $true
                     $unmatchedImport.HuduID = $HuduNewImport.id
