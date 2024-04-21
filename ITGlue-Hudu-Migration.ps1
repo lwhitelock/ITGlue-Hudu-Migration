@@ -2,8 +2,8 @@
 . $PSScriptRoot\Initialize-Module.ps1 -InitType 'Full'
 
 ############################### Functions ###############################
-# Import ImageMagick for Invoke-ImageTest Function
-. $PSScriptRoot\Private\Initialize-ImageMagik.ps1
+# Import ImageMagick for Invoke-ImageTest Function (Disabled)
+# . $PSScriptRoot\Private\Initialize-ImageMagik.ps1
 
 # Used to determine if a file is an image and what type of image
 . $PSScriptRoot\Private\Invoke-ImageTest.ps1
