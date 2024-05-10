@@ -8,7 +8,7 @@ These are used only when the image extension was not properly retained in the ex
 ___
 # ITGlue-Hudu-Migration
 
-**For the early beta version of the script, 2024-dev branch, the blog post may still be relevant in some cases but is mostly outdated.** See [this link instead](https://mspbook.mspgeek.org/books/hudu-scripts-in-progress/page/itglue-to-hudu-migration) or [this other link here](https://demort.hosteddocs.io/shared_article/7BKhGktLGN1FEDSVEkh1bLpF)
+**The original blog post may still be relevant in some cases but is mostly outdated.** See [this link instead](https://mspbook.mspgeek.org/books/hudu-scripts-in-progress/page/itglue-to-hudu-migration) or [this other link here](https://demort.hosteddocs.io/shared_article/7BKhGktLGN1FEDSVEkh1bLpF)
 
 
 # Known Issues
