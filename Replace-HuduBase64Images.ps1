@@ -1,244 +1,11 @@
-# This script is mostly credited to John Duprey from MSPGeek
-# This script runs against the Hudu Database which is not-supported
-# This script will pull any documents that have base64 encoded images in it, extract the base64 image into a binary stream, upload it to s3 storage
-## then update the article to use the newly uploaded image files. This uses the same process that Hudu natively uses.
-
-#  Postgres Database Functions. This requires the ODBC Driver to be installed
-## FTP MSI Download from this link, scroll to the last zip (latest version), download, extract and install. No reboot required
-## https://www.postgresql.org/ftp/odbc/versions/msi/
-
 param(
     [parameter(ParameterSetName='RunAll')][switch]$ProcessAllArticles,
     [parameter(ParameterSetName='RunOne')]$ArticleIdsToProcess,
     [parameter(ParameterSetName='RunSome')][int]$NumberofArticlesToLoop
 )
 
-# Postgres settings, modify your port to the port number you tunneled via SSH
-# You need to expose the PSQL Port in Docker first. Refer to mspbooks.mspgeek.org doc for more details.
-$MyPort = 5432
-$ConnectionDetails = @{
-    dbhost = 'localhost'
-    dbname = 'hudu_production'
-    dbuser = 'postgres'
-    dbpass = ''
-}
-
-# S3/Spaces/Object Storage details. You must set these values for S3 upload to succeed. You can read these from your .ENV file
-$storageBucket = ''
-$storageEndpoint = '' 
-
-# PostgreSQL functions
-function Connect-PSQL {
-    param (
-        [Parameter(Mandatory = $true)]
-        [string]$dbhost,
-        [Parameter(Mandatory = $true)]
-        [string]$dbname,
-        [Parameter(Mandatory = $true)]
-        [string]$dbuser,
-        [string]$dbpass = ''
-    )
-    try {
-        $conn = New-Object System.Data.Odbc.OdbcConnection
-        $conn.ConnectionString = "Driver={PostgreSQL UNICODE(x64)};Server=$dbhost;Port=$MyPort;Database=$dbname;Uid=$dbuser;Pwd=$dbpass;"
-        $conn.open()
-        $conn
-    }
-    catch {
-        Write-Error "Unable to connect to database: $($_.Exception.Message)"
-    }
-}
-
-function Disconnect-PSQL {
-    Param(
-        [Parameter(Mandatory = $true)]
-        [psobject]$Connection
-    )
-    if ($Connection.state -eq 'Open') {
-        $Connection.close()
-    }
-}
-
-function Get-PSQLData {
-    param(
-        [Parameter(Mandatory = $true)]
-        [string]$Query,
-        [Parameter(Mandatory = $true)]
-        [psobject]$Connection
-    )
-
-    if ($Connection.state -ne 'Open') {
-        $Connection = Connect-PSQL @ConnectionDetails 
-    }
-    try {
-        Write-Verbose $Query
-        $cmd = New-Object System.Data.Odbc.OdbcCommand($Query, $Connection)
-        $cmd.CommandTimeout = 300
-        $ds = New-Object system.Data.DataSet
-        (New-Object system.Data.odbc.odbcDataAdapter($cmd)).fill($ds) | Out-Null
-        $ds.Tables[0]
-    }
-    catch {
-        Write-Error "Error getting query result: $($_.Exception.Message)"
-    }
-}
- 
-function Set-PSQLData {
-    param(
-        [Parameter(Mandatory = $true)]
-        [string]$Query,
-        [Parameter(Mandatory = $true)]
-        [psobject]$Connection
-    )
-
-    if ($Connection.state -ne 'Open') {
-        $Connection = Connect-PSQL @ConnectionDetails  
-    }
-    try {
-        Write-Verbose $Query
-        $cmd = New-Object System.Data.Odbc.OdbcCommand($Query, $Connection)
-        $cmd.ExecuteNonQuery()
-    }
-    catch {
-        Write-Error "Error executing query: $($_.Exception.Message)"
-    } 
-}
-
-# Detect MimeType for uploading to Hudu
-function Get-MimeType {
-    param($Extension = $null)
-    $mimeType = $null
-    if ( $null -ne $Extension ) {
-        $drive = Get-PSDrive HKCR -ErrorAction SilentlyContinue
-        if ( $null -eq $drive ) {
-            $drive = New-PSDrive -Name HKCR -PSProvider Registry -Root HKEY_CLASSES_ROOT
-        }
-        $mimeType = (Get-ItemProperty HKCR:$extension).'Content Type'
-    }
-    $mimeType
-}
-
-# Upload to Hudu with S3 AWS Powershell Module
-function New-HuduImage {
-    Param(
-        $Connection,
-        $FilePath,
-        $OutputPath,
-        $BucketName,
-        $EndpointUri,
-        $ArticleId
-    )
-
-    if (! (Test-Path $FilePath)) {
-        Write-Error "$FilePath does not exist"
-        return
-    }
-
-    if (!(Test-Path $OutputPath)) {
-        New-Item -ItemType Directory -Path $OutputPath | Out-Null
-    }
-
-    $OutputPath = (Get-Item $OutputPath).FullName
-
-    $File = Get-Item $FilePath
-    $Magick = New-Object ImageMagick.MagickImage($FilePath)
-    $MimeType = Get-MimeType -extension ".$($Magick.format)"
-
-    $Timestamp = Get-Date -Format 'yyyy-MM-dd HH:mm:ss.ffffff'
-    $PublicImageIndex = (Get-PSQLData -Connection $Connection -Query "INSERT INTO public.public_photos (image_data,record_type,record_id,created_at,updated_at) VALUES ('{}','Article',$ArticleId,'$Timestamp','$Timestamp') RETURNING id").id
-
-    $S3Path = "publicphoto/$PublicImageIndex/image/"
-
-    $OriginalMetadata = [PSCustomObject]@{
-        filename  = $File.Name
-        size      = $File.Length
-        width     = $Magick.Width
-        height    = $Magick.Height
-        mime_type = $MimeType
-    }
-    $OrigKey = ('{0}{1}' -f $S3Path, $OriginalName)
-    $WriteS3Orig = @{
-        BucketName  = $BucketName
-        EndpointUrl = $EndpointUri
-        File        = $FilePath
-        Key         = "uploads/$OrigKey"
-    }
-    Write-S3Object @WriteS3Orig | Out-Null
-
-    if ($Magick.Width -gt 1200) {
-        $Magick.Resize(1200, 0)
-    }
-    $Magick.Quality = 75
-
-    $OrigGuid = [guid]::newguid() -replace '-'
-    $ResizedGuid = [guid]::newguid() -replace '-'
-
-    $OriginalName = 'original-{0}{1}' -f $OrigGuid, $File.Extension
-    $ResizedName = 'resized-{0}{1}' -f $ResizedGuid, $File.Extension
-
-    try {
-        $Magick.Write("$OutputPath\$ResizedName")
-    }
-    catch { Write-Verbose "Error resizing image" }
-
-    if (Test-Path "$OutputPath\$ResizedName") {
-        $ResizedMagick = New-Object ImageMagick.MagickImage("$OutputPath\$ResizedName")
-        $ResizedFile = Get-Item "$OutputPath\$ResizedName"
-
-        $ResizedMetadata = [PSCustomObject]@{
-            filename  = $File.Name
-            size      = $ResizedFile.Length
-            width     = $ResizedMagick.Width
-            height    = $ResizedMagick.Height
-            mime_type = $MimeType
-        }
-        $ResizedKey = ('{0}{1}' -f $S3Path, $ResizedName)
-        $WriteS3Resized = @{
-            BucketName  = $BucketName
-            EndpointUrl = $EndpointUri
-            File        = $ResizedFile.FullName
-            Key         = "uploads/$ResizedKey"
-        }
-        Write-S3Object @WriteS3Resized | Out-Null
-        Remove-Item $ResizedFile.FullName
-    }
-    else {
-        $ResizedMetadata = $OriginalMetadata
-        $ResizedKey = $OrigKey
-    }
-
-    $ImageData = [PSCustomObject]@{
-        original = [PSCustomObject]@{
-            id       = $OrigKey
-            storage  = 'store'
-            metadata = $OriginalMetadata
-        }
-        resized  = [PSCustomObject]@{
-            id       = $ResizedKey
-            storage  = 'store'
-            metadata = $ResizedMetadata
-        }
-    } 
-    $Image = $ImageData | ConvertTo-Json -Depth 10 -Compress
-
-    $Timestamp = Get-Date -Format 'yyyy-MM-dd HH:mm:ss.ffffff'
-
-    $Query = "UPDATE public.public_photos SET image_data = '$Image' WHERE id = $PublicImageIndex"
-    
-    try {
-        Set-PSQLData -Connection $Connection -Query $Query | Out-Null
-
-        [PSCustomObject]@{
-            ImgSrc = '/public_photo/{0}' -f $PublicImageIndex
-            ArticleId = $ArticleId
-            ImageData = $ImageData
-            FileName = $File.Name
-        }
-    }
-    catch {
-        Write-Error ('Insert exception: {0}' -f $_.Exception.Message)
-    }
-}
+# Main settings load
+. $PSScriptRoot\Initialize-Module.ps1 -InitType 'Lite'
 
 # Pull an article, strip content apart searching for base64, use New-HuduImage to upload, and return a built string of HTML with the updated image sources
 function Repair-Base64ImagesFromArticle {
@@ -246,9 +13,8 @@ function Repair-Base64ImagesFromArticle {
         $ArticleID
     )
 
-    $Query = "Select content from articles where id=$ArticleID"
     Write-Host "Retrieving Content for Article $ArticleID"
-    $OriginalKBContent = (Get-PSQLData -Connection $Conn -Query $Query).content
+    $OriginalKBContent = (Get-HuduArticles -id $ArticleID).content
     
     Write-Host "Splitting by IMG tag to extract base64"
     $ImageTags = $OriginalKBContent -split "<IMG "
@@ -262,10 +28,13 @@ function Repair-Base64ImagesFromArticle {
             #$ImgMetadata = (($Img -split ' ')[1] -split '"')[1]
             $base64string = (($img -split 'base64,')[1] -split '"')[0].trim()
             $fileName = $TemporaryFolderPath.fullname + "\Article$ArticleID-image$imgCnt.b64"
-
+            
             Write-Host "Base64 image found. Saving to file $fileName"
             $bytes = [Convert]::FromBase64String($base64string)
             [IO.file]::WriteAllBytes($filename, $bytes)
+            $Magick = New-Object ImageMagick.MagickImage($fileName)
+            $NewExtension = "-b64.$($Magick.format)"
+            Move-Item -Path $filename -Destination $filename.replace('.b64', $NewExtension)
             $b64imgCnt++
 
         }
@@ -274,9 +43,10 @@ function Repair-Base64ImagesFromArticle {
 
     if ($b64imgCnt -eq $ImageTags.count) { Write-Host "All images were accounted for as Base64."}
 
-    $UploadedArticleImages = foreach ($Filename in (Get-ChildItem -Path $TemporaryFolderPath -Filter "Article$ArticleID-image*.b64")) {
-        Write-Host "Uploading $Filename.fullname to S3 Storage" -ForegroundColor Green
-        New-HuduImage -Connection $Conn -FilePath $Filename.fullname -OutputPath $TemporaryFolderPath  -BucketName $storageBucket -EndpointUri $storageEndpoint -ArticleId $ArticleID
+    $UploadedArticleImages = foreach ($Filename in (Get-ChildItem -Path $TemporaryFolderPath -Filter "Article$ArticleID-image*-b64.*")) {
+        Write-Host "Uploading $Filename.fullname to Hudu API" -ForegroundColor Green
+        $UploadedImage = New-HuduPublicPhoto -FilePath $Filename.fullname -RecordId $ArticleID -RecordType 'Article'
+        [pscustomobject]@{filename=$filename.name; imgsrc = $UploadedImage.public_photo.url }
     }
     
     if ($UploadedArticleImages) {
@@ -286,13 +56,13 @@ function Repair-Base64ImagesFromArticle {
         while ($imgCnt -gt 1) {
             $b64imgCnt--
             $imgCnt--
-            $s3Image = $UploadedArticleImages | Where-Object {(($_.filename -split '-')[1] -replace 'image','' -replace '.b64','') -eq $imgCnt }
-            if ($s3Image) {Write-Host "Found corresponding S3 image....updating" -ForegroundColor Red}
+            $HuduImage = $UploadedArticleImages | Where-Object {(($_.filename -split '-')[1] -replace 'image','' -replace '.b64','') -eq $imgCnt }
+            if ($HuduImage) {Write-Host "Found corresponding Hudu image....updating" -ForegroundColor Red}
             $Img = $ImageTags[$imgCnt]
             if ($Img -like '*data:image/*;base64*') {
                 Write-Host "Replacing Base64 Image index array of $imgCnt" -ForegroundColor Red
                 $base64string = (($img -split 'base64,')[1] -split '"')[0].trim()
-                $ImageTags[$imgCnt] = ($Img.replace("$base64string","REPLACEDSTRING:$($s3Image.ImgSrc)") -replace 'data:image/.*;base64,REPLACEDSTRING:','')
+                $ImageTags[$imgCnt] = ($Img.replace("$base64string","REPLACEDSTRING:$($HuduImage.ImgSrc)") -replace 'data:image/.*;base64,REPLACEDSTRING:','')
             }
 
             else {$img; Write-Host "WARNING: $imgcnt is not a base64 image" -ForegroundColor Yellow}
@@ -310,53 +80,8 @@ function Repair-Base64ImagesFromArticle {
 
 }
 
-# Import AWS Tools, and confirm credentials are saved as your default profile and bucket variables are set
-try {
-    Import-Module AWSPowerShell.NetCore
-    while ($ConfirmAWsCredential -notin 'Y','N') {
-        $ConfirmAWsCredential = Read-Host "Did you add your S3 API Access Keys as your default profile? (Y/n)"
-    }
-
-    if ($ConfirmAWsCredential -eq 'N') {
-        Set-AWSCredential -StoreAs default -AccessKey (Read-Host "Please enter your access key") -SecretKey (Read-Host "Please enter your secret key")
-    }
-    
-}
-catch {
-    Install-Module AWSPowerShell.NetCore -Scope CurrentUser -ErrorAction Stop
-    Set-AWSCredential -StoreAs default -AccessKey (Read-Host "Please enter your access key") -SecretKey (Read-Host "Please enter your secret key")
-}
-
-if (-not $storageBucket) {$storageBucket = Read-Host 'Enter your bucket name'}
-if (-not $storageEndpoint) {$storageEndpoint = Read-Host "Enter your storage endpoint url"}
-
-# Import ImageMagic Modules, prompt for path if the module is missing
-try {
-    if (!('ImageMagick.MagickImage' -as [type])) {
-        Add-Type -Path '.\Magick.NET-Q16-AnyCPU.dll'
-    }
-}
-catch {
-    $ImageMagickPath = (Read-Host "Failed to load ImageMagick. Please provide path for the three DLLs.") + "\Magick.NET-Q16-AnyCPU.dll"
-    if (Test-Path "$ImageMagickPath") {
-        Add-Type -Path $ImageMagickPath
-    }
-    else {
-        throw "ImageMagick wasn't found at the location specified"
-
-    }
-}
-
 # Setup Temporary location for workspace
 $TemporaryFolderPath = try {New-Item -Path "$($ENV:APPDATA)\HuduFix" -ItemType Directory -ErrorAction Stop} catch { Get-Item -Path "$($ENV:APPDATA)\HuduFix" }
-
-# Initiate DB Connection
-try {
-    $Conn = Connect-PSQL @ConnectionDetails -ErrorAction Stop
-}
-catch {
-    Throw "Failed to connect to database. Please make sure you've installed the ODBC Driver, and that you've tunneled the port."
-}
 
 # Main script running from here, will validate parameters and process the above functions based on values.
 
