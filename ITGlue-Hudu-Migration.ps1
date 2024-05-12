@@ -1467,10 +1467,14 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\ArticleBase.json")) {
     if ($ImportArticles -eq $true) {
 
         if ($GlobalKBFolder -in ('y','yes','ye')) {
-            If (-not ($GlobalKBFolder = Get-HuduFolders -name $InternalCompany)) {
+            if (-not ($GlobalKBFolder = Get-HuduFolders -name $InternalCompany)) {
                 $GlobalKBFolder = (New-HuduFolder -Name $InternalCompany).folder
             }
-        }
+        } 
+	else {
+ 		$null = $GlobalKBFolder
+   	}
+	
 
         $ITGDocuments = Import-CSV -Path (Join-Path -path $ITGLueExportPath -ChildPath "documents.csv")
         [string]$ITGDocumentsPath = Join-Path -path $ITGLueExportPath -ChildPath "Documents"
@@ -1506,7 +1510,7 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\ArticleBase.json")) {
             $company = $MatchedCompanies | where-object -filter { $_.CompanyName -eq $doc.organization }
             if (($company | Measure-Object).count -eq 1) {
 
-                $art_folder_id = ''
+                $null = $art_folder_id
                 if ($company.InternalCompany -eq $false) {
                     if (($folders | Measure-Object).count -gt 2) {
                         # Make / Check Folders
