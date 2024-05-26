@@ -1472,7 +1472,7 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\ArticleBase.json")) {
             }
         } 
 	else {
- 		$null = $GlobalKBFolder
+ 	 $GlobalKBFolder = $null
    	}
 	
 
@@ -1510,7 +1510,7 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\ArticleBase.json")) {
             $company = $MatchedCompanies | where-object -filter { $_.CompanyName -eq $doc.organization }
             if (($company | Measure-Object).count -eq 1) {
 
-                $null = $art_folder_id
+                $art_folder_id = $null
                 if ($company.InternalCompany -eq $false) {
                     if (($folders | Measure-Object).count -gt 2) {
                         # Make / Check Folders
