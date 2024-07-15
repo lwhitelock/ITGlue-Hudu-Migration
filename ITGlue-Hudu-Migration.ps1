@@ -1601,7 +1601,7 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Articles.json")) {
         $ArticleErrors = foreach ($Article in $MatchedArticles) {
 
             $page_out = ''
-            
+            $imagePath = $null
 	    
             # Check for attachments
             $attachdir = $Attachfiles | Where-Object { $_.PSIsContainer -eq $true -and $_.Name -match $Article.ITGID }
@@ -1675,12 +1675,19 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Articles.json")) {
                             Remove-Variable -Name imagePath -ErrorAction SilentlyContinue
                             Remove-Variable -Name foundFile -ErrorAction SilentlyContinue
                             Write-Warning "Unable to validate image file."
-                            [PSCustomObject]@{
-                            ErrorType = 'Image missing found'
+                            $ManualLog = [PSCustomObject]@{
+                            Document_Name = $Article.Name
+                            Asset_Type    = "Article"
+                            Company_Name  = $Article.HuduObject.company_name
+                            HuduID        = $Article.HuduID
+                            ErrorType = 'Missing image, file not found'
                             Details = "Neither $fullImgPath or $tnImgPath were found"
                             InFile = "$InFile"
                             MigrationObject = $Article
-                        }
+                            }
+
+                            $null = $ManualActions.add($ManualLog)
+
                     }
 
                         # Test the path to ensure that a file extension exists, if no file extension we get problems later on. We rename it if there's no ext.
@@ -1708,98 +1715,59 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Articles.json")) {
 
                                 }
                                 catch {
-                                    [PSCustomObject]@{
+                                    $ManualLog = [PSCustomObject]@{
+                                        Document_Name = $Article.Name
+                                        Asset_Type    = "Article"
+                                        Company_Name  = $Article.HuduObject.company_name
+                                        HuduID        = $Article.HuduID
                                         ErrorType = 'Failed to Upload to Backend Storage'
                                         Details = "$imagePath failed to upload to Hudu backend. $_"
                                         InFile = "$InFile"
                                         MigrationObject = $Article
                                     }
+
+                                    $null = $ManualActions.add($ManualLog)
                                 }
+
                                 if ($Magick -and $MovedItem) {
                                     Move-Item -Path $imagePath -Destination $OriginalFullImagePath
                                 }
         
                             }
                             else {
-                                [PSCustomObject]@{
+
+                                $ManualLog = [PSCustomObject]@{
+                                    Document_Name = $Article.Name
+                                    Asset_Type    = "Article"
+                                    Company_Name  = $Article.HuduObject.company_name
+                                    HuduID        = $Article.HuduID
                                     ErrorType       = 'Image Not Detected'
-                                    Details         = "$imagePath not detected as image"
-                                    InFile          = "$InFile"
+                                    Details         = "$imagePath not detected as image"        
+                                    InFile = "$InFile"
                                     MigrationObject = $Article
                                 }
+
+                                $null = $ManualActions.add($ManualLog)
+
                             }
                         }
                         else {
                             Write-Warning "Image $tnImgUrl file is missing"
-                            [PSCustomObject]@{
-                                ErrorType       = 'Image File Missing'
-                                Details         = "$tnImgUrl is not present in export"
-                                InFile          = "$InFile"
-                                MigrationObject = $Article
-                            }
+                            $ManualLog = [PSCustomObject]@{
+                                    Document_Name = $Article.Name
+                                    Asset_Type    = "Article"
+                                    Company_Name  = $Article.HuduObject.company_name
+                                    HuduID        = $Article.HuduID
+                                    ErrorType       = 'Image File Missing'
+                                    Details         = "$tnImgUrl is not present in export"   
+                                    InFile = "$InFile"
+                                    MigrationObject = $Article
+                                }
+
+                                $null = $ManualActions.add($ManualLog)
                         }
                     }
                 }
-                
-                <# Disabling this so that we can replace URLs at the end of the run with the entire content.
-                $links = @($html.Links)			
-                foreach ($link in $links) { 
-                    $LinkHref = "$($link.href)"
-                    try {
-                        $parsedurl = $LinkHref.SubString(0, $URLLength)
-                    }
-                    catch {
-                        continue
-                    }
-                    if ($parsedurl.ToLower() -eq $ITGURL.ToLower()) {
-                        Write-Host "Rewriting ITGlue link - $LinkHref"
-                        $ITGPath = $LinkHref.SubString($URLLength + 1)
-                        # Handle Documents Linked with their locator
-                                
-                        try {
-                            $IsDoc = $ITGPath.substring(0, 3) -eq 'DOC'
-                        }
-                        catch {
-                            $IsDoc = $false
-                            Write-Error $_.Exception.Message
-                            $Links
-                        }
-                        if ($IsDoc) {
-                            $HuduPath = ($MatchedArticles | Where-Object -filter { $_.ITGLocator -eq $ITGPath }).HuduObject.url
-                                    
-                            Write-Host "Matched DOC - $HuduPath"
-                        }
-                        else {
-                            if ($ITGPath.substring(0, 11) -eq 'attachments') {
-                                $ManualLog = [PSCustomObject]@{
-                                    Document_Name = $Article.name
-                                    Field_Name    = 'N/A'
-                                    Asset_Type    = $Article.HuduObject.asset_type
-                                    Company_Name  = $Article.HuduObject.company_name
-                                    HuduID        = $Article.HuduID
-                                    Notes         = 'Link to Document attachment.'
-                                    Action        = 'Manually upload document and relink'
-                                    Data          = "$LinkHref"
-                                    Hudu_URL      = "$($Article.HuduObject.url)"
-                                    ITG_URL       = "$ITGURL/$($Article.ITGLocator)"
-                                }
-                                $null = $ManualActions.add($ManualLog)
-                                #$HuduPath = ''
-                            }
-                            else {
-                                # Handle Documents linked manually via their edit URL
-                                $ITGlueID = (($ITGPath.split('/'))[2]).split('#')[0]
-                                $HuduPath = ($MatchedArticles | Where-Object -filter { $_.ITGID -eq $ITGlueID }).HuduObject.url
-                                Write-Host "Matched ID - $HuduPath"
-                            }
-        
-                        }
-                        Write-Host $HuduPath
-                        $link.href = "$HuduPath"
-                        Write-Host "Link Rewritten to $($link.href)"
-        
-                    }
-                } #>
             
                 $page_Source = $html.documentelement.outerhtml
                 $page_out = [regex]::replace($page_Source , '\xa0+', ' ')
@@ -1808,12 +1776,16 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Articles.json")) {
         
             if ($page_out -eq '') {
                 $page_out = 'Empty Document in IT Glue Export - Please Check IT Glue'
-                [PSCustomObject]@{
+                $ManualLog = [PSCustomObject]@{
+                    Document_Name   = $Article.name
+                    Asset_Type      = 'Article'
                     ErrorType       = 'Empty Document'
-                    Details         = 'An Empty Document Was Detected'
+                    Details         = 'An Empty Document Was Detected, may have attached files or empty doc in ITGlue Export'
                     InFile          = "$InFile"
                     MigrationObject = $Article
                 }
+
+                $null = $ManualActions.add($ManualLog)
             }
 			
 				
