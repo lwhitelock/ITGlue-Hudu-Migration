@@ -1,7 +1,13 @@
+    if (-not $MatchedPasswords) {$MatchedPasswords = (Get-Content -path "$MigrationLogs\Passwords.json" | ConvertFrom-json -depth 100) }
+    if (-not $MatchedAssetPasswords) {$MatchedAssetPasswords = (Get-Content -path "$MigrationLogs\AssetPasswords.json" | ConvertFrom-json -depth 100) }
+    if (-not $MatchedArticles) {$MatchedArticles = (Get-Content -path "$MigrationLogs\Articles.json" | ConvertFrom-json -depth 100) }
+    if (-not $MatchedCompanies) {$MatchedCompanies = (Get-Content -path "$MigrationLogs\Companies.json" | ConvertFrom-json -depth 100) }
+
 function Add-HuduRelation {
     param(
         $relation
     )
+
     switch ($relation.relation_type) {
         "AssetPassword" {
             if (!($HuduLinkedObject = $MatchedPasswords | Where-Object {$_.ITGID -eq $relation.itg_to_id})) {
@@ -14,6 +20,7 @@ function Add-HuduRelation {
         "Company" {
             $HuduLinkedObject = $MatchedCompanies | Where-Object {$_.ITGID -eq $relation.itg_to_id}
         }
+        default {Write-Warning "No matching relationship type found"}
     }
 
     if ($HuduLinkedObject) {
