@@ -1678,12 +1678,13 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Articles.json")) {
                             $ManualLog = [PSCustomObject]@{
                             Document_Name = $Article.Name
                             Asset_Type    = "Article"
-                            Company_Name  = $Article.HuduObject.company_name
+                            Company_Name  = $Article.Company.CompanyName
                             HuduID        = $Article.HuduID
-                            ErrorType = 'Missing image, file not found'
-                            Details = "Neither $fullImgPath or $tnImgPath were found"
-                            InFile = "$InFile"
-                            MigrationObject = $Article
+                            Notes = 'Missing image, file not found'
+                            Actions = "Neither $fullImgPath or $tnImgPath were found, validate the images exist in the export, or retrieve them from ITGlue directly"
+                            Data = "$InFile"
+                            Hudu_URL = $Article.HuduObject.url
+			    ITG_URL = "$ITGURL/$($Article.ITGLocator)"
                             }
 
                             $null = $ManualActions.add($ManualLog)
@@ -1718,12 +1719,13 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Articles.json")) {
                                     $ManualLog = [PSCustomObject]@{
                                         Document_Name = $Article.Name
                                         Asset_Type    = "Article"
-                                        Company_Name  = $Article.HuduObject.company_name
+                                        Company_Name  = $Article.Company.CompanyName
                                         HuduID        = $Article.HuduID
-                                        ErrorType = 'Failed to Upload to Backend Storage'
-                                        Details = "$imagePath failed to upload to Hudu backend. $_"
-                                        InFile = "$InFile"
-                                        MigrationObject = $Article
+                                        Notes = 'Failed to Upload to Backend Storage'
+                                        Action = "$imagePath failed to upload to Hudu backend with error $_`n Validate that uploads are working and you still have disk space."
+                                        Data = "$InFile"
+                                        Hudu_URL = $Article.HuduObject.url
+					ITG_URL = "$ITGURL/$($Article.ITGLocator)"
                                     }
 
                                     $null = $ManualActions.add($ManualLog)
@@ -1739,12 +1741,13 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Articles.json")) {
                                 $ManualLog = [PSCustomObject]@{
                                     Document_Name = $Article.Name
                                     Asset_Type    = "Article"
-                                    Company_Name  = $Article.HuduObject.company_name
+                                    Company_Name  = $Article.Company.CompanyName
                                     HuduID        = $Article.HuduID
-                                    ErrorType       = 'Image Not Detected'
-                                    Details         = "$imagePath not detected as image"        
-                                    InFile = "$InFile"
-                                    MigrationObject = $Article
+                                    Notes       = 'Image Not Detected'
+                                    Action         = "$imagePath not detected as image, validate the identified file is an image, or imagemagick modules are loaded"        
+                                    Data = "$InFile"
+                                    Hudu_URL = $Article.HuduObject.url
+				    ITG_URL = "$ITGURL/$($Article.ITGLocator)"
                                 }
 
                                 $null = $ManualActions.add($ManualLog)
@@ -1756,12 +1759,14 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Articles.json")) {
                             $ManualLog = [PSCustomObject]@{
                                     Document_Name = $Article.Name
                                     Asset_Type    = "Article"
-                                    Company_Name  = $Article.HuduObject.company_name
+                                    Company_Name  = $Article.Company.CompanyName
+				    Field_Name = 'N/A'
                                     HuduID        = $Article.HuduID
-                                    ErrorType       = 'Image File Missing'
-                                    Details         = "$tnImgUrl is not present in export"   
-                                    InFile = "$InFile"
-                                    MigrationObject = $Article
+                                    Notes       = 'Image File Missing'
+                                    Action         = "$tnImgUrl is not present in export,validate the image exists in ITGlue and manually replace in Hudu"   
+                                    Data = "$InFile"
+                                    Hudu_URL = $Article.HuduObject.url
+				    ITG_URL = "$ITGURL/$($Article.ITGLocator)"
                                 }
 
                                 $null = $ManualActions.add($ManualLog)
@@ -1779,10 +1784,14 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Articles.json")) {
                 $ManualLog = [PSCustomObject]@{
                     Document_Name   = $Article.name
                     Asset_Type      = 'Article'
-                    ErrorType       = 'Empty Document'
-                    Details         = 'An Empty Document Was Detected, may have attached files or empty doc in ITGlue Export'
-                    InFile          = "$InFile"
-                    MigrationObject = $Article
+		    Company_Name = $Article.Company.CompanyName
+		    Field_Name	   = 'N/A'
+		    HuduID = $Article.HuduID                    
+		    Notes       = 'Empty Document'
+		    Action	  = 'Validate the document is blank in ITGlue, or manually copy the content across. Note that embedded documents in ITGlue will be migrated in blank with an attachment of the original doc'
+                    Data          = "$InFile"
+                    Hudu_URL = $Article.HuduObject.url
+		    ITG_URL = "$ITGURL/$($Article.ITGLocator)"
                 }
 
                 $null = $ManualActions.add($ManualLog)
