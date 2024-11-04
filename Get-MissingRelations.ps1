@@ -82,5 +82,9 @@ $RelatedAssets = $FreshITGAssets |? {$_.data.relationships.'related-items'.data}
 $FreshConfigurations = $MatchedConfigurations | % {Get-ITGlueConfigurations -id $_.itgobject.id -include related_items}
 $RelatedConfigurations = $FreshConfigurations |? {$_.data.relationships.'related-items'.data}
 
+$FreshPasswords = $MatchedPasswords | % {Get-ITGluePasswords -id $_.itgobject.id -include related_items}
+$RelatedPasswords = $FreshPasswords |? {$_.data.relationships.'related-items'.data}
+
+
 $ConfigurationRelationsToCreate = Get-HuduRelationObject -ITGlueSourceObjects $RelatedConfigurations
 $AssetRelationsToCreate = Get-HuduRelationObject -ITGlueSourceObjects $RelatedAssets
