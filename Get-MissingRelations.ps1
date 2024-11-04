@@ -50,6 +50,9 @@ function Get-HuduRelationObject {
       'configurations' {
         $AssetType = 'configuration'
       }
+      'passwords' {
+        $AssetType = 'password'
+      }
     }
 
     $FromableHudu = Get-HuduIdFromItglueObject -AssetType $AssetType -ITGObjectId $ITGlueSourceObject.data.id
