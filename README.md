@@ -20,7 +20,7 @@ Password relations are only available from ITGlue when querying the API directly
 ## Get-MissingRelations.ps1 added
 This script should be run at the very end, with the Matched* variables existing from the migration, it'll loop through matched Configurations and Assets (Configurations and Flexible Assets in ITGlue) and pull the latest relations
 
-It will save two variables `$ConfigurationRelationsToCreate` and `$AssetRelationsToCreate` that can be used to build relations in Hudu using the `New-HuduRelation` command
+It will save two variables `$ConfigurationRelationsToCreate` and `$AssetRelationsToCreate` that can be used to build relations in Hudu using the `New-HuduRelation` command. Duplicate relations won't be created as it'll throw an error so it's safe to re-run.
 
 ## Version 2.x - Well tested but still beta version
 This version of the script brings an interactive migration process, settings will get saved by default to `%APPDATA%\HuduMigration` although they can be moved and then re-imported from a different path after creation.
