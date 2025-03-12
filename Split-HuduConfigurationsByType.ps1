@@ -1,8 +1,8 @@
 Import-Module ImportExcel
 Import-Module HuduAPI
 $Path = Read-Host "Provide spreadsheet mapping of ITGlue (configuration type names) to Hudu (asset layout names)"
-$APIKey = 'replace-me-with-your-api-key'
-$APIBaseUrl = 'https://replace/me/with/your/hudu/URL'
+$APIKey = Read-Host "Enter your Hudu API Key"
+$APIBaseUrl = Read-Host "Enter your Hudu Base URL"
 $ALS = Import-Excel $Path
 
 New-HuduAPIKey $APIKey
