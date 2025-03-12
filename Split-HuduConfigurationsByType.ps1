@@ -6,7 +6,7 @@ $APIBaseUrl = Read-Host "Enter your Hudu Base URL"
 $ALS = Import-Excel $Path
 
 New-HuduAPIKey $APIKey
-New-HuduBaseUrl = $APIBaseUrl
+New-HuduBaseUrl $APIBaseUrl
 $AssetLayouts = Get-HuduAssetLayouts
 $Configurations = Get-HuduAssets -AssetLayoutId ($AssetLayouts |? {$_.name -eq 'Configurations'}).id
 $ReformedConfigurations = $Configurations |select @{n='type'; e={ ($_.fields |? {$_.label -eq 'Configuration Type Name'}).value}},*
