@@ -9,16 +9,12 @@ New-HuduAPIKey $APIKey
 New-HuduBaseUrl $APIBaseUrl
 $AssetLayouts = Get-HuduAssetLayouts
 $Configurations = Get-HuduAssets -AssetLayoutId ($AssetLayouts |? {$_.name -eq 'Configurations'}).id
-$ReformedConfigurations = $Configurations |select @{n='type'; e={ ($_.fields |? {$_.label -eq 'Configuration Type Name'}).value}},*
-$GroupedReformedConfigurations  = $ReformedConfigurations| Group-Object -Property type
-
-# Add ID to each layout
-foreach ($AL in $ALS) {$AL|Add-Member -MemberType NoteProperty -Name assetlayout_id -Value ($AssetLayouts|?{$_.name -eq $AL.hudu}).id -Force}
+$ReformedConfigurations = $Configurations | Select @{n='new_assetlayout_id'; e={ $c=$_; ($als |? {$_.'IT Glue' -eq ($c.fields |? {$_.label -eq 'Configuration type name'}).value}).assetlayout_id },*
+$AssetsToProcess = $ReformedConfigurations |? {$_.new_assetlayout_id -ne $null}
 
 # Move asset layouts
-$Results = foreach ($AL in $ALS[0]) {
+$Results = foreach ($Asset in $AssetsToProcess[0]) {
   # Pull Configurations by name
-  $AssetsToMove = ($GroupedReformedConfigurations |? {$_.name -eq $AL.'IT Glue'}).group
-  Write-Host "Moving $($AssetsToMove.count) configurations of $($AL.'IT Glue') type to asset layout $($AL.Hudu)" -ForegroundColor Cyan
+  Write-Host "Moving $($Asset.name) configuration of $($Asset.fields |? {$_.label -eq 'Configuration type name'}).value) type to asset layout $($Asset.new_assetlayout_id)" -ForegroundColor Cyan
   Move-HuduAssetsToNewLayout -AssetsToMove $AssetsToMove -NewAssetLayoutID $al.assetlayout_id
 }
