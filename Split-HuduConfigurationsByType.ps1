@@ -15,6 +15,6 @@ $AssetsToProcess = $ReformedConfigurations |? {$_.new_assetlayout_id -ne $null}
 # Move asset layouts
 $Results = foreach ($Asset in $AssetsToProcess) {
   # Pull Configurations by name
-  Write-Host "Moving $($Asset.name) configuration of $($Asset.fields |? {$_.label -eq 'Configuration type name'}).value) type to asset layout $($Asset.new_assetlayout_id)" -ForegroundColor Cyan
-  Move-HuduAssetsToNewLayout -Id $_.id -CompanyId $_.company_id -AssetLayoutId $_.new_assetlayout_id 
+  Write-Host "Moving $($Asset.name) configuration of $(($Asset.fields |? {$_.label -eq 'Configuration type name'}).value) type to asset layout $($Asset.new_assetlayout_id)" -ForegroundColor Cyan
+  Move-HuduAssetsToNewLayout -Id $Asset.id -CompanyId $Asset.company_id -AssetLayoutId $Asset.new_assetlayout_id 
 }
