@@ -10,6 +10,14 @@ $StagingRoot = (Get-Item $MigrationLogs).Parent.FullName
 # Attachments Path
 $AttachmentsPath = (Join-Path -Path $ITGLueExportPath -ChildPath "attachments")
 
+# API Rate Limit Delay
+# Sets rate limit delay in seconds. Default is 5 seconds. Hudu cloud API has a rate limit of 300 requests per minute.
+# This is to prevent hitting the API too fast and getting rate limited.
+# This is a good default for most Hudu instances, but you may want to adjust it 
+# if you are self-hosted and would like to increase the number of requests per second.
+$RateLimitDelay = 5
+
+
 ###################### Initial Setup and Confirmations ###############################
 Write-Host "#######################################################" -ForegroundColor Yellow
 Write-Host "#                                                     #" -ForegroundColor Yellow
@@ -85,6 +93,7 @@ param(
                     status  = "FAILED: $($_.Exception.Message)"
                     }
                 }
+                Start-Sleep -Seconds $RateLimitDelay # Introduce delay to respect rate limits
             }
         }
     }
