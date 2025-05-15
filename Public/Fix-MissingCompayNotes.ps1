@@ -1,21 +1,24 @@
-param(
-    [switch]$Direct
-)
-if ($Direct) {
+# Check if this is a direct run, and load the logs if so the first time.
+if (-not ($FirstTimeLoad -eq 1)) {
     # General Settings Load
     . $PSScriptRoot\..\Initialize-Module.ps1 -InitType 'Lite'
     
     # Add Replace URL functions
     . $PSScriptRoot\..\Private\ConvertTo-HuduURL.ps1
+
+    Write-Host "Checking for Matched Variables"
+    if (-not $MatchedPasswords) {$MatchedPasswords = (Get-Content -path "$MigrationLogs\Passwords.json" | ConvertFrom-json -depth 100) }
+    if (-not $MatchedAssetPasswords) {$MatchedAssetPasswords = (Get-Content -path "$MigrationLogs\AssetPasswords.json" | ConvertFrom-json -depth 100) }
+    if (-not $MatchedArticleBase) {$MatchedArticleBase = Get-Content "$MigrationLogs\ArticleBase.json" -raw | Out-String | ConvertFrom-Json -depth 100}
+    if (-not $MatchedArticles) {$MatchedArticles = (Get-Content -path "$MigrationLogs\Articles.json" | ConvertFrom-json -depth 100) }
+    if (-not $MatchedCompanies) {$MatchedCompanies = (Get-Content -path "$MigrationLogs\Companies.json" | ConvertFrom-json -depth 100) }
+    if (-not $MatchedConfigurations) {$MatchedConfigurations = Get-Content "$MigrationLogs\Configurations.json" -raw | Out-String | ConvertFrom-Json -depth 100}
+    if (-not $MatchedAssets) {$MatchedAssets = Get-Content "$MigrationLogs\Assets.json" -raw | Out-String | ConvertFrom-Json -depth 100}
+    # Set the context so logs don't run again unless the powershell window gets closed.
+    $FirstTimeLoad = 1
 }
 
-Write-Host "Checking for Matched Variables"
 
- if (!$MatchedCompanies) {$MatchedCompanies = Get-Content "$MigrationLogs\Companies.json" -raw | Out-String | ConvertFrom-Json}
- if (!$MatchedArticleBase) {$MatchedArticleBase = Get-Content "$MigrationLogs\ArticleBase.json" -raw | Out-String | ConvertFrom-Json}
- if (!$MatchedPasswords) {$MatchedPasswords = Get-Content "$MigrationLogs\Passwords.json" -raw | Out-String | ConvertFrom-Json}
- if (!$MatchedConfigurations) {$MatchedConfigurations = Get-Content "$MigrationLogs\Configurations.json" -raw | Out-String | ConvertFrom-Json}
- if (!$MatchedAssets) {$MatchedAssets = Get-Content "$MigrationLogs\Assets.json" -raw | Out-String | ConvertFrom-Json}
 
 
 Write-Host "Loading Organizations from CSV"
