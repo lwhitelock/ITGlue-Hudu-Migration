@@ -1,6 +1,9 @@
 # Main settings load
 . $PSScriptRoot\Initialize-Module.ps1 -InitType 'Full'
 
+# Use this to set the context of the script runs
+$FirstTimeLoad = 1
+
 ############################### Functions ###############################
 # Import ImageMagick for Invoke-ImageTest Function (Disabled)
  . $PSScriptRoot\Private\Initialize-ImageMagik.ps1
