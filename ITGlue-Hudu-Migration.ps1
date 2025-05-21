@@ -503,7 +503,13 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Websites.json")) {
 
                     Write-Host "Starting $($unmatchedWebsite.Name)"
 
-                    $HuduNewWebsite = New-HuduWebsite -name "https://$($unmatchedWebsite.ITGObject.attributes.name)" -notes $unmatchedWebsite.ITGObject.attributes.notes -paused $DisableWebsiteMonitoring -companyid $company.HuduCompanyObject.ID -disabledns $DisableWebsiteMonitoring -disablessl $DisableWebsiteMonitoring -disablewhois $DisableWebsiteMonitoring
+                    $HuduNewWebsite = New-HuduWebsite -name "https://$($unmatchedWebsite.ITGObject.attributes.name)" `
+                                                -notes $unmatchedWebsite.ITGObject.attributes.notes `
+                                                -paused $DisableWebsiteMonitoring `
+                                                -companyid $company.HuduCompanyObject.ID `
+                                                -disabledns $DisableWebsiteMonitoring `
+                                                -disablessl $DisableWebsiteMonitoring `
+                                                -disablewhois $DisableWebsiteMonitoring
 
 
                     $unmatchedWebsite.matched = $true
