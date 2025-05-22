@@ -16,7 +16,7 @@ function Write-TimedMessage {
             $DefaultResponse="Proceeding"
         }
 
-        if ($DefaultResponse -eq $null) {
+        if ($null -eq $DefaultResponse) {
             Write-Host "$Message $TimeoutStatement"
         } else {
             Write-Host "$Message $TimeoutStatement - Noninteractive mode. Assuming response of ($DefaultResponse) after timeout."
