@@ -502,12 +502,6 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Websites.json")) {
                     Confirm-Import -ImportObjectName "$($unmatchedWebsite.Name)" -ImportObject $unmatchedWebsite -ImportSetting $ImportOption
 
                     Write-Host "Starting $($unmatchedWebsite.Name);"
-                    if ($true -eq $DisableWebsiteMonitoring){
-                        Write-Host "website monitoring is disabled"
-                    } else {
-                        Write-Host "website monitoring is enabled"
-                    }
-
                     $HuduNewWebsite = New-HuduWebsite -name "https://$($unmatchedWebsite.ITGObject.attributes.name)" `
                                                 -notes $unmatchedWebsite.ITGObject.attributes.notes `
                                                 -paused $DisableWebsiteMonitoring `
