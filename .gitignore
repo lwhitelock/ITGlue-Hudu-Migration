@@ -1,2 +1,6 @@
 .vscode*
 .vscode/launch.json
+logs*
+logs/*
+export*
+export/*

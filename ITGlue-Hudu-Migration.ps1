@@ -8,8 +8,14 @@ $FirstTimeLoad = 1
 # Import ImageMagick for Invoke-ImageTest Function (Disabled)
  . $PSScriptRoot\Private\Initialize-ImageMagik.ps1
 
+ # Import OpenXML for Libre Doc/Docx Processing
+ . $PSScriptRoot\Private\Initialize-OpenXML.ps1
+
 # Used to determine if a file is an image and what type of image
 . $PSScriptRoot\Private\Invoke-ImageTest.ps1
+
+# Used to determine if a file is an image and what type of image
+. $PSScriptRoot\Private\Convert-DocFile.ps1
 
 # Confirm Object Import
 . $PSScriptRoot\Private\Confirm-Import.ps1
