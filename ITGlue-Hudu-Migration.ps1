@@ -1853,7 +1853,7 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Passwords.json")) {
 
     #Import Passwords
     Write-Host "Fetching Passwords from IT Glue" -ForegroundColor Green
-    $PasswordSelect = { (Get-ITGluePasswords -page_size 1000 -page_number $i -include related_items).data }
+    $PasswordSelect = { Get-ITGluePasswords -page_size $page_size -page_number $i }
     $ITGPasswords = Import-ITGlueItems -ItemSelect $PasswordSelect -MigrationName 'Passwords'
     try {
         Write-Host "Loading Passwords from CSV for faster import" -foregroundcolor Cyan
@@ -1867,31 +1867,57 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Passwords.json")) {
         $ITGPasswords = $ITGPasswordsSingle
     }
     
+    Write-Host "$($ITGPasswords.count) IT Glue Passwords Found"
 
+    $PasswordsInCSV = [System.Collections.ArrayList]::new()
+    $PasswordsNotInCSV = [System.Collections.ArrayList]::new()
 
-    Write-Host "$($ITGPasswords.count) ITG Glue Passwords Found" 
-
-    $MatchedPasswords = foreach ($itgpassword in $ITGPasswords ) {
-        if ($ITGPasswordsRaw) {
-            #Write-Host "Using faster CSV Password" -ForegroundColor Gray
-            $ITGPasswordValue = ($ITGPasswordsRaw |Where-Object {$_.id -eq $itgpassword.id}).password
-            $OTPSecretValue = ($ITGPasswordsRaw |Where-Object {$_.id -eq $itgpassword.id}).otp_secret
-            $itgpassword.attributes | Add-Member -MemberType NoteProperty -Name password -Value $ITGPasswordValue -force
-            $itgpassword.attributes | Add-Member -MemberType NoteProperty -Name otp_secret -Value $OTPSecretValue -force
-        }
-        
-
-        [PSCustomObject]@{
-            "Name"       = $itgpassword.attributes.name
-            "ITGID"      = $itgpassword.id
-            "HuduID"     = ""
-            "Matched"    = $false
-            "HuduObject" = ""
-            "ITGObject"  = $itgpassword
-            "Imported"   = ""
+    $IdOrganizationMap = @{}
+    foreach ($row in $ITGPasswordsRaw) {
+        $IdOrganizationMap[[string]$row.id] = @{
+            'password' = $row.password
+            'otp_secret' = $row.otp_secret
         }
     }
 
+    foreach ($row in $ITGPasswords) {
+        if ($IdOrganizationMap.ContainsKey([string]$row.id) -eq $true) {
+            $row.attributes | Add-Member -MemberType 'NoteProperty' -Name 'password' -Value $IdOrganizationMap[[string]$row.id].password
+            $row.attributes | Add-Member -MemberType 'NoteProperty' -Name 'otp_secret' -Value $IdOrganizationMap[[string]$row.id].otp_secret
+            [void]$PasswordsInCSV.Add($row)
+        } else {
+            [void]$PasswordsNotInCSV.Add($row)
+        }
+    }
+
+    $MatchedPasswords = New-Object 'System.Collections.ArrayList'
+    foreach ($itgpassword in $PasswordsInCSV) {
+        [void]$MatchedPasswords.Add(
+            [PSCustomObject]@{
+                "Name"       = $itgpassword.attributes.name
+                "ITGID"      = $itgpassword.id
+                "HuduID"     = ""
+                "Matched"    = $false
+                "HuduObject" = ""
+                "ITGObject"  = $itgpassword
+                "Imported"   = ""
+            }
+        )
+    }
+    foreach ($itgpassword in $PasswordsNotInCSV) {
+        $FullPassword = (Get-ITGluePasswords -id $itgpassword.id -include related_items).data
+        [void]$MatchedPasswords.Add(
+            [PSCustomObject]@{
+                "Name"       = $itgpassword.attributes.name
+                "ITGID"      = $itgpassword.id
+                "HuduID"     = ""
+                "Matched"    = $false
+                "HuduObject" = ""
+                "ITGObject"  = $FullPassword
+                "Imported"   = ""
+            }
+        )
+    }
 
     Write-Host "Passwords to Migrate"
     $MatchedPasswords | Sort-Object Name |  Select-Object Name | Format-Table
@@ -1908,7 +1934,6 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Passwords.json")) {
                 Write-Host "Migrating $($company.CompanyName)" -ForegroundColor Green
 
                 foreach ($unmatchedPassword in ($MatchedPasswords | Where-Object { $_.Matched -eq $false -and $company.ITGCompanyObject.id -eq $_."ITGObject".attributes."organization-id" })) {
-				
 
                     Confirm-Import -ImportObjectName "$($unmatchedPassword.Name)" -ImportObject $unmatchedPassword -ImportSetting $ImportOption
 
