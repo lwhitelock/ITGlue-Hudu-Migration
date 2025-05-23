@@ -48,6 +48,9 @@ $FontAwesomeUpgrade = Get-FontAwesomeMap
 # Add Hudu Relations Function
 . $PSScriptRoot\Public\Add-HuduRelation.ps1
 
+# Add Timed (Noninteractive) Messages Helper
+. $PSScriptRoot\Public\Write-TimedMessage.ps1
+
 ############################### End of Functions ###############################
 
 
@@ -96,7 +99,7 @@ Write-Host "It is unofficial and you run it entirely at your own risk" -Foregrou
 Write-Host "You accept full responsibility for any problems caused by running it" -ForegroundColor Red
 Write-Host "######################################################" -ForegroundColor Red
 
-$backups = Read-Host "Y/n"
+$backups=$(if ($true -eq $NonInteractive) {"Y"} else {Read-Host "Y/n"})
 
 $ScriptStartTime = $(Get-Date -Format "o")
 
@@ -153,7 +156,7 @@ if (Test-Path -Path "$MigrationLogs") {
         $ResumeFound = $true
     } else {
         Write-Host "A previous attempt has been found, resume is disabled so this will be lost, if you haven't reverted to a snapshot, a resume is recommended" -ForegroundColor Red
-        Read-Host "Press any key to continue or ctrl + c to quit and edit the ResumePrevious setting"
+        Write-TimedMessage -Timeout 12 -Message "Press any key to continue or ctrl + c to quit and edit the ResumePrevious setting" -DefaultResponse "proceed with new migration, do not resume"
         $ResumeFound = $false
     }
 } else {
@@ -237,7 +240,7 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Companies.json")) {
     Write-Host "Your Internal Company has been matched to: $(($MatchedCompanies | Sort-Object CompanyName | Where-Object {$_.InternalCompany -eq $true} | Select-Object CompanyName).companyname) in IT Glue"
     Write-Host "The documents under this customer will be migrated to the Global KB in Hudu"
     Write-Host ""
-    Read-Host -Prompt "Press Return to continue or CTRL+C to quit if this is not correct" 
+    Write-TimedMessage -Message "Internal Company Correct? Press Return to continue or CTRL+C to quit if this is not correct" -Timeout 12 -DefaultResponse "Assuming found match on '$(($MatchedCompanies | Sort-Object CompanyName | Where-Object {$_.InternalCompany -eq $true} | Select-Object CompanyName).companyname)' is correct."
 
     Write-Host "Matched Companies (Already exist so will not be migrated)"
     $MatchedCompanies | Sort-Object CompanyName | Where-Object { $_.Matched -eq $true } | Select-Object CompanyName | Format-Table
@@ -313,13 +316,13 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Companies.json")) {
             Write-Host "All Companies matched, no migration required" -foregroundcolor green
         } else {
             Write-Host "Warning Import Companies is set to disabled so the above unmatched companies will not have data migrated" -foregroundcolor red
-            Read-Host -Prompt "Press any key to continue or CTRL+C to quit" 
+            Write-TimedMessage -Message "Press any key to continue or CTRL+C to quit" -DefaultResponse "continue and wrap-up companies, please." -Timeout 6
         }
     }
 
     # Save the results to resume from if needed
     $MatchedCompanies | ConvertTo-Json -depth 100 | Out-File "$MigrationLogs\Companies.json"
-    Read-Host "Snapshot Point: Companies Migrated Continue?"
+    Write-TimedMessage -Timeout 3 -Message "Snapshot Point: Companies Migrated Continue?"  -DefaultResponse "continue to Locations, please."
 
 }
 
@@ -434,7 +437,7 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Locations.json")) {
 
     # Save the results to resume from if needed
     $MatchedLocations | ConvertTo-Json -depth 100 | Out-File "$MigrationLogs\Locations.json"
-    Read-Host "Snapshot Point: Locations Migrated Continue?"
+    Write-TimedMessage -Timeout 3 -Message "Snapshot Point: Locations Migrated Continue?"  -DefaultResponse "continue to Websites, please."
 
 }
 
@@ -534,14 +537,13 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Websites.json")) {
         if ($UnmappedWebsiteCount -eq 0) {
             Write-Host "All $MigrationName matched, no migration required" -foregroundcolor green
         } else {
-            Write-Host "Warning Import Websites is set to disabled so the above unmatched Websites will not have data migrated" -foregroundcolor red
-            Read-Host -Prompt "Press any key to continue or CTRL+C to quit" 
+            Write-TimedMessage -Timeout 12 -Message "Warning Import Websites is set to disabled so the above unmatched Websites will not have data migrated... Press any key to continue or CTRL+C to quit"  -DefaultResponse "continue and wrap-up Websites, please."
         }
     }
 
     # Save the results to resume from if needed
     $MatchedWebsites | ConvertTo-Json -depth 100 | Out-File "$MigrationLogs\Websites.json"
-    Read-Host "Snapshot Point: Websites Migrated Continue?"
+    Write-TimedMessage -Timeout 3 -Message  "Snapshot Point: Websites Migrated Continue?"  -DefaultResponse "continue to Configurations, please."
 
 }
 
@@ -815,7 +817,7 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Configurations.json")
             Write-Host ""
             Write-Host "Processing $ConfigType"
             Write-Host "Please provide the Asset Layout name for $ConfigType in Hudu." -foregroundcolor green
-            $ConfigImportAssetLayoutName = Read-Host "Please enter layout name"
+            $ConfigImportAssetLayoutName = $(Write-TimedMessage -Timeout 12 -Message "Please enter layout name" -DefaultResponse $ConfigType)
 		
 
             $ParsedITGConfigs = $ITGConfigurations | Where-Object -filter { $_.attributes."configuration-type-name" -eq $ConfigType }
@@ -851,7 +853,7 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Configurations.json")
 
     # Save the results to resume from if needed
     $MatchedConfigurations | ConvertTo-Json -depth 100 | Out-File "$MigrationLogs\Configurations.json"
-    Read-Host "Snapshot Point: Configurations Migrated Continue?"
+    Write-TimedMessage -Timeout 3 -Message "Snapshot Point: Configurations Migrated Continue?"  -DefaultResponse "continue to Contacts, please."
 
 }
 
@@ -971,7 +973,7 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Contacts.json")) {
 
     # Save the results to resume from if needed
     $MatchedContacts | ConvertTo-Json -depth 100 | Out-File "$MigrationLogs\Contacts.json"
-    Read-Host "Snapshot Point: Contacts Migrated Continue?"
+    Write-TimedMessage -Timeout 3 -Message "Snapshot Point: Contacts Migrated Continue?"  -DefaultResponse "continue to Flexible Asset Layouts, please."
 
 }
 
@@ -1241,7 +1243,7 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\AssetLayouts.json")) 
 
     $AllFields | ConvertTo-Json -depth 100 | Out-File "$MigrationLogs\AssetLayoutsFields.json"
     $MatchedLayouts | ConvertTo-Json -depth 100 | Out-File "$MigrationLogs\AssetLayouts.json"
-    Read-Host "Snapshot Point: Layouts Migrated Continue?"
+    Write-TimedMessage -Timeout 3 -Message "Snapshot Point: Layouts Migrated Continue?"  -DefaultResponse "continue to Flexible Assets, please."
 
 }
 
@@ -1467,7 +1469,7 @@ $ITGPasswordsRaw = Import-CSV -Path "$ITGLueExportPath\passwords.csv"
         $MatchedAssetPasswords | ConvertTo-Json -depth 100 | Out-File "$MigrationLogs\AssetPasswords.json"
         $ManualActions | ConvertTo-Json -depth 100 | Out-File "$MigrationLogs\ManualActions.json"
         $RelationsToCreate | ConvertTo-Json -Depth 20 | Out-File "$MigrationLogs\RelationsToCreate.json"
-        Read-Host "Snapshot Point: Assets Migrated Continue?"
+        Write-TimedMessage -Timeout 3 -Message "Snapshot Point: Assets Migrated Continue?" -DefaultResponse "continue to Documents/Articles, please."
     }
 }
 
@@ -1597,7 +1599,7 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\ArticleBase.json")) {
         }
         $MatchedArticles | ConvertTo-Json -depth 100 | Out-File "$MigrationLogs\ArticleBase.json"
         $ManualActions | ConvertTo-Json -depth 100 | Out-File "$MigrationLogs\ManualActions.json"
-        Read-Host "Snapshot Point: Stub Articles Created Continue?"
+        Write-TimedMessage -Timeout 3 -Message "Snapshot Point: Stub Articles Created Continue?"  -DefaultResponse "continue to Document/Article Bodies, please."
     }
 
 }
@@ -1839,7 +1841,7 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Articles.json")) {
         $MatchedArticles | ConvertTo-Json -depth 100 | Out-File "$MigrationLogs\Articles.json"
         $ArticleErrors | ConvertTo-Json -depth 100 | Out-File "$MigrationLogs\ArticleErrors.json"
         $ManualActions | ConvertTo-Json -depth 100 | Out-File "$MigrationLogs\ManualActions.json"
-        Read-Host "Snapshot Point: Articles Created Continue?"
+        Write-TimedMessage -Timeout 3 -Message "Snapshot Point: Articles Created Continue?" -DefaultResponse "continue to Passwords, please."
 
     }
 
@@ -2034,14 +2036,14 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Passwords.json")) {
             Write-Host "All Passwords matched, no migration required" -foregroundcolor green
         } else {
             Write-Host "Warning Import passwords is set to disabled so the above unmatched passwords will not have data migrated" -foregroundcolor red
-            Read-Host -Prompt "Press any key to continue or CTRL+C to quit" 
+            Write-TimedMessage -Timeout 3 -Message "Press any key to continue or CTRL+C to quit"  -DefaultResponse "continue wrap-up of passwords, please."
         }
     }
 
     # Save the results to resume from if needed
     $MatchedPasswords | ConvertTo-Json -depth 100 | Out-File "$MigrationLogs\Passwords.json"
     $ManualActions | ConvertTo-Json -depth 100 | Out-File "$MigrationLogs\ManualActions.json"
-    Read-Host "Snapshot Point: Passwords Finished. Continue?"
+    Write-TimedMessage -Timeout 3 -Message "Snapshot Point: Passwords Finished. Continue?"  -DefaultResponse "continue to Document/Article Updates, please."
 }
 
 ############################## Update ITGlue URLs on All Areas to Hudu #######################
@@ -2072,7 +2074,7 @@ foreach ($articleFound in $UpdateArticles) {
 }
 
 $articlesUpdated | ConvertTo-Json -depth 100 |Out-file "$MigrationLogs\ReplacedArticlesURL.json"
-Read-Host "Snapshot Point: Article URLs Replaced. Continue?"
+Write-TimedMessage -Timeout 3 -Message "Snapshot Point: Article URLs Replaced. Continue?"  -DefaultResponse "continue to Assets, please."
 
 # Assets
 $assetsUpdated = @()
@@ -2098,7 +2100,7 @@ foreach ($assetFound in $UpdateAssets.HuduObject) {
 }
 
 $assetsUpdated | ConvertTo-Json -depth 100 |Out-file "$MigrationLogs\ReplacedAssetsURL.json"
-Read-Host "Snapshot Point: Assets URLs Replaced. Continue?"
+Write-TimedMessage -Timeout 3 -Message  "Snapshot Point: Assets URLs Replaced. Continue?" -DefaultResponse "continue to Passwords Matching, please."
 
 # Passwords
 $passwordsUpdated = @()
@@ -2111,7 +2113,7 @@ foreach ($passwordFound in $UpdatePasswords.HuduObject) {
     }
 }
 $passwordsUpdated | ConvertTo-Json -depth 100 |Out-file "$MigrationLogs\ReplacedPasswordsURL.json"
-Read-Host "Snapshot Point: Password URLs Replaced. Continue?"
+Write-TimedMessage -Timeout 3 -Message  "Snapshot Point: Password URLs Replaced. Continue?"  -DefaultResponse "continue to Asset Passwords Matching, please."
 
 # Asset Passwords
 $assetPasswordsUpdated = @()
@@ -2126,7 +2128,7 @@ foreach ($passwordFound in $UpdateAssetPasswords) {
     
 }
 $assetPasswordsUpdated | ConvertTo-Json -depth 100 |Out-file "$MigrationLogs\ReplacedAssetPasswordsURL.json"
-Read-Host "Snapshot Point: Asset Passwords URLs Replaced. Continue?"
+Write-TimedMessage -Timeout 3 -Message  "Snapshot Point: Asset Passwords URLs Replaced. Continue?"  -DefaultResponse "continue to Company Notes, please."
 
 # Company Notes
 $companyNotesUpdated = @()
@@ -2140,7 +2142,7 @@ foreach ($companyFound in $UpdateCompanyNotes.HuduCompanyObject) {
 
 }
 $companyNotesUpdated | ConvertTo-Json -depth 100 |Out-file "$MigrationLogs\ReplacedCompaniesURL.json"
-Read-Host "Snapshot Point: Company Notes URLs Replaced. Continue?"
+Write-TimedMessage -Timeout 3 -Message "Snapshot Point: Company Notes URLs Replaced. Continue?"  -DefaultResponse "continue to Manual Actions, please."
 
 ############################### Generate Manual Actions Report ###############################
 
@@ -2270,6 +2272,6 @@ Write-Host "$(($MatchedPasswords | Measure-Object).count) : Passwords Migrated" 
 Write-Host "#######################################################" -ForegroundColor Green
 Write-Host "Manual Actions report can be found in ManualActions.html in the folder the script was run from"
 Write-Host "Logs of what was migrated can be found in the MigrationLogs folder"
-Read-Host "Press any key to view the manual actions report or Ctrl+C to end"
+Write-TimedMessage -Message "Press any key to view the manual actions report or Ctrl+C to end" -Timeout 120  -DefaultResponse "continue, view generative Manual Actions webpage, please."
 
 Start-Process ManualActions.html
