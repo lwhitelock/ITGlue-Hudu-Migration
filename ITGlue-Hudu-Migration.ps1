@@ -501,9 +501,14 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Websites.json")) {
 
                     Confirm-Import -ImportObjectName "$($unmatchedWebsite.Name)" -ImportObject $unmatchedWebsite -ImportSetting $ImportOption
 
-                    Write-Host "Starting $($unmatchedWebsite.Name)"
-
-                    $HuduNewWebsite = New-HuduWebsite -name "https://$($unmatchedWebsite.ITGObject.attributes.name)" -notes $unmatchedWebsite.ITGObject.attributes.notes -paused $DisableWebsiteMonitoring -companyid $company.HuduCompanyObject.ID -disabledns $DisableWebsiteMonitoring -disablessl $DisableWebsiteMonitoring -disablewhois $DisableWebsiteMonitoring
+                    Write-Host "Starting $($unmatchedWebsite.Name);"
+                    $HuduNewWebsite = New-HuduWebsite -name "https://$($unmatchedWebsite.ITGObject.attributes.name)" `
+                                                -notes $unmatchedWebsite.ITGObject.attributes.notes `
+                                                -paused $DisableWebsiteMonitoring `
+                                                -companyid $company.HuduCompanyObject.ID `
+                                                -DisableDNS $DisableWebsiteMonitoring.ToString().ToLower() `
+                                                -DisableSSL $DisableWebsiteMonitoring.ToString().ToLower() `
+                                                -DisableWhois $DisableWebsiteMonitoring.ToString().ToLower()
 
 
                     $unmatchedWebsite.matched = $true

@@ -271,10 +271,10 @@ if ($InitType -eq 'Full') {
     }
 
     # Choose if you would like to enable monitoring for the imported websites.
-    while ($DisableWebsiteMonitoring -notin (1,2)) {$DisableWebsiteMonitoring = Read-Host "1) Disable Website Monitoring `n2) Leave Website Monitoring enabled`n(1/2)"}
+    while ($DisableWebsiteMonitoring -notin (1,2)) {$DisableWebsiteMonitoring = Read-Host "1) Leave Website Monitoring enabled `n2) Disable Website Monitoring`n(1/2)"}
     switch ($DisableWebsiteMonitoring) {
-        "1" {$DisableWebsiteMonitoring = "true"}
-        "2" {$DisableWebsiteMonitoring = "false"}
+        "1" {$DisableWebsiteMonitoring = $false}
+        "2" {$DisableWebsiteMonitoring = $true}
     }
 
 
