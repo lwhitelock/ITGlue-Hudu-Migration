@@ -1,11 +1,25 @@
-# Main settings load
-. $PSScriptRoot\Initialize-Module.ps1 -InitType 'Lite'
+# Check if this is a direct run, and load the logs if so the first time.
+if (-not ($FirstTimeLoad -eq 1)) {
+    # General Settings Load
+    . $PSScriptRoot\..\Initialize-Module.ps1 -InitType 'Lite'
+    
+    # Add Replace URL functions
+    . $PSScriptRoot\..\Private\ConvertTo-HuduURL.ps1
 
-# Replace TestImage() with Invoke-ImageTest()
+    Write-Host "Checking for Matched Variables"
+    if (-not $MatchedPasswords) {$MatchedPasswords = (Get-Content -path "$MigrationLogs\Passwords.json" | ConvertFrom-json -depth 100) }
+    if (-not $MatchedAssetPasswords) {$MatchedAssetPasswords = (Get-Content -path "$MigrationLogs\AssetPasswords.json" | ConvertFrom-json -depth 100) }
+    if (-not $MatchedArticleBase) {$MatchedArticleBase = Get-Content "$MigrationLogs\ArticleBase.json" -raw | Out-String | ConvertFrom-Json -depth 100}
+    if (-not $MatchedArticles) {$MatchedArticles = (Get-Content -path "$MigrationLogs\Articles.json" | ConvertFrom-json -depth 100) }
+    if (-not $MatchedCompanies) {$MatchedCompanies = (Get-Content -path "$MigrationLogs\Companies.json" | ConvertFrom-json -depth 100) }
+    if (-not $MatchedConfigurations) {$MatchedConfigurations = Get-Content "$MigrationLogs\Configurations.json" -raw | Out-String | ConvertFrom-Json -depth 100}
+    if (-not $MatchedAssets) {$MatchedAssets = Get-Content "$MigrationLogs\Assets.json" -raw | Out-String | ConvertFrom-Json -depth 100}
+    # Set the context so logs don't run again unless the powershell window gets closed.
+    $FirstTimeLoad = 1
+}
+
+# Load Invoke-ImageTest()
 . $PSScriptRoot\Private\Invoke-ImageTest.ps1
-
-# Staging Directory
-$StagingRoot = (Get-Item $MigrationLogs).Parent.FullName
 
 # Attachments Path
 $AttachmentsPath = (Join-Path -Path $ITGLueExportPath -ChildPath "attachments")
@@ -152,7 +166,7 @@ else {
 }
 
 ## Starting main script
-Write-Host "Starting script. Files will be saved into $StagingRoot Press CTRL+C to cancel" -ForegroundColor Yellow
+Write-Host "Starting script. Press CTRL+C to cancel" -ForegroundColor Yellow
 Pause
 
 Write-host "Loading Asset Log"
@@ -208,6 +222,5 @@ if ($CSVMapping) {
     }
 }
 
-# Write-Host "You will need to take $StagingRoot and sync it to the appropriate backend storage"
 Write-Host "All attachments have been processed."
 Pause

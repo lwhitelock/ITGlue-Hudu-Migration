@@ -1853,7 +1853,8 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Passwords.json")) {
 
     #Import Passwords
     Write-Host "Fetching Passwords from IT Glue" -ForegroundColor Green
-    $PasswordSelect = { Get-ITGluePasswords -page_size $page_size -page_number $i }
+    $PasswordSelect = { (Get-ITGluePasswords -page_size 1000 -page_number $i).data }
+
     $ITGPasswords = Import-ITGlueItems -ItemSelect $PasswordSelect -MigrationName 'Passwords'
     try {
         Write-Host "Loading Passwords from CSV for faster import" -foregroundcolor Cyan
