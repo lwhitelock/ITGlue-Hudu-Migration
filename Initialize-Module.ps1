@@ -338,6 +338,13 @@ if ($InitType -eq 'Full') {
         "1" {$ImportPasswords = $true}
         "2" {$ImportPasswords = $false}
     }
+
+    ############################### Unattended ###############################
+    while ($NonInteractive -notin (1,2)) {$NonInteractive = Read-Host "1) Run normally `n2) Perform this migration noninteractively `n(1/2)"}
+    switch ($NonInteractive) {
+        "1" {$NonInteractive = $false}
+        "2" {$NonInteractive = $true}
+    }    
 }
 ############################ Migration Logs Path ##############################
 $MigrationLogs = $environmentSettings.MigrationLogs
