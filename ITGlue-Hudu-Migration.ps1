@@ -244,7 +244,6 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Companies.json")) {
     $LocationsSelect = { (Get-ITGlueLocations -page_size 1000 -page_number $i -include related_items).data }
     $ITGLocations = Import-ITGlueItems -ItemSelect $LocationsSelect
 
-
     # Import Companies
     $UnmappedCompanyCount = ($MatchedCompanies | Where-Object { $_.Matched -eq $false } | measure-object).count
     if ($ImportCompanies -eq $true -and $UnmappedCompanyCount -gt 0) {
@@ -313,6 +312,10 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Companies.json")) {
 
     # Save the results to resume from if needed
     $MatchedCompanies | ConvertTo-Json -depth 100 | Out-File "$MigrationLogs\Companies.json"
+    $ITGCompaniesHashTable = @{}
+    foreach ($ITGC in $MatchedCompanies) {
+        $ITGCompaniesHashTable[$ITGC.itgid] = $ITGC
+    }
     Read-Host "Snapshot Point: Companies Migrated Continue?"
 
 }
@@ -327,11 +330,12 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Locations.json")) {
     Write-Host "Loading Previous Locations Migration"
     $MatchedLocations = Get-Content "$MigrationLogs\Locations.json" -raw | Out-String | ConvertFrom-Json -depth 100
 } else {
+    $ITGLocations = $ITGLocations |select @{n='HuduCompanyId';e={ $ITGCompaniesHashTable["$($_.attributes.'organization-id')"].huduid}},*
 
 
-    $LocHuduItemFilter = { ($_.name -eq $itgimport.attributes.name -and $_.company_name -eq $itgimport.attributes."organization-name")`
-            -or ($ITGPrimaryLocationNames -contains $itgimport.attributes.name -and $HuduPrimaryLocationNames -contains $_.name -and $_.company_name -eq $itgimport.attributes."organization-name")`
-            -or ($itgimport.attributes.primary -eq $true -and $HuduPrimaryLocationNames -contains $_.name -and $_.company_name -eq $itgimport.attributes."organization-name") }
+    $LocHuduItemFilter = { ($_.name -eq $itgimport.attributes.name -and $_.company_id -eq $itgimport.HuduCompanyId)`
+            -or ($ITGPrimaryLocationNames -contains $itgimport.attributes.name -and $HuduPrimaryLocationNames -contains $_.name -and $_.company_id -eq $itgimport.HuduCompanyId)`
+            -or ($itgimport.attributes.primary -eq $true -and $HuduPrimaryLocationNames -contains $_.name -and $_.company_id -eq $itgimport.HuduCompanyId) }
 
     $LocImportEnabled = $ImportLocations
 
@@ -420,12 +424,15 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Locations.json")) {
         ItemSelect            = $LocItemSelect
         MigrationName         = $LocMigrationName
         ITGImports            = $ITGLocations
-
     }
 
     #Import Locations
     $MatchedLocations = Import-Items @LocImportSplat
 
+    $ITGLocationsHashTable = @{}
+    foreach ($ITGL in $MatchedLocations) {
+        $ITGLocationsHashTable[$ITGL.itgid] = $ITGL
+    }
     # Save the results to resume from if needed
     $MatchedLocations | ConvertTo-Json -depth 100 | Out-File "$MigrationLogs\Locations.json"
     Read-Host "Snapshot Point: Locations Migrated Continue?"
@@ -501,14 +508,9 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Websites.json")) {
 
                     Confirm-Import -ImportObjectName "$($unmatchedWebsite.Name)" -ImportObject $unmatchedWebsite -ImportSetting $ImportOption
 
-                    Write-Host "Starting $($unmatchedWebsite.Name);"
-                    $HuduNewWebsite = New-HuduWebsite -name "https://$($unmatchedWebsite.ITGObject.attributes.name)" `
-                                                -notes $unmatchedWebsite.ITGObject.attributes.notes `
-                                                -paused $DisableWebsiteMonitoring `
-                                                -companyid $company.HuduCompanyObject.ID `
-                                                -DisableDNS $DisableWebsiteMonitoring.ToString().ToLower() `
-                                                -DisableSSL $DisableWebsiteMonitoring.ToString().ToLower() `
-                                                -DisableWhois $DisableWebsiteMonitoring.ToString().ToLower()
+                    Write-Host "Starting $($unmatchedWebsite.Name)"
+
+                    $HuduNewWebsite = New-HuduWebsite -name "https://$($unmatchedWebsite.ITGObject.attributes.name)" -notes $unmatchedWebsite.ITGObject.attributes.notes -paused $DisableWebsiteMonitoring -companyid $company.HuduCompanyObject.ID -disabledns $DisableWebsiteMonitoring -disablessl $DisableWebsiteMonitoring -disablewhois $DisableWebsiteMonitoring
 
 
                     $unmatchedWebsite.matched = $true
@@ -558,6 +560,7 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Configurations.json")
     Write-Host "Fetching Configurations from IT Glue" -ForegroundColor Green
     $ConfigurationsSelect = { (Get-ITGlueConfigurations -page_size 1000 -page_number $i -include related_items).data }
     $ITGConfigurations = Import-ITGlueItems -ItemSelect $ConfigurationsSelect
+    $ITGConfigurations = $ITGConfigurations |select @{n='HuduCompanyId';e={ $ITGCompaniesHashTable["$($_.attributes.'organization-id')"].huduid}},*
 
 		
     $ConfigAssetLayoutFields = @(
@@ -703,7 +706,7 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Configurations.json")
     )
 
 
-    $ConfigHuduItemFilter = { ($_.name -eq $itgimport.attributes.name -and $_.company_name -eq $itgimport.attributes."organization-name") }
+    $ConfigHuduItemFilter = { ($_.name -eq $itgimport.attributes.name -and $_.company_id -eq $itgimport.HuduCompanyId) }
 	
     $ConfigImportEnabled = $ImportConfigurations
 
@@ -861,10 +864,11 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Contacts.json")) {
     Write-Host "Fetching Contacts from IT Glue" -ForegroundColor Green
     $ContactsSelect = { (Get-ITGlueContacts -page_size 1000 -page_number $i -include related_items).data }
     $ITGContacts = Import-ITGlueItems -ItemSelect $ContactsSelect
+    $ITGContacts = $ITGContacts |select @{n='HuduCompanyId';e={ $ITGCompaniesHashTable["$($_.attributes.'organization-id')"].huduid}},*
 
     #($ITGContacts.attributes | sort-object -property name, "organization-name" -Unique)
 
-    $ConHuduItemFilter = { ($_.name -eq $itgimport.attributes.name -and $_.company_name -eq $itgimport.attributes."organization-name") }
+    $ConHuduItemFilter = { ($_.name -eq $itgimport.attributes.name -and $_.company_id -eq $itgimport.HuduCompanyId) }
 
     $ConImportEnabled = $ImportContacts
 
@@ -937,7 +941,7 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Contacts.json")) {
             'last_name'    = $unmatchedImport."ITGObject".attributes."last-name"
             'title'        = $unmatchedImport."ITGObject".attributes."title"
             'contact_type' = $unmatchedImport."ITGObject".attributes."contact-type-name"
-            'location'     = "[$($MatchedLocations | where-object -filter {$_.ITGID -eq $unmatchedImport."ITGObject".attributes."location-id"} | Select-Object @{N='id';E={$_.HuduID}}, @{N='name';E={$_.Name}} | convertto-json -compress | out-string)]" -replace "`r`n", ""
+            'location'     = $ITGLocationsHashTable["$($unmatchedImport."ITGObject".attributes.'location-id')"] | Select-Object @{N='id';E={$_.HuduID}}, @{N='name';E={$_.Name}} | convertto-json -AsArray -Compress | out-string
             'important'    = $unmatchedImport."ITGObject".attributes."important"
             'notes'        = $unmatchedImport."ITGObject".attributes."notes"
             'emails'       = $unmatchedImport."ITGObject".attributes."contact-emails" | convertto-html -fragment | out-string
@@ -1141,7 +1145,7 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\AssetLayouts.json")) 
                         $LayoutField.add("field_type", "RichText")
                     }
                     "Upload" {
-                        Write-Host "Upload fields are not supported $($ITGField.Attributes.name) in $($UpdateLayout.name) this will be added when the Hudu API supports it, Sorry!"
+                        Write-Host "Upload fields are handled by an external script. $($ITGField.Attributes.name) in $($UpdateLayout.name)! Make sure you run the Add-HuduAttachmentsViaAPI.ps1 after"
                         $supported = $false
                     }
                     "Tag" {
