@@ -711,7 +711,7 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Configurations.json")
 
 	
     $ConfigAssetFieldsMap = { @{ 
-            'name'                      = $unmatchedImport."ITGObject".attributes."name"
+            # 'name'                      = $unmatchedImport."ITGObject".attributes."name"
             'hostname'                  = $unmatchedImport."ITGObject".attributes."hostname"
             'primary_ip'                = $unmatchedImport."ITGObject".attributes."primary-ip"
             'mac_address'               = $unmatchedImport."ITGObject".attributes."mac-address"
