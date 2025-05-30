@@ -1085,7 +1085,7 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\AssetLayouts.json")) 
             try {
                 $Null = Set-HuduAssetLayout -id $MatchedNewLayout.asset_layout.id -Active $true
             } catch {
-                Write-Error "issue setting asset layout as active ($_) $($MatchedNewLayout | Format-List)"
+                Write-Error "issue setting asset layout as active ($_) $($MatchedNewLayout | ConvertTo-Json -Depth 10)"
             }
             $UnmatchedLayout.HuduObject = $MatchedNewLayout
             $UnmatchedLayout.HuduID = $NewLayout.asset_layout.id
