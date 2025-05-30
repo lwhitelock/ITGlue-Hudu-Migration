@@ -711,7 +711,7 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Configurations.json")
 
 	
     $ConfigAssetFieldsMap = { @{ 
-            'name'                      = $unmatchedImport."ITGObject".attributes."name"
+            # 'name'                      = $unmatchedImport."ITGObject".attributes."name"
             'hostname'                  = $unmatchedImport."ITGObject".attributes."hostname"
             'primary_ip'                = $unmatchedImport."ITGObject".attributes."primary-ip"
             'mac_address'               = $unmatchedImport."ITGObject".attributes."mac-address"
@@ -726,8 +726,8 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Configurations.json")
             'warranty_expires_at'       = $unmatchedImport."ITGObject".attributes."warranty-expires-at"
             'installed_at'              = $unmatchedImport."ITGObject".attributes."installed-at"
             'purchased_at'              = $unmatchedImport."ITGObject".attributes."purchased-at"
-            'created_at'                = $unmatchedImport."ITGObject".attributes."created-at"
-            'updated_at'                = $unmatchedImport."ITGObject".attributes."updated-at"
+            # 'created_at'                = $unmatchedImport."ITGObject".attributes."created-at"
+            # 'updated_at'                = $unmatchedImport."ITGObject".attributes."updated-at"
             'configuration_type_name'   = $unmatchedImport."ITGObject".attributes."configuration-type-name"
             'configuration_type_kind'   = $unmatchedImport."ITGObject".attributes."configuration-type-kind"
             'configuration_status_name' = $unmatchedImport."ITGObject".attributes."configuration-status-name"
