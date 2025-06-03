@@ -45,9 +45,9 @@ $FontAwesomeUpgrade = Get-FontAwesomeMap
 # Add Timed (Noninteractive) Messages Helper
 . $PSScriptRoot\Public\Write-TimedMessage.ps1
 
-# Add String/Filename Normalization Helper
+# Add String/Filename Normalization Helper, image Normalization helper
 . $PSScriptRoot\Public\Normalize-String.ps1
-
+. $PSScriptRoot\Normalize-And-ConvertImage.ps1
 ############################### End of Functions ###############################
 
 
@@ -1703,7 +1703,7 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Articles.json")) {
                             Actions = "Neither $fullImgPath or $tnImgPath were found, validate the images exist in the export, or retrieve them from ITGlue directly"
                             Data = "$InFile"
                             Hudu_URL = $Article.HuduObject.url
-			    ITG_URL = "$ITGURL/$($Article.ITGLocator)"
+			                ITG_URL = "$ITGURL/$($Article.ITGLocator)"
                             }
 
                             $null = $ManualActions.add($ManualLog)
@@ -1712,15 +1712,11 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Articles.json")) {
 
                         # Test the path to ensure that a file extension exists, if no file extension we get problems later on. We rename it if there's no ext.
                         if ($imagePath -and (Test-Path $imagePath -ErrorAction SilentlyContinue)) {
-                            if ((Get-Item -path $imagePath).extension -eq '') {
-                                Write-Warning "$imagePath is undetermined image. Testing..."
-                                if ($Magick = New-Object ImageMagick.MagickImage($imagePath)) {
-                                    $OriginalFullImagePath = $imagePath
-                                    $imagePath = "$($imagePath).$($Magick.format)"
-                                    $MovedItem = Move-Item -Path $OriginalFullImagePath -Destination $imagePath
-                                }
-                            }                        
-                            $imageType = Invoke-ImageTest($imagePath)
+                            $imageInfo = Normalize-And-ConvertImage -InputPath $imagePath -MaxLength
+                            $imagePath = $imageInfo.FinalPath
+                            $OriginalFullImagePath = $imageInfo.Original
+
+                            $imageType = Invoke-ImageTest $imagePath
                             if ($imageType) {
                                 Write-Host "Uploading new image"
                                 try {
@@ -1729,7 +1725,6 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Articles.json")) {
                                     $ImgLink = $html.Links | Where-Object {$_.innerHTML -eq $imgHTML}
                                     Write-Host "Setting image to: $NewImageURL"
                                     $_.src = [string]$NewImageURL
-                                    
                                     # Update Links for this image
                                     $ImgLink.href = [string]$NewImageUrl
 
@@ -1744,7 +1739,7 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Articles.json")) {
                                         Action = "$imagePath failed to upload to Hudu backend with error $_`n Validate that uploads are working and you still have disk space."
                                         Data = "$InFile"
                                         Hudu_URL = $Article.HuduObject.url
-					ITG_URL = "$ITGURL/$($Article.ITGLocator)"
+					                    ITG_URL = "$ITGURL/$($Article.ITGLocator)"
                                     }
 
                                     $null = $ManualActions.add($ManualLog)
