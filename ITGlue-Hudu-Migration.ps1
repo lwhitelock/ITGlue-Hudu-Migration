@@ -47,7 +47,7 @@ $FontAwesomeUpgrade = Get-FontAwesomeMap
 
 # Add String/Filename Normalization Helper, image Normalization helper
 . $PSScriptRoot\Public\Normalize-String.ps1
-. $PSScriptRoot\Normalize-And-ConvertImage.ps1
+. $PSScriptRoot\Public\Normalize-And-ConvertImage.ps1
 ############################### End of Functions ###############################
 
 
