@@ -45,6 +45,9 @@ $FontAwesomeUpgrade = Get-FontAwesomeMap
 # Add Timed (Noninteractive) Messages Helper
 . $PSScriptRoot\Public\Write-TimedMessage.ps1
 
+# Add String/Filename Normalization Helper
+. $PSScriptRoot\Public\Normalize-String.ps1
+
 ############################### End of Functions ###############################
 
 
