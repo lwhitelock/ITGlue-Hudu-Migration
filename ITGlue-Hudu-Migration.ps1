@@ -1714,10 +1714,10 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Articles.json")) {
                         if ($imagePath -and (Test-Path $imagePath -ErrorAction SilentlyContinue)) {
                             $imageType = Invoke-ImageTest $imagePath
                             if ($imageType) {
-                                $imageInfo = Normalize-And-ConvertImage -InputPath $imagePath -MaxLength
-                                $imagePath = $imageInfo.FinalPath
+                                $imageInfo = Normalize-And-ConvertImage -InputPath "$imagePath"
+                                $imagePath = "$($imageInfo.FinalPath)"
                                 $OriginalFullImagePath = $imageInfo.Original                                
-                                Write-Host "Uploading new image"
+                                Write-Host "Uploading new image $($imageInfo.Original) => $($imageInfo.FinalPath)"
                                 try {
                                     $UploadImage = New-HuduPublicPhoto -FilePath "$imagePath" -record_id $Article.HuduID -record_type 'Article'
                                     $NewImageURL = $UploadImage.public_photo.url.replace($HuduBaseDomain, '')
