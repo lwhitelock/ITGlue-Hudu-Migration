@@ -119,6 +119,8 @@ if ($InlineImageArticles) {
     ## SENSITIVE KEYS STORED HERE DO NOT SAVE OR SHARE
     Import-Module HuduAPI
     #New-HuduAPIKey -ApiKey <APIKEY>
+    . $PSScriptRoot\Public\Invoke-HuduRequest.ps1
+
     New-HuduAPIKey -ApiKey (Read-Host "Enter your Hudu API Key")
     #New-HuduBaseURL -BaseURL <URL>
     New-HuduBaseURL -BaseURL (Read-Host "Enter your Hudu URL")
