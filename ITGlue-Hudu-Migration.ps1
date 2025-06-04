@@ -119,6 +119,7 @@ if ((Get-Module -ListAvailable -Name HuduAPI).version -ge '2.4.4') {
     Import-Module HuduAPI
 }
   
+
 #Login to Hudu
 New-HuduAPIKey $HuduAPIKey
 New-HuduBaseUrl $HuduBaseDomain
@@ -142,6 +143,11 @@ If (Get-Module -ListAvailable -Name "ITGlueAPIv2") {
     Install-Module ITGlueAPIv2 -Force
     Import-Module ITGlueAPIv2
 }
+
+# override this method, since it's retry method fails
+. $PSScriptRoot\Public\Invoke-HuduRequest.ps1
+
+
 #Settings IT-Glue logon information
 Add-ITGlueBaseURI -base_uri $ITGAPIEndpoint
 Add-ITGlueAPIKey $ITGKey
@@ -1084,12 +1090,7 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\AssetLayouts.json")) 
 		
             $NewLayout = New-HuduAssetLayout -name "$($FlexibleLayoutPrefix)$($UnmatchedLayout.ITGObject.attributes.name)" -icon "fas fa-$NewIcon" -color "00adef" -icon_color "#ffffff" -include_passwords $true -include_photos $true -include_comments $true -include_files $true -fields $TempLayoutFields 
             $MatchedNewLayout = Get-HuduAssetLayouts -layoutid $NewLayout.asset_layout.id
-    	    #activate asset layout
-            try {
-                $Null = Set-HuduAssetLayout -id $MatchedNewLayout.asset_layout.id -Active $true
-            } catch {
-                Write-Error "issue setting asset layout as active ($_) $($MatchedNewLayout | ConvertTo-Json -Depth 10)"
-            }
+
             $UnmatchedLayout.HuduObject = $MatchedNewLayout
             $UnmatchedLayout.HuduID = $NewLayout.asset_layout.id
             $UnmatchedLayout.Imported = "Created-By-Script"

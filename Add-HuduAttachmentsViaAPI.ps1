@@ -143,6 +143,8 @@ if ((Get-Module -ListAvailable -Name HuduAPI).version -ge '2.4.5') {
     Install-Module HuduAPI -MinimumVersion '2.4.5'
     Import-Module HuduAPI
 }
+# override this method, since it's retry method fails
+. .\Public\Invoke-HuduRequest.ps1
 
 #Login to Hudu
 New-HuduAPIKey $HuduAPIKey

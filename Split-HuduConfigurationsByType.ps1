@@ -1,5 +1,7 @@
 Import-Module ImportExcel
 Import-Module HuduAPI
+. $PSScriptRoot\Public\Invoke-HuduRequest.ps1
+
 $Path = Read-Host "Provide spreadsheet mapping of ITGlue (configuration type names) to Hudu (asset layout names)"
 $APIKey = Read-Host "Enter your Hudu API Key"
 $APIBaseUrl = Read-Host "Enter your Hudu Base URL"
