@@ -116,6 +116,7 @@ if ((Get-Module -ListAvailable -Name HuduAPI).version -ge '2.4.4') {
     Import-Module HuduAPI
 }
   
+
 #Login to Hudu
 New-HuduAPIKey $HuduAPIKey
 New-HuduBaseUrl $HuduBaseDomain
@@ -141,7 +142,7 @@ If (Get-Module -ListAvailable -Name "ITGlueAPIv2") {
 }
 
 # override this method, since it's retry method fails
-. .\Public\Invoke-HuduRequest.ps1
+. $PSScriptRoot\Public\Invoke-HuduRequest.ps1
 
 
 #Settings IT-Glue logon information
