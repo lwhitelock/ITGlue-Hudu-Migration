@@ -6,10 +6,11 @@ function Normalize-And-ConvertImage {
 
     $original = $InputPath
 
-    # If no extension, guess and copy
+    # If no extension, guess and copy with guessed extension
     if ((Get-Item -Path $InputPath).Extension -eq '') {
         $Magick = New-Object ImageMagick.MagickImage($InputPath)
-        $InputPath += ".$($Magick.Format.ToString().ToLower())"
+        $guessedExt = $Magick.Format.ToString().ToLower()
+        $InputPath += ".$guessedExt"
         Copy-Item -Path $original -Destination $InputPath -Force
     }
 
@@ -23,13 +24,26 @@ function Normalize-And-ConvertImage {
         $InputPath = $converted
     }
 
-    # Normalize and shorten filename
+    # Normalize, limit length, and pad if needed
     $filename = [IO.Path]::GetFileName($InputPath)
     $directory = [IO.Path]::GetDirectoryName($InputPath)
 
     $normalized = Normalize-String -InputString $filename -PreserveExtension -PreserveWhitespace
     $limited = Limit-FilenameLength -FullFilename $normalized -MaxLength $MaxLength -PreserveExtension
-    $finalPath = Join-Path -Path $directory -ChildPath $limited
+
+    $extension = [IO.Path]::GetExtension($limited)
+    $basename = [IO.Path]::GetFileNameWithoutExtension($limited)
+
+    # Fallback if either part is blank
+    if (-not $basename) { $basename = "file" }
+    if (-not $extension) { $extension = ".jpg" }
+
+    if ($basename.Length -lt 5) {
+        $basename = $basename.PadRight(5, '_')
+    }
+
+    $finalFilename = "$basename$extension"
+    $finalPath = Join-Path -Path $directory -ChildPath $finalFilename
 
     if ($InputPath -ne $finalPath) {
         Copy-Item -Path $InputPath -Destination $finalPath -Force
