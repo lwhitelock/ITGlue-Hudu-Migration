@@ -16,7 +16,9 @@ function Normalize-And-ConvertImage {
 
     # Convert image if needed
     $type = Invoke-ImageTest $InputPath
-    if ($type -and $type -notin @('jpg', 'jpeg', 'png')) {
+    $preserveExt = $type -in @('jpg', 'jpeg', 'png')
+
+    if ($type -and -not $preserveExt) {
         $Magick = New-Object ImageMagick.MagickImage($InputPath)
         $converted = [System.IO.Path]::ChangeExtension($InputPath, 'jpg')
         $Magick.Format = [ImageMagick.MagickFormat]::Jpeg
@@ -36,7 +38,9 @@ function Normalize-And-ConvertImage {
 
     # Fallback if either part is blank
     if (-not $basename) { $basename = "file" }
-    if (-not $extension) { $extension = ".jpg" }
+    if (-not $extension) {
+        $extension = if ($preserveExt) { ".$type" } else { ".jpg" }
+    }
 
     if ($basename.Length -lt 5) {
         $basename = $basename.PadRight(5, '_')
