@@ -1712,12 +1712,11 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Articles.json")) {
 
                         # Test the path to ensure that a file extension exists, if no file extension we get problems later on. We rename it if there's no ext.
                         if ($imagePath -and (Test-Path $imagePath -ErrorAction SilentlyContinue)) {
-                            $imageInfo = Normalize-And-ConvertImage -InputPath $imagePath -MaxLength
-                            $imagePath = $imageInfo.FinalPath
-                            $OriginalFullImagePath = $imageInfo.Original
-
                             $imageType = Invoke-ImageTest $imagePath
                             if ($imageType) {
+                                $imageInfo = Normalize-And-ConvertImage -InputPath $imagePath -MaxLength
+                                $imagePath = $imageInfo.FinalPath
+                                $OriginalFullImagePath = $imageInfo.Original                                
                                 Write-Host "Uploading new image"
                                 try {
                                     $UploadImage = New-HuduPublicPhoto -FilePath "$imagePath" -record_id $Article.HuduID -record_type 'Article'
