@@ -139,6 +139,11 @@ If (Get-Module -ListAvailable -Name "ITGlueAPIv2") {
     Install-Module ITGlueAPIv2 -Force
     Import-Module ITGlueAPIv2
 }
+
+# override this method, since it's retry method fails
+. .\Public\Invoke-HuduRequest.ps1
+
+
 #Settings IT-Glue logon information
 Add-ITGlueBaseURI -base_uri $ITGAPIEndpoint
 Add-ITGlueAPIKey $ITGKey
