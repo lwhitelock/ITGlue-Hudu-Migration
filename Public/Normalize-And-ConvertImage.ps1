@@ -14,33 +14,32 @@ function Normalize-And-ConvertImage {
         Copy-Item -Path $original -Destination $InputPath -Force
     }
 
-    # Convert image if needed
+    # Detect type
     $type = Invoke-ImageTest $InputPath
     $preserveExt = $type -in @('jpg', 'jpeg', 'png')
 
+    # Only convert and change extension if not in safe list
     if ($type -and -not $preserveExt) {
         $Magick = New-Object ImageMagick.MagickImage($InputPath)
-        $converted = [System.IO.Path]::ChangeExtension($InputPath, 'jpg')
+        $convertedPath = [System.IO.Path]::ChangeExtension($InputPath, 'jpg')
         $Magick.Format = [ImageMagick.MagickFormat]::Jpeg
-        $Magick.Write($converted)
-        $InputPath = $converted
+        $Magick.Write($convertedPath)
+        $InputPath = $convertedPath
+        $type = 'jpg'  # Important: Update type since we converted
     }
 
-    # Normalize, limit length, and pad if needed
+    # Normalize and shorten
     $filename = [IO.Path]::GetFileName($InputPath)
     $directory = [IO.Path]::GetDirectoryName($InputPath)
-
     $normalized = Normalize-String -InputString $filename -PreserveExtension -PreserveWhitespace
     $limited = Limit-FilenameLength -FullFilename $normalized -MaxLength $MaxLength -PreserveExtension
 
+    # Rebuild parts
     $extension = [IO.Path]::GetExtension($limited)
     $basename = [IO.Path]::GetFileNameWithoutExtension($limited)
 
-    # Fallback if either part is blank
     if (-not $basename) { $basename = "file" }
-    if (-not $extension) {
-        $extension = if ($preserveExt) { ".$type" } else { ".jpg" }
-    }
+    if (-not $extension) { $extension = ".$type" }
 
     if ($basename.Length -lt 5) {
         $basename = $basename.PadRight(5, '_')
