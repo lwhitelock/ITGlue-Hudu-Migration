@@ -1,3 +1,14 @@
+function Get-ImageType {
+    param (
+        [string]$FilePath
+    )
+    try {
+        $Magick = New-Object ImageMagick.MagickImage($FilePath)
+        return $Magick.Format.ToString().ToLower()
+    } catch {
+        return $null
+    }
+}
 function Normalize-And-ConvertImage {
     param (
         [string]$InputPath,
@@ -15,8 +26,10 @@ function Normalize-And-ConvertImage {
     }
 
     # Detect type
-    $type = Invoke-ImageTest $InputPath
-    $preserveExt = $type -in @('jpg', 'jpeg', 'png')
+    $type = Get-ImageType $InputPath
+    Write-Verbose "Detected image type: $type" -Verbose
+
+    $preserveExt = @('jpg', 'jpeg', 'png') -contains $type
 
     # Only convert and change extension if not in safe list
     if ($type -and -not $preserveExt) {
