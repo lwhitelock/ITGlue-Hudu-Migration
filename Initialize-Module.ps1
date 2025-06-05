@@ -43,36 +43,81 @@ function ConvertSecureStringToPlainText {
     [System.Runtime.InteropServices.Marshal]::ZeroFreeBSTR($BSTR)
     return $plainText
 }
-
+function Select-ObjectFromList($objects,$message,$allowNull = $false) {
+    $validated=$false
+    while ($validated -eq $false){
+        if ($allowNull -eq $true) {
+            Write-Host "0: None/Custom"
+        }
+        for ($i = 0; $i -lt $objects.Count; $i++) {
+            $object = $objects[$i]
+            if ($null -ne $object.name) {
+                Write-Host "$($i+1): $($object.name)"
+            } else {
+                Write-Host "$($i+1): $($object)"
+            }
+        }
+        $choice = Read-Host $message
+        if ($null -eq $choice -or $choice -lt 0 -or $choice -gt $objects.Count +1) {
+            Write-Host -message "Invalid selection. Please enter a number from above"
+        }
+        if ($choice -eq 0 -and $true -eq $allowNull) {
+            return $null
+        }
+        if ($null -ne $objects[$choice - 1]){
+            return $objects[$choice - 1]
+        }
+    }
+}
 
 # Prompt the user for various settings and save the responses
 function CollectAndSaveSettings {
     # Create a hash table to store the settings
     $settings = @{}
 
-    # Ask the user for Hudu settings
-    $settings.HuduBaseDomain = Read-Host -Prompt 'Set the base domain of your Hudu instance including https:// without a trailing /'
-    $HuduAPIKey = Read-Host -Prompt "Get a Hudu API Key from $($settings.HuduBaseDomain)/admin/api_keys"
+    # Urls
+    Write-Host "Settings- URLs:" -ForegroundColor Yellow
+    $settings.HuduBaseDomain = $((Read-Host -Prompt 'Set the base domain of your Hudu instance (e.g https://myinstance.huducloud.com)') -replace '[\\/]+$', '') -replace '^(?!https://)', 'https://'
+    $settings.ITGURL = $((Read-Host -Prompt 'Set the domain of your ITGlue instance (e.g https://your-company.itglue.com)') -replace '[\\/]+$', '') -replace '^(?!https://)', 'https://'
+    $instance = $settings.ITGURL.replace('https://','')
+    $settings.ITGAPIEndpoint = Select-ObjectFromList -objects @("https://api.itglue.com", "https://api.eu.itglue.com", "https://api.au.itglue.com") -message "Select ITGlue API Endpoint for your instance/region"
+    
+    # Secrets
+    Write-Host "Settings- Secrets:" -ForegroundColor Yellow
+    $HuduAPIKey = ""
+    $ITGKey = ""
+    while ($HuduAPIKey.Length -ne 24) {
+        $HuduAPIKey = (Read-Host -Prompt "Get a Hudu API Key from $($settings.HuduBaseDomain)/admin/api_keys").Trim()
+        if ($HuduAPIKey.Length -ne 24) {
+            Write-Host "This doesn't seem to be a valid Hudu API key. It is $($HuduAPIKey.Length) characters long, but should be 24." -ForegroundColor Red
+        }
+    }
+    while ($ITGKey.Length -ne 100) {
+        $ITGKey = (Read-Host -Prompt 'Enter your ITGlue API Key (must have password access). Should be 100 characters.').Trim()
+        if ($ITGKey.Length -ne 100) {
+            Write-Host "This doesn't seem to be a valid ITGlue API key. It is $($ITGKey.Length) characters long, but should be 100." -ForegroundColor Red
+        }
+    }
+    $settings.ITGKey = ConvertTo-SecureString -String $ITGKey -AsPlainText -Force | ConvertFrom-SecureString
     $settings.HuduAPIKey = ConvertTo-SecureString -String $HuduAPIKey -AsPlainText -Force | ConvertFrom-SecureString
 
-    # Ask the user for ITGlue Settings
-    $ITGKey = Read-Host 'Enter your ITGlue API Key. MAKE SURE TO USE AN API KEY WITH PASSWORD ACCESS'
-    $settings.ITGKey = ConvertTo-SecureString -String $ITGKey -AsPlainText -Force | ConvertFrom-SecureString
-    $settings.ITGAPIEndpoint = Read-Host 'Enter the ITGlue API Endpoint for your instance/region. (e.g https://api.itglue.com)'
-
+    # Global KB
+    Write-Host "Settings- Global KnowledgeBase:" -ForegroundColor Yellow
     $settings.InternalCompany = Read-Host 'Enter the exact name of the ITGlue Organization that represents your Internal Company'
-    Write-Host "The documents from the company $($settings.InternalCompany) will be migrated to Hudu's Global KB section" -ForegroundColor Cyan
-    $settings.ITGLueExportPath = Read-Host 'Enter the path of the ITGLue Export. (e.g. C:\Temp\ITGlue\Export)'
-    $settings.ITGURL = Read-Host -Prompt 'Set the domain of your ITGlue instance including https:// without a trailing /'
-    $instance = $settings.ITGURL.replace('https://','')
     $settings.GlobalKBFolder = Read-Host -Prompt 'Do you want all documents in Global KB to be placed into a subfolder? (y/n)'
+    Write-Host "The documents from the company $($settings.InternalCompany) will be migrated to Hudu's Global KB section" -ForegroundColor Cyan
+
+    # Paths and Folders
+    Write-Host "Settings- Paths and Folders:" -ForegroundColor Yellow
+    $settings.ITGLueExportPath = Read-Host 'Enter the path of the ITGLue Export. (e.g. C:\Temp\ITGlue\Export)'
     $customBrandedDomain = Read-Host -Prompt "Do you have additional hostnames you'd like to include in the URL Replacement? For example custom branded ITGlue Domain Name. (y/n)"
-    if ($customBrandedDomain -eq 'y') {
+    $settings.MigrationLogs = Read-Host "Enter the path for the migration logs, or press enter to accept the Default path (%appdata%\HuduMigration\$instance\MigrationLogs)"
+    
+    if ($customBrandedDomain.ToLower() -eq 'y') {
     	$settings.ITGCustomDomains = Read-Host -Prompt "Please enter comma separated list of URLs to check for, following the same format of the main domain URL. If only one, don't include the comma."
-     }
+    }
 
     # Migration Log Settings
-    $settings.MigrationLogs = Read-Host "Enter the path for the migration logs, or press enter to accept the Default path (%appdata%\HuduMigration\$instance\MigrationLogs)"
     if (!($settings.MigrationLogs)) {
         $settings.MigrationLogs = "$ENV:appdata\HuduMigration\$instance\MigrationLogs"
     }
@@ -85,7 +130,15 @@ function CollectAndSaveSettings {
 
     # Save the JSON to the settings file
     if (!(Test-Path -Path "$env:APPDATA\HuduMigration\$instance")) { New-Item "$env:APPDATA\HuduMigration\$instance" -ItemType Directory }
-    $json | Out-File -FilePath $defaultSettingsPath
+    $reenterChoice = Select-ObjectFromList -message "Do these settings look alright? $(($settings | ConvertTo-Json -depth 4).ToString())" -objects @("Continue", "Re-Enter")
+    if ($reenterChoice -eq "Continue") {
+        $json | Out-File -FilePath $defaultSettingsPath
+    } else {
+        Write-Host "Restarting script with same InitType..." -ForegroundColor Yellow
+        Start-Sleep -Seconds 1
+        powershell -NoProfile -ExecutionPolicy Bypass -File $MyInvocation.MyCommand.Path -InitType $InitType
+        exit
+    }
 }
 
 function UpdateSavedSettings {
