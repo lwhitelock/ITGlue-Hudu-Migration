@@ -134,9 +134,7 @@ function CollectAndSaveSettings {
     if ($reenterChoice -eq "Continue") {
         $json | Out-File -FilePath $defaultSettingsPath
     } else {
-        Write-Host "Restarting script with same InitType..." -ForegroundColor Yellow
-        Start-Sleep -Seconds 1
-        powershell -NoProfile -ExecutionPolicy Bypass -File Initialize-Module.ps1 -InitType $InitType
+        Write-Host "reinvoke script when you're ready!..." -ForegroundColor Yellow
         exit
     }
 }
