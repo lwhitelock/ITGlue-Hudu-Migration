@@ -77,7 +77,7 @@ function CollectAndSaveSettings {
     $settings = @{}
 
     # 1. Unser Entry- Urls
-    Write-Host "`nSettings- URLs:" -ForegroundColor Yellow
+    Write-Host "Settings- URLs:" -ForegroundColor Yellow
     $settings.HuduBaseDomain = $((Read-Host -Prompt 'Set the base domain of your Hudu instance (e.g https://myinstance.huducloud.com)') -replace '[\\/]+$', '') -replace '^(?!https://)', 'https://'
     $settings.ITGURL = $((Read-Host -Prompt 'Set the domain of your ITGlue instance (e.g https://your-company.itglue.com)') -replace '[\\/]+$', '') -replace '^(?!https://)', 'https://'
     $instance = $settings.ITGURL.replace('https://','')
@@ -88,7 +88,7 @@ function CollectAndSaveSettings {
     }
 
     # 2. User-Entry- Secrets
-    Write-Host "`nSettings- Secrets:" -ForegroundColor Yellow
+    Write-Host "Settings- Secrets:" -ForegroundColor Yellow
     $HuduAPIKey = ""
     $ITGKey = ""
     while ($HuduAPIKey.Length -ne 24) {
@@ -107,7 +107,7 @@ function CollectAndSaveSettings {
     $settings.HuduAPIKey = ConvertTo-SecureString -String $HuduAPIKey -AsPlainText -Force | ConvertFrom-SecureString
 
     # 3. User-Entry Global KB Settings
-    Write-Host "`n Settings- Global KnowledgeBase:" -ForegroundColor Yellow
+    Write-Host " Settings- Global KnowledgeBase:" -ForegroundColor Yellow
     $settings.InternalCompany = $(Read-Host 'Enter the exact name of the ITGlue Organization that represents your Internal Company ').ToString().Trim()
     $settings.GlobalKBFolder=""
     while ($settings.GlobalKBFolder.Length() -ne 1 -or $settings.GlobalKBFolder -notin @("y","n")) {
@@ -122,7 +122,7 @@ function CollectAndSaveSettings {
 
     
     # 4. User-Entry Paths and Folders
-    Write-Host "`n️ Settings- Paths and Folders:" -ForegroundColor Yellow
+    Write-Host "️ Settings- Paths and Folders:" -ForegroundColor Yellow
     $settings.ITGLueExportPath = Read-Host 'Enter the path of the ITGLue Export. (e.g. C:\Temp\ITGlue\Export) ️'
     $settings.MigrationLogs = Read-Host "Enter the path for the migration logs, or press enter to accept the Default path (%appdata%\HuduMigration\$instance\MigrationLogs) "
     # Fallback for Migrationlogs setting
@@ -159,7 +159,7 @@ function UpdateSavedSettings {
             $json | Out-File -FilePath $settingsPath
         }
         else {
-            Write-Host "`nCreating new settings file in $settingsPath" -ForegroundColor Yellow
+            Write-Host "Creating new settings file in $settingsPath" -ForegroundColor Yellow
             $json = $newSettings | ConvertTo-Json
             $json | Out-File -FilePath $settingsPath
         }
@@ -172,7 +172,7 @@ function UpdateSavedSettings {
             $json | Out-File -FilePath $defaultSettingsPath
         }
         else {
-            Write-Host "`nCreating new settings file in $defaultSettingsPath" -ForegroundColor Yellow
+            Write-Host "Creating new settings file in $defaultSettingsPath" -ForegroundColor Yellow
             $json = $newSettings | ConvertTo-Json
             $json | Out-File -FilePath $defaultSettingsPath
         }
