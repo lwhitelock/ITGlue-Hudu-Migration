@@ -301,15 +301,15 @@ if ($InitType -eq 'Full') {
     ############################### Company Settings ###############################
     while ($ImportCompanies -notin (1,2)) {$ImportCompanies = Read-Host "1) Import Companies `n2) Skip Companies`n(1/2)"}
     switch ($ImportCompanies) {
-        "1"{$ImportCompanies = $true}
-        "2"{$ImportCompanies = $false}
+        "1" {$ImportCompanies = $true}
+        "2" {$ImportCompanies = $false}
     }
 
     ############################### Location Settings ###############################
     while ($ImportLocations -notin (1,2)) {$ImportLocations = Read-Host "1) Import Locations `n2) Skip Locations`n(1/2)"}
     switch ($ImportLocations) {
-        "1"{$ImportLocations = $true}
-        "2"{$ImportLocations = $false}
+        "1" {$ImportLocations = $true}
+        "2" {$ImportLocations = $false}
     }
 
     # The asset layout name how locations will appear in Hudu
@@ -325,23 +325,23 @@ if ($InitType -eq 'Full') {
     ############################### Domain / Website Settings ###############################
     while ($ImportDomains -notin (1,2)) {$ImportDomains = Read-Host "Domains are used for Website, DNS and SSL Monitoring.`n 1) Import Domains`n 2) Skip Domains`n(1/2)"}
     switch ($ImportDomains) {
-        "1"{$ImportDomains = $true}
-        "2"{$ImportDomains = $false}
+        "1" {$ImportDomains = $true}
+        "2" {$ImportDomains = $false}
     }
 
     # Choose if you would like to enable monitoring for the imported websites.
     while ($DisableWebsiteMonitoring -notin (1,2)) {$DisableWebsiteMonitoring = Read-Host "1) Leave Website Monitoring enabled `n2) Disable Website Monitoring`n(1/2)"}
     switch ($DisableWebsiteMonitoring) {
-        "1"{$DisableWebsiteMonitoring = $false}
-        "2"{$DisableWebsiteMonitoring = $true}
+        "1" {$DisableWebsiteMonitoring = $false}
+        "2" {$DisableWebsiteMonitoring = $true}
     }
 
 
     ############################### Configuration Settings ###############################
     while ($ImportConfigurations -notin (1,2)) {$ImportConfigurations = Read-Host "1) Import Configurations `n2) Skip Configurations`n(1/2)"}
     switch ($ImportConfigurations) {
-        "1"{$ImportConfigurations = $true}
-        "2"{$ImportConfigurations = $false}
+        "1" {$ImportConfigurations = $true}
+        "2" {$ImportConfigurations = $false}
     }
 
 
@@ -355,8 +355,8 @@ if ($InitType -eq 'Full') {
     ############################### Contact Settings ###############################
     while ($ImportContacts -notin (1,2)) {$ImportContacts = Read-Host "1) Import Contacts `n2) Skip Contacts`n(1/2)"}
     switch ($ImportContacts) {
-        "1"{$ImportContacts = $true}
-        "2"{$ImportContacts = $false}
+        "1" {$ImportContacts = $true}
+        "2" {$ImportContacts = $false}
     }
 
     # The asset layout name how locations will appear in Hudu
@@ -368,8 +368,8 @@ if ($InitType -eq 'Full') {
     ############################### Flexible Asset Layouts ###############################
     while ($ImportFlexibleAssetLayouts -notin (1,2)) {$ImportFlexibleAssetLayouts = Read-Host "1) Import Asset Layouts `n2) Skip Asset Layouts`n(1/2)"}
     switch ($ImportFlexibleAssetLayouts) {
-        "1"{$ImportFlexibleAssetLayouts = $true}
-        "2"{$ImportFlexibleAssetLayouts = $false}
+        "1" {$ImportFlexibleAssetLayouts = $true}
+        "2" {$ImportFlexibleAssetLayouts = $false}
     }
 
     # Set if you would like a Prefix in front of Layout names created in Hudu. This can make it easy to review and you can rename them later set to ""if you don't want one
@@ -379,30 +379,30 @@ if ($InitType -eq 'Full') {
     ############################### Flexible Assets ###############################
     while ($ImportFlexibleAssets -notin (1,2)) {$ImportFlexibleAssets = Read-Host "1) Import Assets `n2) Skip Assets`n(1/2)"}
     switch ($ImportFlexibleAssets) {
-        "1"{$ImportFlexibleAssets = $true}
-        "2"{$ImportFlexibleAssets = $false}
+        "1" {$ImportFlexibleAssets = $true}
+        "2" {$ImportFlexibleAssets = $false}
     }
 
 
     ############################### Articles ###############################
     while ($ImportArticles -notin (1,2)) {$ImportArticles = Read-Host "1) Import Articles `n2) Skip Articles`n(1/2)"}
     switch ($ImportArticles) {
-        "1"{$ImportArticles = $true}
-        "2"{$ImportArticles = $false}
+        "1" {$ImportArticles = $true}
+        "2" {$ImportArticles = $false}
     }
 
     ############################### Passwords ###############################
     while ($ImportPasswords -notin (1,2)) {$ImportPasswords = Read-Host "1) Import Passwords `n2) Skip Passwords`n(1/2)"}
     switch ($ImportPasswords) {
-        "1"{$ImportPasswords = $true}
-        "2"{$ImportPasswords = $false}
+        "1" {$ImportPasswords = $true}
+        "2" {$ImportPasswords = $false}
     }
 
     ############################### Unattended ###############################
     while ($NonInteractive -notin (1,2)) {$NonInteractive = Read-Host "1) Run normally `n2) Perform this migration noninteractively `n(1/2)"}
     switch ($NonInteractive) {
-        "1"{$NonInteractive = $false}
-        "2"{$NonInteractive = $true}
+        "1" {$NonInteractive = $false}
+        "2" {$NonInteractive = $true}
     }    
 }
 ############################ Migration Logs Path ##############################
