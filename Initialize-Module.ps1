@@ -216,17 +216,17 @@ if ($environmentSettings -and $InitType -eq 'Lite') {
     $choice = Read-Host -Prompt "Do you want to `n(I)mport `n settings or start from `n(N)ew ?"
 
     switch ($choice) {
-        'I'{ 
+        'I' { 
             if (Test-Path -Path $defaultSettingsPath) {
                 Write-Host "Default settings file found at $defaultSettingsPath"-ForegroundColor Cyan
                 $importChoice = Read-Host -Prompt "Do you want to use the `n(D)efault settings`n file or `n(S)pecify`n a different path?"
                 
                 switch ($importChoice) {
-                    'D'{
+                    'D' {
                         Write-Host "Importing settings from $defaultSettingsPath"-ForegroundColor Yellow
                         $environmentSettings = Get-Content -Path $defaultSettingsPath | ConvertFrom-Json -Depth 50
                     }
-                    'S'{
+                    'S' {
                         $settingsPath = PromptForSettingsPath -Default
                         Write-Host "Importing settings from $settingsPath"-ForegroundColor Yellow
                         $environmentSettings = Get-Content -Path $settingsPath | ConvertFrom-Json -Depth 50
@@ -241,7 +241,7 @@ if ($environmentSettings -and $InitType -eq 'Lite') {
                 $environmentSettings = Get-Content -Path $settingsPath | ConvertFrom-Json -Depth 50
             }
         }
-        'N'{
+        'N' {
             Write-Host "Starting with a new settings file"-ForegroundColor Cyan
             CollectAndSaveSettings
             $environmentSettings = Get-Content -Path $defaultSettingsPath | ConvertFrom-Json -Depth 50
