@@ -48,7 +48,7 @@ function Select-ObjectFromList($objects,$message,$allowNull = $false) {
     while ($validated -eq $false){
         Write-Host $message
         if ($allowNull -eq $true) {
-            Write-Host "0: None/Custom "
+            Write-Host "0: None/Custom"
         }
         for ($i = 0; $i -lt $objects.Count; $i++) {
             $object = $objects[$i]
@@ -107,7 +107,7 @@ function CollectAndSaveSettings {
     $settings.HuduAPIKey = ConvertTo-SecureString -String $HuduAPIKey -AsPlainText -Force | ConvertFrom-SecureString
 
     # 3. User-Entry Global KB Settings
-    Write-Host " Settings- Global KnowledgeBase:" -ForegroundColor Yellow
+    Write-Host "Settings- Global KnowledgeBase:" -ForegroundColor Yellow
     $settings.InternalCompany = $(Read-Host 'Enter the exact name of the ITGlue Organization that represents your Internal Company ').ToString().Trim()
     $settings.GlobalKBFolder=""
     while ($settings.GlobalKBFolder.Length() -ne 1 -or $settings.GlobalKBFolder -notin @("y","n")) {
@@ -122,9 +122,9 @@ function CollectAndSaveSettings {
 
     
     # 4. User-Entry Paths and Folders
-    Write-Host "️ Settings- Paths and Folders:" -ForegroundColor Yellow
+    Write-Host "️Settings- Paths and Folders:" -ForegroundColor Yellow
     $settings.ITGLueExportPath = Read-Host 'Enter the path of the ITGLue Export. (e.g. C:\Temp\ITGlue\Export) ️'
-    $settings.MigrationLogs = Read-Host "Enter the path for the migration logs, or press enter to accept the Default path (%appdata%\HuduMigration\$instance\MigrationLogs) "
+    $settings.MigrationLogs = Read-Host "Enter the path for the migration logs, or press enter to accept the Default path (%appdata%\HuduMigration\$instance\MigrationLogs)"
     # Fallback for Migrationlogs setting
     if (!($settings.MigrationLogs)) {
         $settings.MigrationLogs = "$ENV:appdata\HuduMigration\$instance\MigrationLogs"
@@ -154,7 +154,7 @@ function UpdateSavedSettings {
     if ($settingsPath) {
         if (Test-Path $settingsPath) {
             # Convert the hash table to JSON
-            Write-Host "️`nOverwriting existing settings file with updated settings." -ForegroundColor Cyan
+            Write-Host "️Overwriting existing settings file with updated settings." -ForegroundColor Cyan
             $json = $newSettings | ConvertTo-Json
             $json | Out-File -FilePath $settingsPath
         }
@@ -167,7 +167,7 @@ function UpdateSavedSettings {
     else {
         if (Test-Path $defaultSettingsPath) {
             # Convert the hash table to JSON
-            Write-Host "️`nOverwriting existing settings file with updated settings." -ForegroundColor Cyan
+            Write-Host "️Overwriting existing settings file with updated settings." -ForegroundColor Cyan
             $json = $newSettings | ConvertTo-Json
             $json | Out-File -FilePath $defaultSettingsPath
         }
@@ -189,7 +189,7 @@ function PromptForSettingsPath {
     if ($Default) {
         $userPath = Read-Host -Prompt "Enter the full path to the settings.json file, or press Enter to use the default settings file ($defaultSettingsPath)"
     } else {
-        $userPath = Read-Host -Prompt '️ Enter the full path to the settings.json file.'
+        $userPath = Read-Host -Prompt '️Enter the full path to the settings.json file.'
     }
     
     
@@ -247,7 +247,7 @@ if ($environmentSettings -and $InitType -eq 'Lite') {
             $environmentSettings = Get-Content -Path $defaultSettingsPath | ConvertFrom-Json -Depth 50
         }
         default {
-            throw 'Invalid choice. Please choose (I)mport  or (N)ew '
+            throw 'Invalid choice. Please choose (I)mport or (N)ew '
         }
     }
 }
