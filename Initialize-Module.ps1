@@ -46,6 +46,7 @@ function ConvertSecureStringToPlainText {
 function Select-ObjectFromList($objects,$message,$allowNull = $false) {
     $validated=$false
     while ($validated -eq $false){
+        Write-Host $message
         if ($allowNull -eq $true) {
             Write-Host "0: None/Custom"
         }
@@ -57,7 +58,7 @@ function Select-ObjectFromList($objects,$message,$allowNull = $false) {
                 Write-Host "$($i+1): $($object)"
             }
         }
-        $choice = Read-Host $message
+        $choice = Read-Host
         if ($null -eq $choice -or $choice -lt 0 -or $choice -gt $objects.Count +1) {
             Write-Host -message "Invalid selection. Please enter a number from above"
         }
@@ -130,13 +131,11 @@ function CollectAndSaveSettings {
 
     # Save the JSON to the settings file
     if (!(Test-Path -Path "$env:APPDATA\HuduMigration\$instance")) { New-Item "$env:APPDATA\HuduMigration\$instance" -ItemType Directory }
-    $reenterChoice = Select-ObjectFromList -message "Do these settings look alright? $(($settings | ConvertTo-Json -depth 4).ToString())" -objects @("Continue", "Re-Enter")
+    $reenterChoice = Select-ObjectFromList -message "Do these settings look alright? $(($settings | ConvertTo-Json -depth 4).ToString())\n-If you choose to re-enter, changes made will not be saved" -objects @("Continue", "Re-Enter")
     if ($reenterChoice -eq "Continue") {
         $json | Out-File -FilePath $defaultSettingsPath
     } else {
-        Write-Host "Restarting script with same InitType..." -ForegroundColor Yellow
-        Start-Sleep -Seconds 1
-        powershell -NoProfile -ExecutionPolicy Bypass -File $MyInvocation.MyCommand.Path -InitType $InitType
+        Write-Host "Reinvoke Script to init again..." -ForegroundColor Yellow
         exit
     }
 }
