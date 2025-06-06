@@ -48,7 +48,7 @@ function Select-ObjectFromList($objects,$message,$allowNull = $false) {
     while ($validated -eq $false){
         Write-Host $message
         if ($allowNull -eq $true) {
-            Write-Host "0: None/Custom"
+            Write-Host "0: None/Custom ➕"
         }
         for ($i = 0; $i -lt $objects.Count; $i++) {
             $object = $objects[$i]
@@ -60,7 +60,7 @@ function Select-ObjectFromList($objects,$message,$allowNull = $false) {
         }
         $choice = Read-Host
         if ($null -eq $choice -or $choice -lt 0 -or $choice -gt $objects.Count +1) {
-            Write-Host -message "Invalid selection. Please enter a number from above"
+            Write-Host -message "❌ Invalid selection. Please enter a number from above"
         }
         if ($choice -eq 0 -and $true -eq $allowNull) {
             return $null
@@ -76,66 +76,73 @@ function CollectAndSaveSettings {
     # Create a hash table to store the settings
     $settings = @{}
 
-    # Urls
-    Write-Host "Settings- URLs:" -ForegroundColor Yellow
+    # 1. Unser Entry- Urls
+    Write-Host "`nSettings- URLs:" -ForegroundColor Yellow
     $settings.HuduBaseDomain = $((Read-Host -Prompt 'Set the base domain of your Hudu instance (e.g https://myinstance.huducloud.com)') -replace '[\\/]+$', '') -replace '^(?!https://)', 'https://'
     $settings.ITGURL = $((Read-Host -Prompt 'Set the domain of your ITGlue instance (e.g https://your-company.itglue.com)') -replace '[\\/]+$', '') -replace '^(?!https://)', 'https://'
     $instance = $settings.ITGURL.replace('https://','')
     $settings.ITGAPIEndpoint = Select-ObjectFromList -objects @("https://api.itglue.com", "https://api.eu.itglue.com", "https://api.au.itglue.com") -message "Select ITGlue API Endpoint for your instance/region"
-    
-    # Secrets
-    Write-Host "Settings- Secrets:" -ForegroundColor Yellow
+    $customBrandedDomain = $(Read-Host -Prompt "Do you have additional hostnames you'd like to include in the 🔄URL Replacement🔄? For example custom branded ITGlue Domain Name. (y/n)").ToLower().Trim()
+    if ($customBrandedDomain.ToLower() -eq 'y') {
+    	$settings.ITGCustomDomains = Read-Host -Prompt "Please enter comma separated list of URLs to check for, following the same format of the main domain URL. If only one, don't include the comma."
+    }
+
+    # 2. User-Entry- Secrets
+    Write-Host "`nSettings- Secrets:" -ForegroundColor Yellow
     $HuduAPIKey = ""
     $ITGKey = ""
     while ($HuduAPIKey.Length -ne 24) {
-        $HuduAPIKey = (Read-Host -Prompt "Get a Hudu API Key from $($settings.HuduBaseDomain)/admin/api_keys").Trim()
+        $HuduAPIKey = (Read-Host -Prompt "🔒 Get a Hudu API Key from $($settings.HuduBaseDomain)/admin/api_keys").Trim()
         if ($HuduAPIKey.Length -ne 24) {
-            Write-Host "This doesn't seem to be a valid Hudu API key. It is $($HuduAPIKey.Length) characters long, but should be 24." -ForegroundColor Red
+            Write-Host "❌ This doesn't seem to be a valid Hudu API key. It is $($HuduAPIKey.Length) characters long, but should be 24." -ForegroundColor Red
         }
     }
     while ($ITGKey.Length -ne 101) {
-        $ITGKey = (Read-Host -Prompt 'Enter your ITGlue API Key (must have password access). Should be 100 characters.').Trim()
+        $ITGKey = (Read-Host -Prompt '🔒 Enter your ITGlue API Key (must have password access). Should be 101 characters.').Trim()
         if ($ITGKey.Length -ne 101) {
-            Write-Host "This doesn't seem to be a valid ITGlue API key. It is $($ITGKey.Length) characters long, but should be 101." -ForegroundColor Red
+            Write-Host "❌ This doesn't seem to be a valid ITGlue API key. It is $($ITGKey.Length) characters long, but should be 101." -ForegroundColor Red
         }
     }
     $settings.ITGKey = ConvertTo-SecureString -String $ITGKey -AsPlainText -Force | ConvertFrom-SecureString
     $settings.HuduAPIKey = ConvertTo-SecureString -String $HuduAPIKey -AsPlainText -Force | ConvertFrom-SecureString
 
-    # Global KB
-    Write-Host "Settings- Global KnowledgeBase:" -ForegroundColor Yellow
-    $settings.InternalCompany = Read-Host 'Enter the exact name of the ITGlue Organization that represents your Internal Company'
-    $settings.GlobalKBFolder = Read-Host -Prompt 'Do you want all documents in Global KB to be placed into a subfolder? (y/n)'
-    Write-Host "The documents from the company $($settings.InternalCompany) will be migrated to Hudu's Global KB section" -ForegroundColor Cyan
-
-    # Paths and Folders
-    Write-Host "Settings- Paths and Folders:" -ForegroundColor Yellow
-    $settings.ITGLueExportPath = Read-Host 'Enter the path of the ITGLue Export. (e.g. C:\Temp\ITGlue\Export)'
-    $customBrandedDomain = Read-Host -Prompt "Do you have additional hostnames you'd like to include in the URL Replacement? For example custom branded ITGlue Domain Name. (y/n)"
-    $settings.MigrationLogs = Read-Host "Enter the path for the migration logs, or press enter to accept the Default path (%appdata%\HuduMigration\$instance\MigrationLogs)"
-    
-    if ($customBrandedDomain.ToLower() -eq 'y') {
-    	$settings.ITGCustomDomains = Read-Host -Prompt "Please enter comma separated list of URLs to check for, following the same format of the main domain URL. If only one, don't include the comma."
+    # 3. User-Entry Global KB Settings
+    Write-Host "`n📖 Settings- Global KnowledgeBase:" -ForegroundColor Yellow
+    $settings.InternalCompany = $(Read-Host 'Enter the exact name of the ITGlue Organization that represents your Internal Company 🏢').ToString().Trim()
+    $settings.GlobalKBFolder=""
+    while ($settings.GlobalKBFolder.Length() -ne 1 -or $settings.GlobalKBFolder -notin @("y","n")) {
+        $settings.GlobalKBFolder = $(Read-Host -Prompt 'Do you want all documents in 📖Global KB📖 to be placed into a subfolder? (y/n)').ToString().Trim().ToLower()
+        if ($settings.GlobalKBFolder -notin @("y","n")){
+            Write-Host "❌ Please re-enter, y or n"
+        }
     }
+    Write-Host "The documents from the company $($settings.InternalCompany) will be migrated to Hudu's Global KB section 📂" -ForegroundColor Cyan
+    $settings.ConPromptPrefix = $(Read-Host "Would you like a Prefix in front of 🛠️Configuration names🛠️ created in Hudu? This can make it easy to review and you can rename them later. Enter the prefix here, otherwise leave it blank. (e.g. ITGlue-)")
+    $settings.FAPromptPrefix = $(Read-Host "Would you like a Prefix in front of 📑Asset Layout names📑 created in Hudu? This can make it easy to review and you can rename them later. Enter the prefix here, otherwise leave it blank. (e.g. ITGlue-)")
 
-    # Migration Log Settings
+    
+    # 4. User-Entry Paths and Folders
+    Write-Host "`n🗂️ Settings- Paths and Folders:" -ForegroundColor Yellow
+    $settings.ITGLueExportPath = Read-Host 'Enter the path of the ITGLue Export. (e.g. C:\Temp\ITGlue\Export) ⬆️'
+    $settings.MigrationLogs = Read-Host "Enter the path for the migration logs, or press enter to accept the Default path (%appdata%\HuduMigration\$instance\MigrationLogs) 📜📊"
+    # Fallback for Migrationlogs setting
     if (!($settings.MigrationLogs)) {
         $settings.MigrationLogs = "$ENV:appdata\HuduMigration\$instance\MigrationLogs"
     }
-
-    $settings.ConPromptPrefix = Read-Host "Would you like a Prefix in front of Configuration names created in Hudu? This can make it easy to review and you can rename them later. Enter the prefix here, otherwise leave it blank. (e.g. ITGlue-)"
-    $settings.FAPromptPrefix = Read-Host "Would you like a Prefix in front of Asset Layout names created in Hudu? This can make it easy to review and you can rename them later. Enter the prefix here, otherwise leave it blank. (e.g. ITGlue-)"
-
-    # Convert the hash table to JSON
-    $json = $settings | ConvertTo-Json
-
-    # Save the JSON to the settings file
+    # Ensure folder is created for settings file
     if (!(Test-Path -Path "$env:APPDATA\HuduMigration\$instance")) { New-Item "$env:APPDATA\HuduMigration\$instance" -ItemType Directory }
-    $reenterChoice = Select-ObjectFromList -message "Do these settings look alright? $(($settings | ConvertTo-Json -depth 4).ToString())\n-If you choose to re-enter, changes made will not be saved" -objects @("Continue", "Re-Enter")
+
+
+    # Verify settings, save or exit and retry
+    $reenterChoice = Select-ObjectFromList -message "🛠️ Do these settings look alright? $(($settings | ConvertTo-Json -depth 4).ToString())\n-If you choose to re-enter, changes made will not be saved" -objects @("Continue", "Re-Enter")
     if ($reenterChoice -eq "Continue") {
+        Write-Host "💾 Saving Settings to $defaultSettingsPath 	🚀"
+        # Convert the hash table to JSON
+        $json = $settings | ConvertTo-Json
         $json | Out-File -FilePath $defaultSettingsPath
     } else {
-        Write-Host "reinvoke script when you're ready!..." -ForegroundColor Yellow
+        clear
+        Write-Host "🔄 reinvoke script when you're ready!..." -ForegroundColor Yellow
         exit
     }
 }
@@ -147,12 +154,12 @@ function UpdateSavedSettings {
     if ($settingsPath) {
         if (Test-Path $settingsPath) {
             # Convert the hash table to JSON
-            Write-Host "Overwriting existing settings file with updated settings." -ForegroundColor Cyan
+            Write-Host "✏️ ♻️`nOverwriting existing settings file with updated settings." -ForegroundColor Cyan
             $json = $newSettings | ConvertTo-Json
             $json | Out-File -FilePath $settingsPath
         }
         else {
-            Write-Host "Creating new settings file in $settingsPath" -ForegroundColor Yellow
+            Write-Host "✏️ 🆕`nCreating new settings file in $settingsPath" -ForegroundColor Yellow
             $json = $newSettings | ConvertTo-Json
             $json | Out-File -FilePath $settingsPath
         }
@@ -160,12 +167,12 @@ function UpdateSavedSettings {
     else {
         if (Test-Path $defaultSettingsPath) {
             # Convert the hash table to JSON
-            Write-Host "Overwriting existing settings file with updated settings." -ForegroundColor Cyan
+            Write-Host "✏️ ♻️`nOverwriting existing settings file with updated settings." -ForegroundColor Cyan
             $json = $newSettings | ConvertTo-Json
             $json | Out-File -FilePath $defaultSettingsPath
         }
         else {
-            Write-Host "Creating new settings file in $defaultSettingsPath" -ForegroundColor Yellow
+            Write-Host "✏️ 🆕`nCreating new settings file in $defaultSettingsPath" -ForegroundColor Yellow
             $json = $newSettings | ConvertTo-Json
             $json | Out-File -FilePath $defaultSettingsPath
         }
@@ -180,17 +187,17 @@ function PromptForSettingsPath {
         [switch]$Default
     )
     if ($Default) {
-        $userPath = Read-Host -Prompt 'Enter the full path to the settings.json file, or press Enter to use the default settings file'
+        $userPath = Read-Host -Prompt "🛠️ Enter the full path to the settings.json file, or press Enter to use the default settings file ($defaultSettingsPath)"
     } else {
-        $userPath = Read-Host -Prompt 'Enter the full path to the settings.json file.'
+        $userPath = Read-Host -Prompt '🛠️ Enter the full path to the settings.json file.'
     }
     
     
     if ($userPath -eq '') { 
         $userPath = $defaultSettingsPath
-        $fileNotExistMessage = 'The default settings file does not exist. Please specify a path.'
+        $fileNotExistMessage = '❌ The default settings file does not exist. Please specify a path.'
     } else {
-        $fileNotExistMessage = 'The specified path does not exist or is not accessible. Please try again.'
+        $fileNotExistMessage = '❌ The specified path does not exist or is not accessible. Please try again.'
     }
     
     if (Test-Path -Path $userPath) {
@@ -203,44 +210,44 @@ function PromptForSettingsPath {
 
 # Ask the user what they want to do
 if ($environmentSettings -and $InitType -eq 'Lite') {
-    Write-Host "Lite init and settings detected."
+    Write-Host "📄 Lite init and settings detected."
  }
  else {
-    $choice = Read-Host -Prompt 'Do you want to (I)mport settings or start from (N)ew?'
+    $choice = Read-Host -Prompt "Do you want to `n(I)mport 📂`n settings or start from `n(N)ew ✨?"
 
     switch ($choice) {
         'I' { 
             if (Test-Path -Path $defaultSettingsPath) {
                 Write-Host "Default settings file found at $defaultSettingsPath" -ForegroundColor Cyan
-                $importChoice = Read-Host -Prompt 'Do you want to use the (D)efault settings file or (S)pecify a different path?'
+                $importChoice = Read-Host -Prompt "Do you want to use the `n(D)efault settings`n file or `n(S)pecify`n a different path?"
                 
                 switch ($importChoice) {
                     'D' {
-                        Write-Host "Importing settings from $defaultSettingsPath" -ForegroundColor Yellow
+                        Write-Host "⬇️ Importing settings from $defaultSettingsPath" -ForegroundColor Yellow
                         $environmentSettings = Get-Content -Path $defaultSettingsPath | ConvertFrom-Json -Depth 50
                     }
                     'S' {
                         $settingsPath = PromptForSettingsPath -Default
-                        Write-Host "Importing settings from $settingsPath" -ForegroundColor Yellow
+                        Write-Host "⬇️ Importing settings from $settingsPath" -ForegroundColor Yellow
                         $environmentSettings = Get-Content -Path $settingsPath | ConvertFrom-Json -Depth 50
                     }
                     default {
-                        Write-Host 'Invalid choice. Please choose (D)efault or (S)pecify.'
+                        Write-Host '❌ Invalid choice. Please choose (D)efault or (S)pecify.'
                     }
                 }
             } else {
                 $settingsPath = PromptForSettingsPath
-                Write-Host "Importing settings from $settingsPath" -ForegroundColor Yellow
+                Write-Host "⬇️ Importing settings from $settingsPath" -ForegroundColor Yellow
                 $environmentSettings = Get-Content -Path $settingsPath | ConvertFrom-Json -Depth 50
             }
         }
         'N' {
-            Write-Host "Starting with a new settings file" -ForegroundColor Cyan
+            Write-Host "Starting with a ✨new✨ settings file" -ForegroundColor Cyan
             CollectAndSaveSettings
             $environmentSettings = Get-Content -Path $defaultSettingsPath | ConvertFrom-Json -Depth 50
         }
         default {
-            throw 'Invalid choice. Please choose (I)mport or (N)ew.'
+            throw 'Invalid choice. Please choose (I)mport 📂 or (N)ew ✨'
         }
     }
 }
@@ -251,7 +258,7 @@ try {
     $HuduAPIKey = ConvertSecureStringToPlainText -SecureString ($environmentSettings.HuduAPIKey|ConvertTo-SecureString)
 }
 catch {
-    Write-Host "Your Hudu API Key is not readable!!!" -ForegroundColor Yellow
+    Write-Host "⚠️ Your Hudu API Key is not readable!!!" -ForegroundColor Yellow
     $HuduAPIKey = Read-Host -Prompt "Enter the Hudu API Key from $($environmentSettings.HuduBaseDomain)/admin/api_keys"
     $environmentSettings.HuduAPIKey = ConvertTo-SecureString -String $HuduAPIKey -AsPlainText -Force | ConvertFrom-SecureString
     UpdateSavedSettings -newSettings $environmentSettings
@@ -267,7 +274,7 @@ try {
     $ITGKey = ConvertSecureStringToPlainText -SecureString ($environmentSettings.ITGKey|ConvertTo-SecureString)
 }
 catch {
-    Write-Host "Your ITG API Key is not readable!!!" -ForegroundColor Yellow
+    Write-Host "⚠️ Your ITG API Key is not readable!!!" -ForegroundColor Yellow
     $ITGKey = Read-Host 'Enter your ITGlue API Key. MAKE SURE TO USE AN API KEY WITH PASSWORD ACCESS'
     $environmentSettings.ITGKey = ConvertTo-SecureString -String $ITGKey -AsPlainText -Force | ConvertFrom-SecureString
     UpdateSavedSettings -newSettings $environmentSettings
