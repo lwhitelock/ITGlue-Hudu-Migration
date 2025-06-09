@@ -1,0 +1,46 @@
+
+$project_workdir="$PSScriptRoot"
+$debug_folder=$(join-path "$project_workdir" "debug")
+$settings_folder=$(join-path "$project_workdir" "debug\settings")
+$logs_folder=$(join-path "$project_workdir" "debug\logs")
+$defaultSettingsPath=$(join-path "$settings_folder" "environ1.json")
+
+if (!(Test-Path -Path "$debug_folder")) { New-Item "$debug_folder" -ItemType Directory }
+if (!(Test-Path -Path "$settings_folder")) { New-Item "$settings_folder" -ItemType Directory }
+if (!(Test-Path -Path "$logs_folder")) { New-Item "$logs_folder" -ItemType Directory }
+
+
+$InitType = "full"
+$settings = @{
+    HuduBaseDomain          = "https://changeme.huducloud.com"
+    ITGURL                  = "https://changeme.itglue.com"
+    ITGAPIEndpoint          = "https://api.itglue.com"
+    customBrandedDomain     = "n"
+    ITGCustomDomains        = ""
+    InternalCompany         = "changeme inc."
+    GlobalKBFolder          = "y"
+    ConPromptPrefix         = "itg-"
+    FAPromptPrefix          = "itg-"
+    ITGLueExportPath        = "c:\tmp\export"
+    MigrationLogs           = "$logs_folder"
+}   
+$ITGKey                     = "ITG.key"
+$HuduApiKey                 = "HUDU.key"
+$reenterChoice              = "Continue"
+$choice                     = "N"
+$importChoice               = "$settings_folder"
+$customBrandedDomain        = "n"
+$resumeQuestion             = "yes"
+$ImportCompanies            = 1
+$ImportLocations            = 1
+$ImportDomains              = 1
+$DisableWebsiteMonitoring   = 1
+$ImportConfigurations       = 1
+$ImportContacts             = 1
+$ImportFlexibleAssetLayouts = 1
+$ImportFlexibleAssets       = 1
+$ImportArticles             = 1
+$ImportPasswords            = 1
+$NonInteractive             = 1
+$NonInteractive             = 2
+. .\ITGlue-Hudu-Migration.ps1
