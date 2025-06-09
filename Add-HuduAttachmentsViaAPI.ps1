@@ -137,14 +137,16 @@ if ((get-host).version.major -ne 7) {
 
 # Get the Hudu API Module if not installed
 ## 2.4.5 is required for the New-HuduUpload function
-if ((Get-Module -ListAvailable -Name HuduAPI).version -ge '2.4.5') {
-    Import-Module HuduAPI
-} else {
-    Install-Module HuduAPI -MinimumVersion '2.4.5'
-    Import-Module HuduAPI
-}
+# if ((Get-Module -ListAvailable -Name HuduAPI).version -ge '2.4.5') {
+#     Import-Module HuduAPI
+# } else {
+#     Install-Module HuduAPI -MinimumVersion '2.4.5'
+#     Import-Module HuduAPI
+# }
+Import-Module "C:\Users\Administrator\Documents\GitHub\HuduAPI\HuduAPI\HuduAPI.psm1"
+
 # override this method, since it's retry method fails
-. .\Public\Invoke-HuduRequest.ps1
+# . .\Public\Invoke-HuduRequest.ps1
 
 #Login to Hudu
 New-HuduAPIKey $HuduAPIKey

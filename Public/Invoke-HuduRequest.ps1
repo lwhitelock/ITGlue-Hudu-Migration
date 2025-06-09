@@ -101,7 +101,7 @@ function Invoke-HuduRequest {
         $Results = Invoke-RestMethod @RestMethod
     } catch {
         $errorMessage = $_.Exception.Message
-        Write-Error "$(($RestMethod | ConvertTo-Json -Depth 24).ToString()) => $errorMessage"
+        Write-Host "$(($RestMethod | ConvertTo-Json -Depth 24).ToString()) => $errorMessage" -ForegroundColor Yellow
 
         if ($errorMessage -like '*Retry later*' -or $errorMessage -like '*429*Too Many Requests*') {
             $now = Get-Date

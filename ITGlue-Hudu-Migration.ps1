@@ -109,13 +109,14 @@ if ((get-host).version.major -ne 7) {
 
 
 #Get the Hudu API Module if not installed
-if ((Get-Module -ListAvailable -Name HuduAPI).version -ge '2.4.4') {
-    Import-Module HuduAPI
-} else {
-    Install-Module HuduAPI -MinimumVersion 2.4.5 -Scope CurrentUser
-    Import-Module HuduAPI
-}
+# if ((Get-Module -ListAvailable -Name HuduAPI).version -ge '2.4.4') {
+#     Import-Module HuduAPI
+# } else {
+#     Install-Module HuduAPI -MinimumVersion 2.4.5 -Scope CurrentUser
+#     Import-Module HuduAPI
+# }
   
+Import-Module "C:\Users\Administrator\Documents\GitHub\HuduAPI\HuduAPI\HuduAPI.psm1"
 
 #Login to Hudu
 New-HuduAPIKey $HuduAPIKey
@@ -142,7 +143,7 @@ If (Get-Module -ListAvailable -Name "ITGlueAPIv2") {
 }
 
 # override this method, since it's retry method fails
-. $PSScriptRoot\Public\Invoke-HuduRequest.ps1
+# . $PSScriptRoot\Public\Invoke-HuduRequest.ps1
 
 
 #Settings IT-Glue logon information
