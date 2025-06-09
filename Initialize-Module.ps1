@@ -31,8 +31,8 @@ param(
 ############################### Settings ###############################
 # Define the path to the settings.json file in the user's AppData folder
   # Something awesome will be here soon.
-$settingsFiles = Get-Item "$env:APPDATA\HuduMigration\*\settings.json"
-$defaultSettingsPath = "$env:APPDATA\HuduMigration\settings.json"
+$settingsFiles = $settingsFiles ?? $(Get-Item "$env:APPDATA\HuduMigration\*\settings.json")
+$defaultSettingsPath = $defaultSettingsPath ?? "$env:APPDATA\HuduMigration\settings.json"
 
 # Function to read back securely stored keys used in the settings.json file
 function ConvertSecureStringToPlainText {
@@ -119,7 +119,7 @@ function CollectAndSaveSettings {
         $(Read-Host 'Enter the exact name of the ITGlue Organization that represents your Internal Company ').ToString().Trim()
     $settings.GlobalKBFolder = $settings.GlobalKBFolder ??
         ""
-    while ($settings.GlobalKBFolder.Length() -ne 1 -or $settings.GlobalKBFolder -notin @("y","n")) {
+    while ($settings.GlobalKBFolder.Length -ne 1 -or $settings.GlobalKBFolder.ToLower() -notin @('y','n')) {
         $settings.GlobalKBFolder = $(Read-Host -Prompt 'Do you want all documents in Global KB to be placed into a subfolder? (y/n)').ToString().Trim().ToLower()
         if ($settings.GlobalKBFolder -notin @("y","n")){
             Write-Host "Please re-enter, y or n"
@@ -150,7 +150,7 @@ function CollectAndSaveSettings {
     $reenterChoice = $reenterChoice ?? 
         $(Select-ObjectFromList -message "Do these settings look alright? $(($settings | ConvertTo-Json -depth 4).ToString())\n-If you choose to re-enter, changes made will not be saved" -objects @("Continue", "Re-Enter"))
     if ($reenterChoice -eq "Continue") {
-        Write-Host "Saving Settings to $defaultSettingsPath 	"
+        Write-Host "Saving Settings to $defaultSettingsPath"
         # Convert the hash table to JSON
         $json = $settings | ConvertTo-Json
         $json | Out-File -FilePath $defaultSettingsPath

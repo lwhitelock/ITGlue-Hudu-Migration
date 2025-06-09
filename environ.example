@@ -1,23 +1,46 @@
-# This is an examplefile for all required user input. 
-# This is handy for folks who need to test a lot
-# No need to edit this file, it is just an example, make a copy as .\environ1.ps1
-# -- or something else that is in .gitignore already
 
+$project_workdir="$PSScriptRoot"
+$debug_folder=$(join-path "$project_workdir" "debug")
+$settings_folder=$(join-path "$project_workdir" "debug\settings")
+$logs_folder=$(join-path "$project_workdir" "debug\logs")
+$defaultSettingsPath=$(join-path "$settings_folder" "environ1.json")
+
+if (!(Test-Path -Path "$debug_folder")) { New-Item "$debug_folder" -ItemType Directory }
+if (!(Test-Path -Path "$settings_folder")) { New-Item "$settings_folder" -ItemType Directory }
+if (!(Test-Path -Path "$logs_folder")) { New-Item "$logs_folder" -ItemType Directory }
+
+
+$InitType = "full"
 $settings = @{
-    HuduBaseDomain      = "https://yoururl.huducloud.com"
-    ITGURL              = "https://your-biz.itglue.com"
-    ITGAPIEndpoint      = "https://api.itglue.com"
-    customBrandedDomain = "n"
-    ITGCustomDomains    = "yoururl,myurl"
-    InternalCompany     = "urcompanyname"
-    GlobalKBFolder      = "y"
-    ConPromptPrefix     = ""
-    FAPromptPrefix      = ""
-    ITGLueExportPath    = "c:\urexport"
-    MigrationLogs       = "c:\urlogs"
-}
-$ITGKey              = "ursekretkey"
-$HuduApiKey          = "ursekretkey"
-$reenterChoice        = "Continue"
-
-
+    HuduBaseDomain          = "https://changeme.huducloud.com"
+    ITGURL                  = "https://changeme.itglue.com"
+    ITGAPIEndpoint          = "https://api.itglue.com"
+    customBrandedDomain     = "n"
+    ITGCustomDomains        = ""
+    InternalCompany         = "changeme inc."
+    GlobalKBFolder          = "y"
+    ConPromptPrefix         = "itg-"
+    FAPromptPrefix          = "itg-"
+    ITGLueExportPath        = "c:\tmp\export"
+    MigrationLogs           = "$logs_folder"
+}   
+$ITGKey                     = "ITG.key"
+$HuduApiKey                 = "HUDU.key"
+$reenterChoice              = "Continue"
+$choice                     = "N"
+$importChoice               = "$settings_folder"
+$customBrandedDomain        = "n"
+$resumeQuestion             = "yes"
+$ImportCompanies            = 1
+$ImportLocations            = 1
+$ImportDomains              = 1
+$DisableWebsiteMonitoring   = 1
+$ImportConfigurations       = 1
+$ImportContacts             = 1
+$ImportFlexibleAssetLayouts = 1
+$ImportFlexibleAssets       = 1
+$ImportArticles             = 1
+$ImportPasswords            = 1
+$NonInteractive             = 1
+$NonInteractive             = 2
+. .\ITGlue-Hudu-Migration.ps1
