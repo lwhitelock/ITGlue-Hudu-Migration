@@ -179,6 +179,7 @@ function UpdateSavedSettings {
         }
     }
     else {
+        
         if (Test-Path $defaultSettingsPath) {
             # Convert the hash table to JSON
             Write-Host "️Overwriting existing settings file with updated settings." -ForegroundColor Cyan
