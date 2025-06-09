@@ -1,2 +1,6 @@
 .vscode*
 .vscode/launch.json
+ManualActions.json
+ManualActions.html
+*debug*
+./debug/*

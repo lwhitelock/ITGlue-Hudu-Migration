@@ -74,23 +74,27 @@ function Select-ObjectFromList($objects,$message,$allowNull = $false) {
 # Prompt the user for various settings and save the responses
 function CollectAndSaveSettings {
     # Create a hash table to store the settings
-    $settings = @{}
+    $settings = $settings ?? @{}
 
     # 1. Unser Entry- Urls
     Write-Host "Settings- URLs:" -ForegroundColor Yellow
-    $settings.HuduBaseDomain = $((Read-Host -Prompt 'Set the base domain of your Hudu instance (e.g https://myinstance.huducloud.com)') -replace '[\\/]+$', '') -replace '^(?!https://)', 'https://'
-    $settings.ITGURL = $((Read-Host -Prompt 'Set the domain of your ITGlue instance (e.g https://your-company.itglue.com)') -replace '[\\/]+$', '') -replace '^(?!https://)', 'https://'
+    $settings.HuduBaseDomain = $settings.HuduBaseDomain ?? 
+        $((Read-Host -Prompt 'Set the base domain of your Hudu instance (e.g https://myinstance.huducloud.com)') -replace '[\\/]+$', '') -replace '^(?!https://)', 'https://'
+    $settings.ITGURL = $settings.ITGURL ?? 
+        $((Read-Host -Prompt 'Set the domain of your ITGlue instance (e.g https://your-company.itglue.com)') -replace '[\\/]+$', '') -replace '^(?!https://)', 'https://'
+    $settings.ITGAPIEndpoint = $settings.ITGAPIEndpoint ?? 
+        $(Select-ObjectFromList -objects @("https://api.itglue.com", "https://api.eu.itglue.com", "https://api.au.itglue.com") -message "Select ITGlue API Endpoint for your instance/region")
+    $customBrandedDomain = $customBrandedDomain ?? 
+        $(Read-Host -Prompt "Do you have additional hostnames you'd like to include in the URL Replacement? For example custom branded ITGlue Domain Name. (y/n)").ToLower().Trim()
     $instance = $settings.ITGURL.replace('https://','')
-    $settings.ITGAPIEndpoint = Select-ObjectFromList -objects @("https://api.itglue.com", "https://api.eu.itglue.com", "https://api.au.itglue.com") -message "Select ITGlue API Endpoint for your instance/region"
-    $customBrandedDomain = $(Read-Host -Prompt "Do you have additional hostnames you'd like to include in the URL Replacement? For example custom branded ITGlue Domain Name. (y/n)").ToLower().Trim()
     if ($customBrandedDomain.ToLower() -eq 'y') {
     	$settings.ITGCustomDomains = Read-Host -Prompt "Please enter comma separated list of URLs to check for, following the same format of the main domain URL. If only one, don't include the comma."
     }
 
     # 2. User-Entry- Secrets
     Write-Host "Settings- Secrets:" -ForegroundColor Yellow
-    $HuduAPIKey = ""
-    $ITGKey = ""
+    $HuduAPIKey = $HuduAPIKey ?? ""
+    $ITGKey = $ITGKey ?? ""
     while ($HuduAPIKey.Length -ne 24) {
         $HuduAPIKey = (Read-Host -Prompt "Get a Hudu API Key from $($settings.HuduBaseDomain)/admin/api_keys").Trim()
         if ($HuduAPIKey.Length -ne 24) {
@@ -108,8 +112,10 @@ function CollectAndSaveSettings {
 
     # 3. User-Entry Global KB Settings
     Write-Host "Settings- Global KnowledgeBase:" -ForegroundColor Yellow
-    $settings.InternalCompany = $(Read-Host 'Enter the exact name of the ITGlue Organization that represents your Internal Company ').ToString().Trim()
-    $settings.GlobalKBFolder=""
+    $settings.InternalCompany = $settings.InternalCompany ??
+        $(Read-Host 'Enter the exact name of the ITGlue Organization that represents your Internal Company ').ToString().Trim()
+    $settings.GlobalKBFolder = $settings.GlobalKBFolder ??
+        ""
     while ($settings.GlobalKBFolder.Length() -ne 1 -or $settings.GlobalKBFolder -notin @("y","n")) {
         $settings.GlobalKBFolder = $(Read-Host -Prompt 'Do you want all documents in Global KB to be placed into a subfolder? (y/n)').ToString().Trim().ToLower()
         if ($settings.GlobalKBFolder -notin @("y","n")){
@@ -117,14 +123,18 @@ function CollectAndSaveSettings {
         }
     }
     Write-Host "The documents from the company $($settings.InternalCompany) will be migrated to Hudu's Global KB section " -ForegroundColor Cyan
-    $settings.ConPromptPrefix = $(Read-Host "Would you like a Prefix in front of ️Configuration names️ created in Hudu? This can make it easy to review and you can rename them later. Enter the prefix here, otherwise leave it blank. (e.g. ITGlue-)")
-    $settings.FAPromptPrefix = $(Read-Host "Would you like a Prefix in front of Asset Layout names created in Hudu? This can make it easy to review and you can rename them later. Enter the prefix here, otherwise leave it blank. (e.g. ITGlue-)")
+    $settings.ConPromptPrefix = $settings.ConPromptPrefix ?? 
+        $(Read-Host "Would you like a Prefix in front of ️Configuration names️ created in Hudu? This can make it easy to review and you can rename them later. Enter the prefix here, otherwise leave it blank. (e.g. ITGlue-)")
+    $settings.FAPromptPrefix = $settings.FAPromptPrefix ??
+        $(Read-Host "Would you like a Prefix in front of Asset Layout names created in Hudu? This can make it easy to review and you can rename them later. Enter the prefix here, otherwise leave it blank. (e.g. ITGlue-)")
 
     
     # 4. User-Entry Paths and Folders
     Write-Host "️Settings- Paths and Folders:" -ForegroundColor Yellow
-    $settings.ITGLueExportPath = Read-Host 'Enter the path of the ITGLue Export. (e.g. C:\Temp\ITGlue\Export) ️'
-    $settings.MigrationLogs = Read-Host "Enter the path for the migration logs, or press enter to accept the Default path (%appdata%\HuduMigration\$instance\MigrationLogs)"
+    $settings.ITGLueExportPath = $settings.ITGLueExportPath ?? 
+        $(Read-Host 'Enter the path of the ITGLue Export. (e.g. C:\Temp\ITGlue\Export) ️')
+    $settings.MigrationLogs = $settings.MigrationLogs ??
+        $(Read-Host "Enter the path for the migration logs, or press enter to accept the Default path (%appdata%\HuduMigration\$instance\MigrationLogs)")
     # Fallback for Migrationlogs setting
     if (!($settings.MigrationLogs)) {
         $settings.MigrationLogs = "$ENV:appdata\HuduMigration\$instance\MigrationLogs"
@@ -134,14 +144,15 @@ function CollectAndSaveSettings {
 
 
     # Verify settings, save or exit and retry
-    $reenterChoice = Select-ObjectFromList -message "Do these settings look alright? $(($settings | ConvertTo-Json -depth 4).ToString())\n-If you choose to re-enter, changes made will not be saved" -objects @("Continue", "Re-Enter")
+    $reenterChoice = $reenterChoice ?? 
+        $(Select-ObjectFromList -message "Do these settings look alright? $(($settings | ConvertTo-Json -depth 4).ToString())\n-If you choose to re-enter, changes made will not be saved" -objects @("Continue", "Re-Enter"))
     if ($reenterChoice -eq "Continue") {
         Write-Host "Saving Settings to $defaultSettingsPath 	"
         # Convert the hash table to JSON
         $json = $settings | ConvertTo-Json
         $json | Out-File -FilePath $defaultSettingsPath
     } else {
-        clear
+        Clear-Host
         Write-Host "reinvoke script when you're ready!..." -ForegroundColor Yellow
         exit
     }
