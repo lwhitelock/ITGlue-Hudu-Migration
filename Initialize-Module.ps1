@@ -224,13 +224,13 @@ if ($environmentSettings -and $InitType -eq 'Lite') {
     Write-Host "Lite init and settings detected."
  }
  else {
-    $choice = Read-Host -Prompt "Do you want to `n(I)mport `n settings or start from `n(N)ew ?"
+    $choice = $choice ?? $(Read-Host -Prompt "Do you want to `n(I)mport `n settings or start from `n(N)ew ?")
 
     switch ($choice) {
         'I' { 
             if (Test-Path -Path $defaultSettingsPath) {
                 Write-Host "Default settings file found at $defaultSettingsPath" -ForegroundColor Cyan
-                $importChoice = Read-Host -Prompt "Do you want to use the `n(D)efault settings`n file or `n(S)pecify`n a different path?"
+                $importChoice = $importChoice ?? $(Read-Host -Prompt "Do you want to use the `n(D)efault settings`n file or `n(S)pecify`n a different path?")
                 
                 switch ($importChoice) {
                     'D' {
