@@ -1,0 +1,23 @@
+# This is an examplefile for all required user input. 
+# This is handy for folks who need to test a lot
+# No need to edit this file, it is just an example, make a copy as .\environ1.ps1
+# -- or something else that is in .gitignore already
+
+$settings = @{
+    HuduBaseDomain      = "https://yoururl.huducloud.com"
+    ITGURL              = "https://your-biz.itglue.com"
+    ITGAPIEndpoint      = "https://api.itglue.com"
+    customBrandedDomain = "n"
+    ITGCustomDomains    = "yoururl,myurl"
+    InternalCompany     = "urcompanyname"
+    GlobalKBFolder      = "y"
+    ConPromptPrefix     = ""
+    FAPromptPrefix      = ""
+    ITGLueExportPath    = "c:\urexport"
+    MigrationLogs       = "c:\urlogs"
+}
+$ITGKey              = "ursekretkey"
+$HuduApiKey          = "ursekretkey"
+$reenterChoice        = "Continue"
+
+
