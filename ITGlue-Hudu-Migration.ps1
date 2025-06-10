@@ -1250,21 +1250,60 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\AssetLayouts.json")) 
 
 ############################### Flexible Assets ###############################
 #Check for Assets Resume
+    function Get-CastIfNumeric {
+        param([Parameter(Mandatory=$true)][object]$Value)
+
+        if ($Value -is [string]) {
+            $Value = $Value.Trim()
+            if ($Value -match '^\d+$') {
+                return [int]$Value
+            } elseif ($Value -match '^\d+\.0+$') {
+                return [int][double]$Value  # handles "2.0" => 2
+            } elseif ($Value -match '^\d+\.\d+$') {
+                return {[double]$Value} if ([double]$Value -le 2147483647) else {}
+            }
+        }
+        return $Value
+    }
+
+
 function Get-CastIfNumeric {
-    param([Parameter(Mandatory=$true)][object]$Value)
+    param([Parameter(Mandatory = $true)][object]$Value)
 
     if ($Value -is [string]) {
         $Value = $Value.Trim()
+
+        # Integer-like string
         if ($Value -match '^\d+$') {
-            return [int]$Value
+            try {
+                $asDouble = [double]$Value
+                if ($asDouble -le [int]::MaxValue) {
+                    return [int]$asDouble
+                } else {
+                    return [double]$asDouble
+                }
+            } catch {
+                return $Value
+            }
         }
+
+        # Float-like string
         elseif ($Value -match '^\d+\.\d+$') {
-            return [double]$Value
+            try {
+                $asDouble = [double]$Value
+                if ($asDouble % 1 -eq 0 -and $asDouble -le [int]::MaxValue) {
+                    return [int]$asDouble
+                } else {
+                    return $asDouble
+                }
+            } catch {
+                return $Value
+            }
         }
     }
+
     return $Value
 }
-
 
 
 if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Assets.json")) {
