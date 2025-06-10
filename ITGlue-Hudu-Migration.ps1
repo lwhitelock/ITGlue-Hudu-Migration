@@ -1250,21 +1250,21 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\AssetLayouts.json")) 
 
 ############################### Flexible Assets ###############################
 #Check for Assets Resume
-    function Get-CastIfNumeric {
-        param([Parameter(Mandatory=$true)][object]$Value)
+    # function Get-CastIfNumeric {
+    #     param([Parameter(Mandatory=$true)][object]$Value)
 
-        if ($Value -is [string]) {
-            $Value = $Value.Trim()
-            if ($Value -match '^\d+$') {
-                return [int]$Value
-            } elseif ($Value -match '^\d+\.0+$') {
-                return [int][double]$Value  # handles "2.0" => 2
-            } elseif ($Value -match '^\d+\.\d+$') {
-                return {[double]$Value} if ([double]$Value -le 2147483647) else {}
-            }
-        }
-        return $Value
-    }
+    #     if ($Value -is [string]) {
+    #         $Value = $Value.Trim()
+    #         if ($Value -match '^\d+$') {
+    #             return [int]$Value
+    #         } elseif ($Value -match '^\d+\.0+$') {
+    #             return [int][double]$Value  # handles "2.0" => 2
+    #         } elseif ($Value -match '^\d+\.\d+$') {
+    #             return {[double]$Value} if ([double]$Value -le 2147483647) else {}
+    #         }
+    #     }
+    #     return $Value
+    # }
 
 
 function Get-CastIfNumeric {
