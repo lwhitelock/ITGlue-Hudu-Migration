@@ -1,14 +1,23 @@
 
 $project_workdir="$PSScriptRoot"
+$env_name
+
 $debug_folder=$(join-path "$project_workdir" "debug")
+$errors_folder=$(join-path $debug_folder "errors")
+$global:GLOBAL_ERRORS_DIRECTORY="$errors_folder"
+$global:HAPI_ERRORS_DIRECTORY=$(join-path "$errors_folder" "huduapi")
+$global:ITG_ERRORS_DIRECTORY=$(join-path "$errors_folder" "itglue")
+
+
 $settings_folder=$(join-path "$project_workdir" "debug\settings")
 $logs_folder=$(join-path "$project_workdir" "debug\logs")
-$defaultSettingsPath=$(join-path "$settings_folder" "environ1.json")
+$defaultSettingsPath=$(join-path "$settings_folder" "$envname.json")
 
-if (!(Test-Path -Path "$debug_folder")) { New-Item "$debug_folder" -ItemType Directory }
-if (!(Test-Path -Path "$settings_folder")) { New-Item "$settings_folder" -ItemType Directory }
-if (!(Test-Path -Path "$logs_folder")) { New-Item "$logs_folder" -ItemType Directory }
 
+foreach ($folder in @($debug_folder, $errors_folder, $logs_folder, $settings_folder, $HAPI_ERRORS_DIRECTORY, $ITG_ERRORS_DIRECTORY)) {
+    if (!(Test-Path -Path "$folder")) { New-Item "$folder" -ItemType Directory }
+    Get-ChildItem -Path "$folder" -File -Recurse -Force | Remove-Item -Force
+}
 
 $InitType = "full"
 $settings = @{
