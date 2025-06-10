@@ -1298,32 +1298,20 @@ function Get-CastIfNumeric {
     if ($Value -is [string]) {
         $Value = $Value.Trim()
 
-        # Integer-like string
-        if ($Value -match '^\d+$') {
-            try {
-                $asDouble = [double]$Value
-                if ($asDouble -le [int]::MaxValue) {
-                    return [int]$asDouble
-                } else {
-                    return [double]$asDouble
-                }
-            } catch {
-                return $Value
-            }
-        }
+        try {
+            $asDouble = [double]$Value
 
-        # Float-like string
-        elseif ($Value -match '^\d+\.\d+$') {
-            try {
-                $asDouble = [double]$Value
-                if ($asDouble % 1 -eq 0 -and $asDouble -le [int]::MaxValue) {
-                    return [int]$asDouble
-                } else {
-                    return $asDouble
-                }
-            } catch {
-                return $Value
+            # Round if equivalent to int (e.g. 1.0, 2.000)
+            if ($asDouble % 1 -eq 0 -and $asDouble -le [int]::MaxValue) {
+                return [int]$asDouble
             }
+
+            # Otherwise return as double if it’s still valid
+            if ($asDouble -le [double]::MaxValue) {
+                return $asDouble
+            }
+        } catch {
+            return $Value
         }
     }
 
@@ -1540,9 +1528,48 @@ $ITGPasswordsRaw = Import-CSV -Path "$ITGLueExportPath\passwords.csv"
                     Write-Host "Warning $ITGParsed : $ITGValues Could not be added" -ForegroundColor Red
                 }
             }
+            try {
+                $UpdatedHuduAsset = (Set-HuduAsset -asset_id $UpdateAsset.HuduID -name $UpdateAsset.name -company_id $($UpdateAsset.HuduObject.company_id) -asset_layout_id $UpdateAsset.HuduObject.asset_layout_id -fields $AssetFields).asset
+                } catch {
+                $msg = $_.Exception.Message
+                if ($msg -match "Invalid format for '\\u0027(.+?)\\u0027") {
+                   Write-APIErrorObjectToFile -name "asset-$($updateAsset.name)-$($Updateasset.huduid)-$($UpdateAsset.HuduObject.company_id)-needscast" -ErrorObject @{
+                        original_exc = $msg
+                        current_exc = "determining format for numerical coercion"
+                        resolution = "."
+                        }                    
+                    $badField = $matches[1]
+                    Write-Warning "Field [$badField] failed format check. Retrying with cast to int..."
 
-            $UpdatedHuduAsset = (Set-HuduAsset -asset_id $UpdateAsset.HuduID -name $UpdateAsset.name -company_id $($UpdateAsset.HuduObject.company_id) -asset_layout_id $UpdateAsset.HuduObject.asset_layout_id -fields $AssetFields).asset
+                    # Try to cast that field specifically to int
+                    foreach ($cf in $AssetFields.custom_fields) {
+                        if ($cf.ContainsKey($badField)) {
+                            try {
+                                $cf[$badField] = [int][double]$cf[$badField]
+                            } catch {
+                                Write-APIErrorObjectToFile -name "asset-$($updateAsset.name)-$($Updateasset.huduid)-$($UpdateAsset.HuduObject.company_id)-typecast" -ErrorObject @{
+                                        original_exc = $msg
+                                        current_exc = $_
+                                        resolution = "Could not cast [$badField] cleanly, skipping fix"
+                                        }
+                            }
+                        }
+                    }
 
+                    # Retry the request
+                    try {
+                        $UpdatedHuduAsset = (Set-HuduAsset -asset_id $UpdateAsset.HuduID -name $UpdateAsset.name -company_id $($UpdateAsset.HuduObject.company_id) -asset_layout_id $UpdateAsset.HuduObject.asset_layout_id -fields $AssetFields).asset
+                    } catch {
+                        Write-APIErrorObjectToFile -name "asset-$($updateAsset.name)-$($Updateasset.huduid)-$($UpdateAsset.HuduObject.company_id)-retry" -ErrorObject @{
+                        original_exc = $msg
+                        current_exc = $_
+                        resolution = "retried update asset after re-cast."
+                        }
+                    }
+                    } 
+                }
+
+            
             $UpdateAsset.HuduObject = $UpdatedHuduAsset
             $UpdateAsset.Imported = "Created-By-Script"
         }
