@@ -47,6 +47,31 @@ $FontAwesomeUpgrade = Get-FontAwesomeMap
 
 ############################### End of Functions ###############################
 
+function Write-ITGErrorObjectToFile {
+    param (
+        [Parameter(Mandatory)]
+        [object]$ErrorObject,
+        [string]$Name
+    )
+    $stringOutput = $ErrorObject | Out-String
+    $jsonOutput = try {
+        $ErrorObject | ConvertTo-Json -Depth 96 -ErrorAction Stop
+    } catch {
+        "Failed to convert to JSON: $_"
+    }
+    $logContent = @"
+==== RAW STRING ====
+$stringOutput
+==== JSON FORMAT ====
+$jsonOutput
+"@
+    if ($null -ne $ITG_ERRORS_DIRECTORY) {
+        $filename = "$($Name -replace '\s+', '')_error_$(Get-Date -Format 'yyyyMMdd_HHmmss').log"
+        $fullPath = Join-Path $ITG_ERRORS_DIRECTORY $filename
+        Set-Content -Path $fullpath -Value $logContent -Encoding UTF8
+    }
+        Write-Host "$logContent" -ForegroundColor Yellow
+}
 
 ###################### Initial Setup and Confirmations ###############################
 Write-Host "#######################################################" -ForegroundColor Green
