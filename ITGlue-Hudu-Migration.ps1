@@ -1266,6 +1266,7 @@ function Get-CastIfNumeric {
 }
 
 
+
 if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Assets.json")) {
     Write-Host "Loading Previous Asset Migration"
     $MatchedAssets = Get-Content "$MigrationLogs\Assets.json" -raw | Out-String | ConvertFrom-Json -depth 100
