@@ -1,6 +1,15 @@
+$LocalModulePath = "C:\Users\$env:USERNAME\Documents\GitHub\HuduAPI\HuduAPI\HuduAPI.psm1"
 Import-Module ImportExcel
-Import-Module "C:\Users\$env:USERNAME\Documents\GitHub\HuduAPI\HuduAPI\HuduAPI.psm1"
-. $PSScriptRoot\Public\Invoke-HuduRequest.ps1
+if (Test-Path $LocalModulePath) {
+    Write-Host "Loading local HuduAPI module from path: $LocalModulePath" -ForegroundColor Green
+    Import-Module $LocalModulePath -Force
+} else {
+    Write-Host "Local HuduAPI module not found. Falling back to installed module..." -ForegroundColor Yellow
+    if (-not (Get-Module -ListAvailable -Name HuduAPI | Where-Object { $_.Version -ge '2.4.5' })) {
+        Install-Module HuduAPI -MinimumVersion 2.4.5 -Scope CurrentUser -Force
+    }
+    Import-Module HuduAPI -Force
+}
 
 $Path = Read-Host "Provide spreadsheet mapping of ITGlue (configuration type names) to Hudu (asset layout names)"
 $APIKey = Read-Host "Enter your Hudu API Key"

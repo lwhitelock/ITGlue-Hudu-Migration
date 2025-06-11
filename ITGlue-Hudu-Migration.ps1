@@ -106,23 +106,24 @@ if ((get-host).version.major -ne 7) {
     exit 1
 }
 
-
-#Get the Hudu API Module if not installed
-# if ((Get-Module -ListAvailable -Name HuduAPI).version -ge '2.4.4') {
-#     Import-Module HuduAPI
-# } else {
-#     Install-Module HuduAPI -MinimumVersion 2.4.5 -Scope CurrentUser
-#     Import-Module HuduAPI
-# }
-  
-Import-Module "C:\Users\$env:USERNAME\Documents\GitHub\HuduAPI\HuduAPI\HuduAPI.psm1"
+$LocalModulePath = "C:\Users\$env:USERNAME\Documents\GitHub\HuduAPI\HuduAPI\HuduAPI.psm1"
+if (Test-Path $LocalModulePath) {
+    Write-Host "Loading local HuduAPI module from path: $LocalModulePath" -ForegroundColor Green
+    Import-Module $LocalModulePath -Force
+} else {
+    Write-Host "Local HuduAPI module not found. Falling back to installed module..." -ForegroundColor Yellow
+    if (-not (Get-Module -ListAvailable -Name HuduAPI | Where-Object { $_.Version -ge '2.4.5' })) {
+        Install-Module HuduAPI -MinimumVersion 2.4.5 -Scope CurrentUser -Force
+    }
+    Import-Module HuduAPI -Force
+}
 
 #Login to Hudu
 New-HuduAPIKey $HuduAPIKey
 New-HuduBaseUrl $HuduBaseDomain
 
 # Check we have the correct version
-$RequiredHuduVersion = "2.1.5.9"
+$RequiredHuduVersion = "2.37.1"
 $HuduAppInfo = Get-HuduAppInfo
 If ([version]$HuduAppInfo.version -lt [version]$RequiredHuduVersion) {
     Write-Host "This script requires at least version $RequiredHuduVersion. Please update your version of Hudu and run the script again. Your version is $($HuduAppInfo.version)"
@@ -140,10 +141,6 @@ If (Get-Module -ListAvailable -Name "ITGlueAPIv2") {
     Install-Module ITGlueAPIv2 -Force
     Import-Module ITGlueAPIv2
 }
-
-# override this method, since it's retry method fails
-# . $PSScriptRoot\Public\Invoke-HuduRequest.ps1
-
 
 #Settings IT-Glue logon information
 Add-ITGlueBaseURI -base_uri $ITGAPIEndpoint

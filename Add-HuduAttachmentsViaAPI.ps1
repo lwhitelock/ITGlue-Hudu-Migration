@@ -135,18 +135,17 @@ if ((get-host).version.major -ne 7) {
 }
 
 
-# Get the Hudu API Module if not installed
-## 2.4.5 is required for the New-HuduUpload function
-# if ((Get-Module -ListAvailable -Name HuduAPI).version -ge '2.4.5') {
-#     Import-Module HuduAPI
-# } else {
-#     Install-Module HuduAPI -MinimumVersion '2.4.5'
-#     Import-Module HuduAPI
-# }
-Import-Module "C:\Users\Administrator\Documents\GitHub\HuduAPI\HuduAPI\HuduAPI.psm1"
-
-# override this method, since it's retry method fails
-# . .\Public\Invoke-HuduRequest.ps1
+$LocalModulePath = "C:\Users\$env:USERNAME\Documents\GitHub\HuduAPI\HuduAPI\HuduAPI.psm1"
+if (Test-Path $LocalModulePath) {
+    Write-Host "Loading local HuduAPI module from path: $LocalModulePath" -ForegroundColor Green
+    Import-Module $LocalModulePath -Force
+} else {
+    Write-Host "Local HuduAPI module not found. Falling back to installed module..." -ForegroundColor Yellow
+    if (-not (Get-Module -ListAvailable -Name HuduAPI | Where-Object { $_.Version -ge '2.4.5' })) {
+        Install-Module HuduAPI -MinimumVersion 2.4.5 -Scope CurrentUser -Force
+    }
+    Import-Module HuduAPI -Force
+}
 
 #Login to Hudu
 New-HuduAPIKey $HuduAPIKey
