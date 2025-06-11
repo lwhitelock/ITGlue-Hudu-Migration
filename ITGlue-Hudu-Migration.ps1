@@ -42,8 +42,10 @@ $FontAwesomeUpgrade = Get-FontAwesomeMap
 # Add Hudu Relations Function
 . $PSScriptRoot\Public\Add-HuduRelation.ps1
 
-# Add Timed (Noninteractive) Messages Helper
+# Add Timed (Noninteractive) Messages Helper, type-casting helper, and debug-helper
 . $PSScriptRoot\Public\Write-TimedMessage.ps1
+. $PSScriptRoot\Public\Type-Helper.ps1
+. $PSScriptRoot\Public\Write-ITGErrorObjectToFile.ps1
 
 ############################### End of Functions ###############################
 
@@ -1244,52 +1246,6 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\AssetLayouts.json")) 
 
 }
 
-############################### Flexible Assets ###############################
-#Check for Assets Resume
-    # function Get-CastIfNumeric {
-    #     param([Parameter(Mandatory=$true)][object]$Value)
-
-    #     if ($Value -is [string]) {
-    #         $Value = $Value.Trim()
-    #         if ($Value -match '^\d+$') {
-    #             return [int]$Value
-    #         } elseif ($Value -match '^\d+\.0+$') {
-    #             return [int][double]$Value  # handles "2.0" => 2
-    #         } elseif ($Value -match '^\d+\.\d+$') {
-    #             return {[double]$Value} if ([double]$Value -le 2147483647) else {}
-    #         }
-    #     }
-    #     return $Value
-    # }
-
-
-function Get-CastIfNumeric {
-    param([Parameter(Mandatory = $true)][object]$Value)
-
-    if ($Value -is [string]) {
-        $Value = $Value.Trim()
-
-        try {
-            $asDouble = [double]$Value
-
-            # Round if equivalent to int (e.g. 1.0, 2.000)
-            if ($asDouble % 1 -eq 0 -and $asDouble -le [int]::MaxValue) {
-                return [int]$asDouble
-            }
-
-            # Otherwise return as double if it’s still valid
-            if ($asDouble -le [double]::MaxValue) {
-                return $asDouble
-            }
-        } catch {
-            return $Value
-        }
-    }
-
-    return $Value
-}
-
-
 if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Assets.json")) {
     Write-Host "Loading Previous Asset Migration"
     $MatchedAssets = Get-Content "$MigrationLogs\Assets.json" -raw | Out-String | ConvertFrom-Json -depth 100
@@ -1447,37 +1403,42 @@ $ITGPasswordsRaw = Import-CSV -Path "$ITGLueExportPath\passwords.csv"
 
                             if ($field.FieldType -eq "Password") {
                                 $ITGPassword = (Get-ITGluePasswords -id $ITGValues -include related_items).data
-				$ITGPasswordValue = ($ITGPasswordsRaw |Where-Object {$_.id -eq $ITGPassword.id}).password
+				                $ITGPasswordValue = ($ITGPasswordsRaw |Where-Object {$_.id -eq $ITGPassword.id}).password
                                 try {
-					if ($ITGPasswordValue) {
-						$NewPasswordObject = [pscustomobject]@{
-							Name =  "$($UpdateAsset.name) $($Field.fieldname) $($ITGPassword.Username) Password"
-							Username = $ITGPassword.Username
-							URL = $ITGPassword.url
-							ITGID = $ITGPassword.id
-							Description = $ITGpassword.notes
-							CompanyId = $UpdateAsset.HuduObject.company_id
-							Password = $ITGPasswordValue
-							};
+                                        if ($ITGPasswordValue) {
+                                            $NewPasswordObject = [pscustomobject]@{
+                                                Name =  "$($UpdateAsset.name) $($Field.fieldname) $($ITGPassword.Username) Password"
+                                                Username = $ITGPassword.Username
+                                                URL = $ITGPassword.url
+                                                ITGID = $ITGPassword.id
+                                                Description = $ITGpassword.notes
+                                                CompanyId = $UpdateAsset.HuduObject.company_id
+                                                Password = $ITGPasswordValue
+                                                };
                                     		$null = $AssetFields.add("$($field.HuduParsedName)", $ITGPasswordValue)
                                     		$MigratedPasswordStatus = "Into Asset"
-					}
-     				} catch {
-                                    Write-Host "Error occured adding field, possible duplicate name" -ForegroundColor Red
-                                    $ManualLog = [PSCustomObject]@{
-                                        Document_Name = $UpdateAsset.Name
-                                        Asset_Type    = "Asset Field"
-                                        Company_Name  = $UpdateAsset.HuduObject.company_name
-                                        HuduID        = $UpdateAsset.HuduID
-                                        Field_Name    = "$field.HuduParsedName"
-                                        Notes         = "Failed to add password to Asset"
-                                        Action        = "Manually add the password to the asset"
-                                        Data          = ($ITGPassword.attributes.'resource-url' -replace '[^\x09\x0A\x0D\x20-\xD7FF\xE000-\xFFFD\x10000\x10FFFF]')
-                                        Hudu_URL      = $UpdateAsset.HuduObject.url
-                                        ITG_URL       = $UpdateAsset.ITGObject.attributes.'resource-url'
-                                    }
-                                    $null = $ManualActions.add($ManualLog)
-                                    $MigratedPasswordStatus = "Failed to add"
+                                        }
+                                    } catch {
+                                        Write-Host "Error occured adding field, possible duplicate name" -ForegroundColor Red
+                                        $ManualLog = [PSCustomObject]@{
+                                            Document_Name = $UpdateAsset.Name
+                                            Asset_Type    = "Asset Field"
+                                            Company_Name  = $UpdateAsset.HuduObject.company_name
+                                            HuduID        = $UpdateAsset.HuduID
+                                            Field_Name    = "$field.HuduParsedName"
+                                            Notes         = "Failed to add password to Asset"
+                                            Action        = "Manually add the password to the asset"
+                                            Data          = "pre-cast: $($ITGPassword.attributes.'resource-url' -replace '[^\x09\x0A\x0D\x20-\xD7FF\xE000-\xFFFD\x10000\x10FFFF]'); post-cast $( Get-CastIfNumeric ($_.value -replace '[^\x09\x0A\x0D\x20-\xD7FF\xE000-\xFFFD\x10000\x10FFFF]'))"
+                                            Hudu_URL      = $UpdateAsset.HuduObject.url
+                                            ITG_URL       = $UpdateAsset.ITGObject.attributes.'resource-url'
+                                        }
+                                        $null = $ManualActions.add($ManualLog)
+                                        $MigratedPasswordStatus = "Failed to add"
+                                        Write-ITGErrorObjectToFile @{
+                                            error=$_
+                                            log_entry=$ManualLog
+                                            while="adding password feild, replacing resource url"
+                                            resolution="resolve via manual actions"} -name "password-field-$($UpdateAsset.Name)"
                                 }
                                 $MigratedPassword = [PSCustomObject]@{
                                     "Name"      = $ITGPassword.attributes.name
@@ -1504,8 +1465,6 @@ $ITGPasswordsRaw = Import-CSV -Path "$ITGLueExportPath\passwords.csv"
             $UpdateAsset.HuduObject = $UpdatedHuduAsset
             $UpdateAsset.Imported = "Created-By-Script"
         }
-
-
         $MatchedAssets | ConvertTo-Json -depth 100 | Out-File "$MigrationLogs\Assets.json"
         $MatchedAssetPasswords | ConvertTo-Json -depth 100 | Out-File "$MigrationLogs\AssetPasswords.json"
         $ManualActions | ConvertTo-Json -depth 100 | Out-File "$MigrationLogs\ManualActions.json"
@@ -1784,8 +1743,14 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Articles.json")) {
                                         Action = "$imagePath failed to upload to Hudu backend with error $_`n Validate that uploads are working and you still have disk space."
                                         Data = "$InFile"
                                         Hudu_URL = $Article.HuduObject.url
-					ITG_URL = "$ITGURL/$($Article.ITGLocator)"
+					                    ITG_URL = "$ITGURL/$($Article.ITGLocator)"
                                     }
+                                    Write-ITGErrorObjectToFile @{
+                                        error=$_
+                                        log_entry=$ManualLog
+                                        while="uploading image"
+                                        resolution="resolve with manual actions or improve image handling"} -name "image-for-$($Article.Name)"
+                                     z
 
                                     $null = $ManualActions.add($ManualLog)
                                 }
@@ -1806,7 +1771,7 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Articles.json")) {
                                     Action         = "$imagePath not detected as image, validate the identified file is an image, or imagemagick modules are loaded"        
                                     Data = "$InFile"
                                     Hudu_URL = $Article.HuduObject.url
-				    ITG_URL = "$ITGURL/$($Article.ITGLocator)"
+				                    ITG_URL = "$ITGURL/$($Article.ITGLocator)"
                                 }
 
                                 $null = $ManualActions.add($ManualLog)
@@ -2124,6 +2089,7 @@ $UpdateCompanyNotes = $MatchedCompanies | Where-Object {$_.HuduCompanyObject.not
 # Articles
 $articlesUpdated = @()
 foreach ($articleFound in $UpdateArticles) {
+    $original_content=$articleFound.content
     if ($NewContent = Update-StringWithCaptureGroups -inputString $articleFound.content -pattern $RichRegexPatternToMatchSansAssets -type "rich") {
         $NewContent = Update-StringWithCaptureGroups -inputString $NewContent -pattern $RichRegexPatternToMatchWithAssets -type "rich"
 	$NewContent = Update-StringWithCaptureGroups -inputString $NewContent -pattern $RichDocLocatorUrlPatternToMatch -type "rich"
@@ -2132,9 +2098,17 @@ foreach ($articleFound in $UpdateArticles) {
 	try {
         $ArticlePost = Set-HuduArticle -Name $articleFound.name -id $articleFound.id -Content $NewContent -ErrorAction Stop
         $articlesUpdated = $articlesUpdated + @{"status" = "replaced"; "original_article" = $articleFound; "updated_article" = $ArticlePost}
-	} catch { $articlesUpdated = $articlesUpdated + @{"status" = "failed"; "original_article" = $articleFound; "attempted_changes" = $newContent} }
-        }
-    else {
+	} catch { 
+                $articlesUpdated = $articlesUpdated + @{"status" = "failed"; "original_article" = $articleFound; "attempted_changes" = $newContent} 
+                Write-ITGErrorObjectToFile @{
+                    error=$_
+                    article=$articlesUpdated
+                    original_content=$original_content
+                    updated_content=$NewContent
+                    while="regex'ing article $($articleFound.name)"
+                    resolution="resolve with manual actions"} -name "article-$($articleFound.Name)-urlreplace"
+            }
+    } else {
         Write-Warning "Article $articleFound.id found ITGlue URL but didn't match"
         $articlesUpdated = $articlesUpdated + @{"status" = "clean"; "original_article" = $articleFound}
     }
@@ -2146,38 +2120,50 @@ Write-TimedMessage -Timeout 3 -Message "Snapshot Point: Article URLs Replaced. C
 # Assets
 $assetsUpdated = @()
 foreach ($assetFound in $UpdateAssets.HuduObject) {
-    $originalAsset = $assetFound
+    $customFields = @{}
     $replacedStatus = 'clean'
-    $customFields = @()
+    $originalAsset = $assetFound
 
     foreach ($field in $assetFound.fields) {
-        # Convert the caption to snake_case to match API expectations for 2.37.1
+        # Convert caption to snake_case label
         $label = ($field.caption -replace '[^\w\s]', '') -replace '\s+', '_' | ForEach-Object { $_.ToLower() }
 
-        if ($label -in @('itglue_url', 'itglue_id', 'imported_from_itglue') -and $field.value -like "*$ITGURL*") {
-            $NewContent = Update-StringWithCaptureGroups -inputString $field.value -pattern $RichRegexPatternToMatchSansAssets -type "rich"
-            $NewContent = Update-StringWithCaptureGroups -inputString $NewContent -pattern $RichRegexPatternToMatchWithAssets -type "rich"
+        $originalValue = $field.value
+        $newValue = $originalValue
 
-            if ($NewContent -and $NewContent -ne $field.value) {
-                Write-Host "Replacing Asset $($assetFound.name) field $($field.caption) with updated content" -ForegroundColor 'Red'
-                $customFields += @{ $label = $NewContent }
-                $replacedStatus = 'replaced'
-            } else {
-                $customFields += @{ $label = $field.value }
-            }
-        } else {
-            # For other fields, preserve existing value (optional)
-            $customFields += @{ $label = $field.value }
+        if ($originalValue -like "*$ITGURL*") {
+            $newValue = Update-StringWithCaptureGroups -inputString $newValue -pattern $RichRegexPatternToMatchSansAssets -type "rich"
+            $newValue = Update-StringWithCaptureGroups -inputString $newValue -pattern $RichRegexPatternToMatchWithAssets -type "rich"
         }
+
+        if ($newValue -ne $originalValue) {
+            Write-Host "Replacing Asset $($assetFound.name) field '$($field.caption)' with updated content" -ForegroundColor 'Red'
+            $replacedStatus = 'replaced'
+        }
+
+        $customFields[$label] = $newValue
     }
 
     if ($replacedStatus -eq 'replaced') {
-        Write-Host "Updating Asset $($assetFound.name) with new custom_fields array" -ForegroundColor 'Green'
-        $AssetPost = Invoke-HuduRequest -Method PUT -Resource "api/v1/companies/$($assetFound.company_id)/assets/$($assetFound.id)" -Body @{
-            name              = $assetFound.name
-            asset_layout_id   = $assetFound.asset_layout_id
-            custom_fields     = $customFields
+        try {
+            Write-Host "Updating Asset $($assetFound.name) with new custom_fields array" -ForegroundColor 'Green'
+            $AssetPost = Invoke-HuduRequest -Method PUT -Resource "api/v1/companies/$($assetFound.company_id)/assets/$($assetFound.id)" -Body @{
+                name            = $assetFound.name
+                asset_layout_id = $assetFound.asset_layout_id
+                custom_fields   = $customFields
+            }
+        } catch {
+            Write-ITGErrorObjectToFile @{
+                error=$_
+                asset=$assetFound.name
+                custom_fields=$customFields
+                asset_fields=$assetFound.fields
+                updated_content=$NewContent
+                while="updating asset $($assetFound.name), regex'ing urls"
+                resolution="resolve with manual actions"} -name "article-$($articleFound.Name)-urlreplace"
         }
+    } else {
+        $AssetPost = @{ asset = $assetFound } # fallback to reflect no update
     }
 
     $assetsUpdated += @{

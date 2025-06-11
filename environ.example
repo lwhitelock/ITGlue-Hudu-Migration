@@ -1,6 +1,6 @@
 
 $project_workdir="$PSScriptRoot"
-$env_name
+$env_name="asdfasdf"
 
 $debug_folder=$(join-path "$project_workdir" "debug")
 $errors_folder=$(join-path $debug_folder "errors")
