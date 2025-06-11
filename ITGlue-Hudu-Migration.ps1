@@ -47,32 +47,6 @@ $FontAwesomeUpgrade = Get-FontAwesomeMap
 
 ############################### End of Functions ###############################
 
-function Write-ITGErrorObjectToFile {
-    param (
-        [Parameter(Mandatory)]
-        [object]$ErrorObject,
-        [string]$Name
-    )
-    $stringOutput = $ErrorObject | Out-String
-    $jsonOutput = try {
-        $ErrorObject | ConvertTo-Json -Depth 96 -ErrorAction Stop
-    } catch {
-        "Failed to convert to JSON: $_"
-    }
-    $logContent = @"
-==== RAW STRING ====
-$stringOutput
-==== JSON FORMAT ====
-$jsonOutput
-"@
-    if ($null -ne $ITG_ERRORS_DIRECTORY) {
-        $filename = "$($Name -replace '\s+', '')_error_$(Get-Date -Format 'yyyyMMdd_HHmmss').log"
-        $fullPath = Join-Path $ITG_ERRORS_DIRECTORY $filename
-        Set-Content -Path $fullpath -Value $logContent -Encoding UTF8
-    }
-        Write-Host "$logContent" -ForegroundColor Yellow
-}
-
 ###################### Initial Setup and Confirmations ###############################
 Write-Host "#######################################################" -ForegroundColor Green
 Write-Host "#                                                     #" -ForegroundColor Green
@@ -1528,48 +1502,8 @@ $ITGPasswordsRaw = Import-CSV -Path "$ITGLueExportPath\passwords.csv"
                     Write-Host "Warning $ITGParsed : $ITGValues Could not be added" -ForegroundColor Red
                 }
             }
-            try {
-                $UpdatedHuduAsset = (Set-HuduAsset -asset_id $UpdateAsset.HuduID -name $UpdateAsset.name -company_id $($UpdateAsset.HuduObject.company_id) -asset_layout_id $UpdateAsset.HuduObject.asset_layout_id -fields $AssetFields).asset
-                } catch {
-                $msg = $_.Exception.Message
-                if ($msg -match "Invalid format for '\\u0027(.+?)\\u0027") {
-                   Write-APIErrorObjectToFile -name "asset-$($updateAsset.name)-$($Updateasset.huduid)-$($UpdateAsset.HuduObject.company_id)-needscast" -ErrorObject @{
-                        original_exc = $msg
-                        current_exc = "determining format for numerical coercion"
-                        resolution = "."
-                        }                    
-                    $badField = $matches[1]
-                    Write-Warning "Field [$badField] failed format check. Retrying with cast to int..."
+            $UpdatedHuduAsset = (Set-HuduAsset -asset_id $UpdateAsset.HuduID -name $UpdateAsset.name -company_id $($UpdateAsset.HuduObject.company_id) -asset_layout_id $UpdateAsset.HuduObject.asset_layout_id -fields $AssetFields).asset
 
-                    # Try to cast that field specifically to int
-                    foreach ($cf in $AssetFields.custom_fields) {
-                        if ($cf.ContainsKey($badField)) {
-                            try {
-                                $cf[$badField] = [int][double]$cf[$badField]
-                            } catch {
-                                Write-APIErrorObjectToFile -name "asset-$($updateAsset.name)-$($Updateasset.huduid)-$($UpdateAsset.HuduObject.company_id)-typecast" -ErrorObject @{
-                                        original_exc = $msg
-                                        current_exc = $_
-                                        resolution = "Could not cast [$badField] cleanly, skipping fix"
-                                        }
-                            }
-                        }
-                    }
-
-                    # Retry the request
-                    try {
-                        $UpdatedHuduAsset = (Set-HuduAsset -asset_id $UpdateAsset.HuduID -name $UpdateAsset.name -company_id $($UpdateAsset.HuduObject.company_id) -asset_layout_id $UpdateAsset.HuduObject.asset_layout_id -fields $AssetFields).asset
-                    } catch {
-                        Write-APIErrorObjectToFile -name "asset-$($updateAsset.name)-$($Updateasset.huduid)-$($UpdateAsset.HuduObject.company_id)-retry" -ErrorObject @{
-                        original_exc = $msg
-                        current_exc = $_
-                        resolution = "retried update asset after re-cast."
-                        }
-                    }
-                    } 
-                }
-
-            
             $UpdateAsset.HuduObject = $UpdatedHuduAsset
             $UpdateAsset.Imported = "Created-By-Script"
         }
