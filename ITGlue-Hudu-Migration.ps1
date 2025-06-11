@@ -2133,12 +2133,17 @@ foreach ($assetFound in $UpdateAssets.HuduObject) {
     }
     if ($replacedStatus -ne 'replaced') {$replacedStatus = 'clean'}
     else {
-        Write-Host "Updating Asset $($assetFound.name) with replaced field values" -ForegroundColor 'Green'
-        $AssetPost = Set-HuduAsset -asset_layout_id $assetFound.asset_layout_id -Name $assetFound.name -AssetId $assetFound.id -CompanyId $assetFound.company_id -Fields $assetFound.fields
+        Write-Host "Updating Asset $($assetFound.name) with new custom_fields array" -ForegroundColor 'Green'
+        $AssetPost = Invoke-HuduRequest -Method PUT -Resource "api/v1/companies/$($assetFound.company_id)/assets/$($assetFound.id)" -Body @{
+            name              = $assetFound.name
+            asset_layout_id   = $assetFound.asset_layout_id
+            custom_fields     = $customFields
+        }
     }
     $assetsUpdated = $assetsUpdated + @{"status" = $replacedStatus; "original_asset" = $originalAsset; "updated_asset" = $AssetPost.asset}
 
 }
+
 
 $assetsUpdated | ConvertTo-Json -depth 100 |Out-file "$MigrationLogs\ReplacedAssetsURL.json"
 Write-TimedMessage -Timeout 3 -Message  "Snapshot Point: Assets URLs Replaced. Continue?" -DefaultResponse "continue to Passwords Matching, please."
@@ -2149,12 +2154,8 @@ foreach ($passwordFound in $UpdatePasswords.HuduObject) {
     $NewContent = Update-StringWithCaptureGroups -inputString $passwordFound.description -pattern $TextRegexPatternToMatchSansAssets -type "plain"
     $NewContent = Update-StringWithCaptureGroups -inputString $NewContent -pattern $TextRegexPatternToMatchWithAssets -type "plain"
     if ($NewContent) {
-        Write-Host "Updating Asset $($assetFound.name) with new custom_fields array" -ForegroundColor 'Green'
-        $AssetPost = Invoke-HuduRequest -Method PUT -Resource "api/v1/companies/$($assetFound.company_id)/assets/$($assetFound.id)" -Body @{
-            name              = $assetFound.name
-            asset_layout_id   = $assetFound.asset_layout_id
-            custom_fields     = $customFields
-        }
+        Write-Host "Updating Password $($passwordFound.name) with updated description" -ForegroundColor 'Green'
+        $passwordsUpdated = $passwordsUpdated + @{"original_password" = $passwordFound; "updated_password" = (Set-HuduPassword -id $passwordFound.id -Description $NewContent).asset_password}
     }
 }
 $passwordsUpdated | ConvertTo-Json -depth 100 |Out-file "$MigrationLogs\ReplacedPasswordsURL.json"
