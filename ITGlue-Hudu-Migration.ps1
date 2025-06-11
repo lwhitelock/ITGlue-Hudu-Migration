@@ -2096,7 +2096,6 @@ Write-TimedMessage -Timeout 3 -Message "Snapshot Point: Article URLs Replaced. C
 # Assets
 $assetsUpdated = @()
 foreach ($assetFound in $UpdateAssets.HuduObject) {
-    $originalAsset = $assetFound
     $replacedStatus = 'clean'
     $customFields = @()
 
