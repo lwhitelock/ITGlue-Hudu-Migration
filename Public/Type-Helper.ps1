@@ -1,23 +1,18 @@
 function Get-CastIfNumeric {
-    param([Parameter(Mandatory = $true)][object]$Value)
+    param(
+        [Parameter(Mandatory)]
+        [object]$Value
+    )
 
     if ($Value -is [string]) {
         $Value = $Value.Trim()
+    }
 
+    if ($Value -match '^[+-]?\d+(\.\d+)?$') {
         try {
-            $asDouble = [double]$Value
-
-            # Round if equivalent to int (e.g. 1.0, 2.000)
-            if ($asDouble % 1 -eq 0 -and $asDouble -le [int]::MaxValue) {
-                return [int]$asDouble
-            }
-
-            # Otherwise return as double if it’s still valid
-            if ($asDouble -le [double]::MaxValue) {
-                return $asDouble
-            }
+            return [int][double]$Value
         } catch {
-            return $Value
+            return 0
         }
     }
 
