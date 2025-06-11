@@ -2120,59 +2120,25 @@ Write-TimedMessage -Timeout 3 -Message "Snapshot Point: Article URLs Replaced. C
 # Assets
 $assetsUpdated = @()
 foreach ($assetFound in $UpdateAssets.HuduObject) {
-    $customFields = @{}
-    $replacedStatus = 'clean'
+    $fieldsFound = $assetFound.fields | Where-Object {$_.value -like "*$ITGURL*"}
     $originalAsset = $assetFound
-
-    foreach ($field in $assetFound.fields) {
-        # Convert caption to snake_case label
-        $label = ($field.caption -replace '[^\w\s]', '') -replace '\s+', '_' | ForEach-Object { $_.ToLower() }
-
-        $originalValue = $field.value
-        $newValue = $originalValue
-
-        if ($originalValue -like "*$ITGURL*") {
-            $newValue = Update-StringWithCaptureGroups -inputString $newValue -pattern $RichRegexPatternToMatchSansAssets -type "rich"
-            $newValue = Update-StringWithCaptureGroups -inputString $newValue -pattern $RichRegexPatternToMatchWithAssets -type "rich"
-        }
-
-        if ($newValue -ne $originalValue) {
-            Write-Host "Replacing Asset $($assetFound.name) field '$($field.caption)' with updated content" -ForegroundColor 'Red'
+    foreach ($field in $fieldsFound) {
+        $NewContent = Update-StringWithCaptureGroups -inputString $field.value -pattern $RichRegexPatternToMatchSansAssets -type "rich"
+        $NewContent = Update-StringWithCaptureGroups -inputString $NewContent -pattern $RichRegexPatternToMatchWithAssets -type "rich"
+        if ($NewContent) {
+            Write-Host "Replacing Asset $($assetFound.name) field $($field.caption) with replaced Content" -ForegroundColor 'Red'
+            ($assetFound.fields | Where-Object {$_.id -eq $field.id}).value = $NewContent
             $replacedStatus = 'replaced'
         }
-
-        $customFields[$label] = $newValue
     }
-
-    if ($replacedStatus -eq 'replaced') {
-        try {
-            Write-Host "Updating Asset $($assetFound.name) with new custom_fields array" -ForegroundColor 'Green'
-            $AssetPost = Invoke-HuduRequest -Method PUT -Resource "api/v1/companies/$($assetFound.company_id)/assets/$($assetFound.id)" -Body @{
-                name            = $assetFound.name
-                asset_layout_id = $assetFound.asset_layout_id
-                custom_fields   = $customFields
-            }
-        } catch {
-            Write-ITGErrorObjectToFile @{
-                error=$_
-                asset=$assetFound.name
-                custom_fields=$customFields
-                asset_fields=$assetFound.fields
-                updated_content=$NewContent
-                while="updating asset $($assetFound.name), regex'ing urls"
-                resolution="resolve with manual actions"} -name "article-$($articleFound.Name)-urlreplace"
-        }
-    } else {
-        $AssetPost = @{ asset = $assetFound } # fallback to reflect no update
+    if ($replacedStatus -ne 'replaced') {$replacedStatus = 'clean'}
+    else {
+        Write-Host "Updating Asset $($assetFound.name) with replaced field values" -ForegroundColor 'Green'
+        $AssetPost = Set-HuduAsset -asset_layout_id $assetFound.asset_layout_id -Name $assetFound.name -AssetId $assetFound.id -CompanyId $assetFound.company_id -Fields $assetFound.fields
     }
+    $assetsUpdated = $assetsUpdated + @{"status" = $replacedStatus; "original_asset" = $originalAsset; "updated_asset" = $AssetPost.asset}
 
-    $assetsUpdated += @{
-        status         = $replacedStatus
-        original_asset = $originalAsset
-        updated_asset  = $AssetPost.asset
-    }
 }
-
 
 $assetsUpdated | ConvertTo-Json -depth 100 |Out-file "$MigrationLogs\ReplacedAssetsURL.json"
 Write-TimedMessage -Timeout 3 -Message  "Snapshot Point: Assets URLs Replaced. Continue?" -DefaultResponse "continue to Passwords Matching, please."
@@ -2183,8 +2149,12 @@ foreach ($passwordFound in $UpdatePasswords.HuduObject) {
     $NewContent = Update-StringWithCaptureGroups -inputString $passwordFound.description -pattern $TextRegexPatternToMatchSansAssets -type "plain"
     $NewContent = Update-StringWithCaptureGroups -inputString $NewContent -pattern $TextRegexPatternToMatchWithAssets -type "plain"
     if ($NewContent) {
-        Write-Host "Updating Password $($passwordFound.name) with updated description" -ForegroundColor 'Green'
-        $passwordsUpdated = $passwordsUpdated + @{"original_password" = $passwordFound; "updated_password" = (Set-HuduPassword -id $passwordFound.id -Description $NewContent).asset_password}
+        Write-Host "Updating Asset $($assetFound.name) with new custom_fields array" -ForegroundColor 'Green'
+        $AssetPost = Invoke-HuduRequest -Method PUT -Resource "api/v1/companies/$($assetFound.company_id)/assets/$($assetFound.id)" -Body @{
+            name              = $assetFound.name
+            asset_layout_id   = $assetFound.asset_layout_id
+            custom_fields     = $customFields
+        }
     }
 }
 $passwordsUpdated | ConvertTo-Json -depth 100 |Out-file "$MigrationLogs\ReplacedPasswordsURL.json"
