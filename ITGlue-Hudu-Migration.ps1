@@ -2014,7 +2014,16 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Passwords.json")) {
 					
                     if (!($($unmatchedPassword.ITGObject.attributes."resource-type") -eq "flexible-asset-traits")) {
 						
+                        $validated_otp = "$($unmatchedPassword.ITGObject.attributes.otp_secret)".Trim().ToUpper()
 
+                        $isValidBase32 = $validated_otp -match '^[A-Z2-7]+$'
+                        $lengthOK = $validated_otp.Length -ge 16 -and $validated_otp.Length -le 80
+
+                        $validated_otp = if ($isValidBase32 -and $lengthOK) { $validated_otp } else { $null }
+
+                        if (-not ($isValidBase32 -and $lengthOK)) {
+                            Write-Warning "Invalid OTP secret for $($unmatchedPassword.ITGObject.attributes.name): $($unmatchedPassword.ITGObject.attributes.otp_secret)... valid base32? $isValidBase32 length ok? $lengthOK (min / max is 16 / 80 chars)"
+                        }
 
                         $PasswordSplat = @{
                             name              = "$($unmatchedPassword.ITGObject.attributes.name)"
@@ -2026,8 +2035,7 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Passwords.json")) {
                             password          = $unmatchedPassword.ITGObject.attributes.password
                             url               = $unmatchedPassword.ITGObject.attributes.url
                             username          = $unmatchedPassword.ITGObject.attributes.username
-                            otpsecret         = $unmatchedPassword.ITGObject.attributes.otp_secret
-
+                            otpsecret         = $validated_otp
                         }
 
                         $HuduNewPassword = (New-HuduPassword @PasswordSplat).asset_password
