@@ -115,7 +115,7 @@ if ((get-host).version.major -ne 7) {
 #     Import-Module HuduAPI
 # }
   
-Import-Module "C:\Users\Administrator\Documents\GitHub\HuduAPI\HuduAPI\HuduAPI.psm1"
+Import-Module "C:\Users\$env:USERNAME\Documents\GitHub\HuduAPI\HuduAPI\HuduAPI.psm1"
 
 #Login to Hudu
 New-HuduAPIKey $HuduAPIKey

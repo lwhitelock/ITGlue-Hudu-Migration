@@ -117,7 +117,7 @@ if ($InlineImageArticles) {
     Write-Host "Found articles. Processing"
     # Hudu Api Details needed for fixing documents, only load this into memory if necessary.
     ## SENSITIVE KEYS STORED HERE DO NOT SAVE OR SHARE
-    Import-Module HuduAPI
+    Import-Module "C:\Users\$env:USERNAME\Documents\GitHub\HuduAPI\HuduAPI\HuduAPI.psm1"
     #New-HuduAPIKey -ApiKey <APIKEY>
     . $PSScriptRoot\Public\Invoke-HuduRequest.ps1
 
