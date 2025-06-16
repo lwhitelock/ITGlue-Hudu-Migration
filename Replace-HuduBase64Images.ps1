@@ -120,14 +120,15 @@ if ($InlineImageArticles) {
     $HAPImodulePath = "C:\Users\$env:USERNAME\Documents\GitHub\HuduAPI\HuduAPI\HuduAPI.psm1"
     if (Test-Path $HAPImodulePath) {
         Import-Module $HAPImodulePath -Force
-        Write-Host "Module imported from $modulePath"
+        Write-Host "Module imported from $HAPImodulePath"
     } elseif ((Get-Module -ListAvailable -Name HuduAPI).version -ge '2.4.4') {
-        Write-Host "Module imported from $modulePath"
+        Write-Host "Module imported from $HAPImodulePath"
         Import-Module HuduAPI
     } else {
         Install-Module HuduAPI -MinimumVersion 2.4.5 -Scope CurrentUser
         Import-Module HuduAPI
     }
+    
     
     New-HuduAPIKey -ApiKey (Read-Host "Enter your Hudu API Key")
     #New-HuduBaseURL -BaseURL <URL>
