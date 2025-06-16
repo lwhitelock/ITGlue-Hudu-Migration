@@ -2075,7 +2075,7 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Passwords.json")) {
                                 password          = ""
                                 url               = $unmatchedPassword.ITGObject.attributes.url
                                 username          = $unmatchedPassword.ITGObject.attributes.username
-                                otpsecret         = $validated_otp
+                                otpsecret         = "removed for security purposes"
                                 problem           = "password was null or empty"
                             })
                             $unmatchedPassword.matched = $false
