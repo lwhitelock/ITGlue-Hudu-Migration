@@ -109,14 +109,20 @@ if ((get-host).version.major -ne 7) {
 
 
 #Get the Hudu API Module if not installed
-if ((Get-Module -ListAvailable -Name HuduAPI).version -ge '2.4.4') {
+
+$HAPImodulePath = "C:\Users\$env:USERNAME\Documents\GitHub\HuduAPI\HuduAPI\HuduAPI.psm1"
+if (Test-Path $HAPImodulePath) {
+    Import-Module $HAPImodulePath -Force
+    Write-Host "Module imported from $HAPImodulePath"
+} elseif ((Get-Module -ListAvailable -Name HuduAPI).version -ge '2.4.4') {
+    Write-Host "Module imported from $HAPImodulePath"
     Import-Module HuduAPI
 } else {
     Install-Module HuduAPI -MinimumVersion 2.4.5 -Scope CurrentUser
     Import-Module HuduAPI
 }
   
-
+  
 #Login to Hudu
 New-HuduAPIKey $HuduAPIKey
 New-HuduBaseUrl $HuduBaseDomain
@@ -140,9 +146,6 @@ If (Get-Module -ListAvailable -Name "ITGlueAPIv2") {
     Install-Module ITGlueAPIv2 -Force
     Import-Module ITGlueAPIv2
 }
-
-# override this method, since it's retry method fails
-. $PSScriptRoot\Public\Invoke-HuduRequest.ps1
 
 
 #Settings IT-Glue logon information
@@ -190,20 +193,26 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Companies.json")) {
 
     Write-Host "$($ITGCompanies.count) ITG Glue Companies Found" 
 	
-	
-	
+    $nameTracker = @{}
+    $MatchedCompanies = foreach ($itgcompany in $ITGCompanies) {
+        $originalName = $itgcompany.attributes.name
 
-    $MatchedCompanies = foreach ($itgcompany in $ITGCompanies ) {
-        $HuduCompany = $HuduCompanies | where-object -filter { $_.name -eq $itgcompany.attributes.name }
-        if ($InternalCompany -eq $itgcompany.attributes.name) {
-            $intCompany = $true
+        # Create a unique name if it's already been seen
+        if ($nameTracker.ContainsKey($originalName)) {
+            $nameTracker[$originalName]++
+            $uniqueName = "$originalName-$($nameTracker[$originalName])"
         } else {
-            $intCompany = $false
+            $nameTracker[$originalName] = 0
+            $uniqueName = $originalName
         }
-	
+
+        $HuduCompany = $HuduCompanies | Where-Object -Filter { $_.name -eq $originalName }
+
+        $intCompany = $InternalCompany -eq $originalName
+
         if ($HuduCompany) {
             [PSCustomObject]@{
-                "CompanyName"       = $itgcompany.attributes.name
+                "CompanyName"       = $uniqueName
                 "ITGID"             = $itgcompany.id
                 "HuduID"            = $HuduCompany.id
                 "Matched"           = $true
@@ -211,11 +220,10 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Companies.json")) {
                 "HuduCompanyObject" = $HuduCompany
                 "ITGCompanyObject"  = $itgcompany
                 "Imported"          = "Pre-Existing"
-			
             }
         } else {
             [PSCustomObject]@{
-                "CompanyName"       = $itgcompany.attributes.name
+                "CompanyName"       = $uniqueName
                 "ITGID"             = $itgcompany.id
                 "HuduID"            = ""
                 "Matched"           = $false
@@ -264,7 +272,7 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Companies.json")) {
             foreach ($unmatchedcompany in ($MatchedCompanies | Where-Object { $_.Matched -eq $false })) {
                 $unmatchedcompany.ITGCompanyObject.attributes.'quick-notes' = ($ITGCompaniesFromCSV | Where-Object {$_.id -eq $unmatchedcompany.ITGID}).quick_notes
                 $unmatchedcompany.ITGCompanyObject.attributes.alert = ($ITGCompaniesFromCSV | Where-Object {$_.id -eq $unmatchedcompany.ITGID}).alert
-                Confirm-Import -ImportObjectName $unmatchedcompany.CompanyName -ImportObject $unmatchedcompany -ImportSetting $importCOption
+                Confirm-Import -ImportObjectName $($unmatchedcompany.CompanyName) -ImportObject $unmatchedcompany -ImportSetting $importCOption
 						
                 Write-Host "Starting $($unmatchedcompany.CompanyName)"
                 $PrimaryLocation = $ITGLocations | Where-Object { $unmatchedcompany.ITGID -eq $_.attributes."organization-id" -and $_.attributes.primary -eq $true }
@@ -278,7 +286,7 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Companies.json")) {
 
                 if ($PrimaryLocation -and $PrimaryLocation.count -eq 1) {
                     $CompanySplat = @{
-                        "name"           = $unmatchedcompany.CompanyName
+                        "name"           = $($unmatchedcompany.CompanyName)
                         "nickname"       = $unmatchedcompany.ITGCompanyObject.attributes."short-name"
                         "address_line_1" = $PrimaryLocation.attributes."address-1"
                         "address_line_2" = $PrimaryLocation.attributes."address-2"
@@ -295,7 +303,7 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Companies.json")) {
                     $CompaniesMigrated = $CompaniesMigrated + 1
                 } else {
                     Write-Host "No Location Found, creating company without address details"
-                    $HuduNewCompany = (New-HuduCompany -name $unmatchedcompany.CompanyName -nickname $unmatchedcompany.ITGCompanyObject.attributes."short-name" -notes $CompanyNotes -CompanyType $unmatchedcompany.attributes.'organization-type-name').company
+                    $HuduNewCompany = (New-HuduCompany -name $($unmatchedcompany.CompanyName) -nickname $unmatchedcompany.ITGCompanyObject.attributes."short-name" -notes $CompanyNotes -CompanyType $unmatchedcompany.attributes.'organization-type-name').company
                     $CompaniesMigrated = $CompaniesMigrated + 1
                 }
 			
