@@ -1,7 +1,16 @@
 Import-Module ImportExcel
-Import-Module HuduAPI
-. $PSScriptRoot\Public\Invoke-HuduRequest.ps1
-
+$HAPImodulePath = "C:\Users\$env:USERNAME\Documents\GitHub\HuduAPI\HuduAPI\HuduAPI.psm1"
+if (Test-Path $HAPImodulePath) {
+    Import-Module $HAPImodulePath -Force
+    Write-Host "Module imported from $modulePath"
+} elseif ((Get-Module -ListAvailable -Name HuduAPI).version -ge '2.4.4') {
+    Write-Host "Module imported from $modulePath"
+    Import-Module HuduAPI
+} else {
+    Install-Module HuduAPI -MinimumVersion 2.4.5 -Scope CurrentUser
+    Import-Module HuduAPI
+}
+  
 $Path = Read-Host "Provide spreadsheet mapping of ITGlue (configuration type names) to Hudu (asset layout names)"
 $APIKey = Read-Host "Enter your Hudu API Key"
 $APIBaseUrl = Read-Host "Enter your Hudu Base URL"

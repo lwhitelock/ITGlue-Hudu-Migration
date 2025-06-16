@@ -109,7 +109,13 @@ if ((get-host).version.major -ne 7) {
 
 
 #Get the Hudu API Module if not installed
-if ((Get-Module -ListAvailable -Name HuduAPI).version -ge '2.4.4') {
+
+$HAPImodulePath = "C:\Users\$env:USERNAME\Documents\GitHub\HuduAPI\HuduAPI\HuduAPI.psm1"
+if (Test-Path $HAPImodulePath) {
+    Import-Module $HAPImodulePath -Force
+    Write-Host "Module imported from $modulePath"
+} elseif ((Get-Module -ListAvailable -Name HuduAPI).version -ge '2.4.4') {
+    Write-Host "Module imported from $modulePath"
     Import-Module HuduAPI
 } else {
     Install-Module HuduAPI -MinimumVersion 2.4.5 -Scope CurrentUser
@@ -140,9 +146,6 @@ If (Get-Module -ListAvailable -Name "ITGlueAPIv2") {
     Install-Module ITGlueAPIv2 -Force
     Import-Module ITGlueAPIv2
 }
-
-# override this method, since it's retry method fails
-. $PSScriptRoot\Public\Invoke-HuduRequest.ps1
 
 
 #Settings IT-Glue logon information
