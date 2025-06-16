@@ -190,20 +190,23 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Companies.json")) {
 
     Write-Host "$($ITGCompanies.count) ITG Glue Companies Found" 
 	
-	
-	
-
+    $nameTracker = @{}
     $MatchedCompanies = foreach ($itgcompany in $ITGCompanies ) {
+        $originalName = $itgcompany.attributes.name
         $HuduCompany = $HuduCompanies | where-object -filter { $_.name -eq $itgcompany.attributes.name }
-        if ($InternalCompany -eq $itgcompany.attributes.name) {
-            $intCompany = $true
+        if ($nameTracker.ContainsKey($originalName)) {
+            $nameTracker[$originalName]++
+            $uniqueName = "$originalName-$($nameTracker[$originalName])"
         } else {
-            $intCompany = $false
+            $nameTracker[$originalName] = 0
+            $uniqueName = $originalName
         }
-	
+        $intCompany = [bool]($InternalCompany -eq $itgcompany.attributes.name)
+        
         if ($HuduCompany) {
             [PSCustomObject]@{
-                "CompanyName"       = $itgcompany.attributes.name
+                "CompanyName"       = $uniqueName
+                "OriginalName"      = $originalName
                 "ITGID"             = $itgcompany.id
                 "HuduID"            = $HuduCompany.id
                 "Matched"           = $true
@@ -215,7 +218,8 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Companies.json")) {
             }
         } else {
             [PSCustomObject]@{
-                "CompanyName"       = $itgcompany.attributes.name
+                "CompanyName"       = $uniqueName
+                "OriginalName"      = $originalName
                 "ITGID"             = $itgcompany.id
                 "HuduID"            = ""
                 "Matched"           = $false
