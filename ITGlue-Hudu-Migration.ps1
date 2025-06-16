@@ -129,9 +129,12 @@ New-HuduBaseUrl $HuduBaseDomain
 
 # Check we have the correct version
 $RequiredHuduVersion = "2.1.5.9"
+$DisallowedVersions = @([version]"2.37.0")
 $HuduAppInfo = Get-HuduAppInfo
-If ([version]$HuduAppInfo.version -lt [version]$RequiredHuduVersion) {
-    Write-Host "This script requires at least version $RequiredHuduVersion. Please update your version of Hudu and run the script again. Your version is $($HuduAppInfo.version)"
+$CurrentVersion = [version]$HuduAppInfo.version
+
+if ($CurrentVersion -lt [version]$RequiredHuduVersion -or $DisallowedVersions -contains $CurrentVersion) {
+    Write-Host "This script requires at least version $RequiredHuduVersion and cannot run with version $CurrentVersion. Please update your version of Hudu."
     exit 1
 }
 
