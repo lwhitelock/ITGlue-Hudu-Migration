@@ -27,6 +27,8 @@ function Normalize-And-ConvertImage {
 
     # Detect type
     $type = Get-ImageType $InputPath
+    $detectedAs = $type
+
     Write-Verbose "Detected image type: $type" -Verbose
 
     $preserveExt = @('jpg', 'jpeg', 'png') -contains $type
@@ -68,5 +70,8 @@ function Normalize-And-ConvertImage {
     return @{
         FinalPath = $finalPath
         Original  = $original
+        Extention = $extension
+        DetectedAS = $detectedAs
+        BaseName = $basename
     }
 }

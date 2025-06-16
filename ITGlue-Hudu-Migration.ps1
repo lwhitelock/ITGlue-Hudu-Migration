@@ -184,6 +184,56 @@ if (Test-Path -Path "$MigrationLogs") {
 $ManualActions = [System.Collections.ArrayList]@()
 
 
+# add image debug to file
+
+function Write-ImageErrorObjectToFile {
+    param (
+        [Parameter(Mandatory)]
+        [object]$ErrorObject,
+
+        [Parameter()]
+        [string]$Name = "Unnamed-Image"
+    )
+
+    $stringOutput = try {
+        $ErrorObject | Format-List -Force | Out-String
+    } catch {
+        "Failed to stringify object: $_"
+    }
+
+    $propertyDump = try {
+        $props = $ErrorObject | Get-Member -MemberType Properties | Select-Object -ExpandProperty Name
+        $lines = foreach ($p in $props) {
+            try {
+                "$p = $($ErrorObject.$p)"
+            } catch {
+                "$p = <unreadable>"
+            }
+        }
+        $lines -join "`n"
+    } catch {
+        "Failed to enumerate properties: $_"
+    }
+
+    $logContent = @"
+==== OBJECT STRING ====
+$stringOutput
+
+==== PROPERTY DUMP ====
+$propertyDump
+"@
+
+    if ($global:ITG_ERRORS_DIRECTORY -and (Test-Path $global:ITG_ERRORS_DIRECTORY)) {
+        $filename = "$($Name -replace '\s+', '')_error_$(Get-Date -Format 'yyyyMMdd_HHmmss').log"
+        $fullPath = Join-Path $global:ITG_ERRORS_DIRECTORY $filename
+        Set-Content -Path $fullPath -Value $logContent -Encoding UTF8
+        Write-Host "Error written to $fullPath" -ForegroundColor Yellow
+    }
+
+    Write-Host "$logContent" -ForegroundColor Yellow
+}
+
+
 ############################### Companies ###############################
 
 #Grab existing companies in Hudu
@@ -1738,7 +1788,7 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Articles.json")) {
                                 $imageInfo = Normalize-And-ConvertImage -InputPath "$imagePath"
                                 $imagePath = "$($imageInfo.FinalPath)"
                                 $OriginalFullImagePath = $imageInfo.Original                                
-                                Write-Host "Uploading new image $($imageInfo.Original) => $($imageInfo.FinalPath)"
+                                Write-Host "Uploading new/copied ITGlue image $($imageInfo.Original) => $($imageInfo.FinalPath)"
                                 try {
                                     $UploadImage = New-HuduPublicPhoto -FilePath "$imagePath" -record_id $Article.HuduID -record_type 'Article'
                                     $NewImageURL = $UploadImage.public_photo.url.replace($HuduBaseDomain, '')
@@ -1761,6 +1811,12 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Articles.json")) {
                                         Hudu_URL = $Article.HuduObject.url
 					                    ITG_URL = "$ITGURL/$($Article.ITGLocator)"
                                     }
+                                    Write-ImageErrorObjectToFile -ErrorObject @{
+                                        LogEntry=$ManualLog
+                                        ImageLink=$ImgLink
+                                        ImageInfo=$imageInfo
+                                        Article=$Article
+                                    } -name "image-$($imageInfo.basename)"
 
                                     $null = $ManualActions.add($ManualLog)
                                 }
@@ -1781,7 +1837,7 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Articles.json")) {
                                     Action         = "$imagePath not detected as image, validate the identified file is an image, or imagemagick modules are loaded"        
                                     Data = "$InFile"
                                     Hudu_URL = $Article.HuduObject.url
-				    ITG_URL = "$ITGURL/$($Article.ITGLocator)"
+				                    ITG_URL = "$ITGURL/$($Article.ITGLocator)"
                                 }
 
                                 $null = $ManualActions.add($ManualLog)
