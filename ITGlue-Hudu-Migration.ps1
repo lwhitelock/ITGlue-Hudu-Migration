@@ -1816,7 +1816,7 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Articles.json")) {
                                         ImageLink=$ImgLink
                                         ImageInfo=$imageInfo
                                         Article=$Article
-                                    } -name "image-$($imageInfo.basename)"
+                                    } -name "image-err-$($imageInfo.basename)"
 
                                     $null = $ManualActions.add($ManualLog)
                                 }
@@ -1840,6 +1840,11 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Articles.json")) {
 				                    ITG_URL = "$ITGURL/$($Article.ITGLocator)"
                                 }
 
+                                Write-ImageErrorObjectToFile -ErrorObject @{
+                                    LogEntry=$ManualLog
+                                    Article=$Article
+                                    FileName=$imagePath
+                                } -name "image-nd-$($imagePath)"
                                 $null = $ManualActions.add($ManualLog)
 
                             }
@@ -1847,19 +1852,24 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Articles.json")) {
                         else {
                             Write-Warning "Image $tnImgUrl file is missing"
                             $ManualLog = [PSCustomObject]@{
-                                    Document_Name = $Article.Name
-                                    Asset_Type    = "Article"
-                                    Company_Name  = $Article.Company.CompanyName
-				    Field_Name = 'N/A'
-                                    HuduID        = $Article.HuduID
-                                    Notes       = 'Image File Missing'
-                                    Action         = "$tnImgUrl is not present in export,validate the image exists in ITGlue and manually replace in Hudu"   
-                                    Data = "$InFile"
-                                    Hudu_URL = $Article.HuduObject.url
-				    ITG_URL = "$ITGURL/$($Article.ITGLocator)"
-                                }
-
-                                $null = $ManualActions.add($ManualLog)
+                                Document_Name = $Article.Name
+                                Asset_Type    = "Article"
+                                Company_Name  = $Article.Company.CompanyName
+                                Field_Name = 'N/A'
+                                HuduID        = $Article.HuduID
+                                Notes       = 'Image File Missing'
+                                Action         = "$tnImgUrl is not present in export,validate the image exists in ITGlue and manually replace in Hudu"   
+                                Data = "$InFile"
+                                Hudu_URL = $Article.HuduObject.url
+                                ITG_URL = "$ITGURL/$($Article.ITGLocator)"
+                            }
+                            Write-ImageErrorObjectToFile -ErrorObject @{
+                                LogEntry=$ManualLog
+                                ImageLink=$ImgLink
+                                ImageInfo=$imageInfo
+                                Article=$Article
+                            } -name "image-missing-$($imageInfo.basename)"
+                            $null = $ManualActions.add($ManualLog)
                         }
                     }
                 }
