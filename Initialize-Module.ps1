@@ -26,10 +26,19 @@ param(
 )
 
 ############################### Settings ###############################
-# Define the path to the settings.json file in the user's AppData folder
+# Determine top part of settings path
+if($IsWindows){
+    $settingsTop = $env:APPDATA
+} else {
+    $settingsTop = Join-Path $env:HOME ".config"
+}
+
+# Define the path to the settings.json file in the detected platform's folder:
+# Running on Windows will save to the user's AppData
+# Running on Linux/macOS will save to `.config` in the user's HOME directory
   # Something awesome will be here soon.
-$settingsFiles = Get-Item "$env:APPDATA\HuduMigration\*\settings.json"
-$defaultSettingsPath = "$env:APPDATA\HuduMigration\settings.json"
+$settingsFiles = Get-Item "$settingsTop\HuduMigration\*\settings.json"
+$defaultSettingsPath = "$settingsTop\HuduMigration\settings.json"
 
 # Function to read back securely stored keys used in the settings.json file
 function ConvertSecureStringToPlainText {
@@ -72,9 +81,9 @@ function CollectAndSaveSettings {
      }
 
     # Migration Log Settings
-    $settings.MigrationLogs = Read-Host "Enter the path for the migration logs, or press enter to accept the Default path (%appdata%\HuduMigration\$instance\MigrationLogs)"
+    $settings.MigrationLogs = Read-Host "Enter the path for the migration logs, or press enter to accept the Default path ($settingsTop\HuduMigration\$instance\MigrationLogs)"
     if (!($settings.MigrationLogs)) {
-        $settings.MigrationLogs = "$ENV:appdata\HuduMigration\$instance\MigrationLogs"
+        $settings.MigrationLogs = "$settingsTop\HuduMigration\$instance\MigrationLogs"
     }
 
     $settings.ConPromptPrefix = Read-Host "Would you like a Prefix in front of Configuration names created in Hudu? This can make it easy to review and you can rename them later. Enter the prefix here, otherwise leave it blank. (e.g. ITGlue-)"
@@ -84,7 +93,7 @@ function CollectAndSaveSettings {
     $json = $settings | ConvertTo-Json
 
     # Save the JSON to the settings file
-    if (!(Test-Path -Path "$env:APPDATA\HuduMigration\$instance")) { New-Item "$env:APPDATA\HuduMigration\$instance" -ItemType Directory }
+    if (!(Test-Path -Path "$settingsTop\HuduMigration\$instance")) { New-Item "$settingsTop\HuduMigration\$instance" -ItemType Directory }
     $json | Out-File -FilePath $defaultSettingsPath
 }
 
