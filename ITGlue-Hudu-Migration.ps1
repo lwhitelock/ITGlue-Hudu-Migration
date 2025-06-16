@@ -1443,8 +1443,7 @@ $ITGPasswordsRaw = Import-CSV -Path "$ITGLueExportPath\passwords.csv"
                                         Field_Name    = "$field.HuduParsedName"
                                         Notes         = "Failed to add password to Asset"
                                         Action        = "Manually add the password to the asset"
-                                        Data          = ($(Get-CastIfNumeric ($_.value -replace '[^\x09\x0A\x0D\x20-\xD7FF\xE000-\xFFFD\x10000\x10FFFF]')))
-                                        Hudu_URL      = $UpdateAsset.HuduObject.url
+                                        Data          = ($ITGPassword.attributes.'resource-url' -replace '[^\x09\x0A\x0D\x20-\xD7FF\xE000-\xFFFD\x10000\x10FFFF]')                                        Hudu_URL      = $UpdateAsset.HuduObject.url
                                         ITG_URL       = $UpdateAsset.ITGObject.attributes.'resource-url'
                                     }
                                     $null = $ManualActions.add($ManualLog)
@@ -1460,8 +1459,13 @@ $ITGPasswordsRaw = Import-CSV -Path "$ITGLueExportPath\passwords.csv"
                                 }
                                 $null = $MatchedAssetPasswords.add($MigratedPassword)
                             } else {
-                                $coerced = Get-CastIfNumeric ($_.value -replace '[^\x09\x0A\x0D\x20-\xD7FF\xE000-\xFFFD\x10000\x10FFFF]')
-                                $null = $AssetFields.add("$($field.HuduParsedName)", $coerced)
+                                if ($CurrentVersion  -eq [version]"2.37.1") {
+                                    # This version won't cast doubles for 'number' fields. It expects only integers.
+                                    $coerced = Get-CastIfNumeric ($_.value -replace '[^\x09\x0A\x0D\x20-\xD7FF\xE000-\xFFFD\x10000\x10FFFF]')
+                                    $null = $AssetFields.add("$($field.HuduParsedName)", $coerced)
+                                }  else {
+                                    $null = $AssetFields.add("$($field.HuduParsedName)", ($_.value -replace '[^\x09\x0A\x0D\x20-\xD7FF\xE000-\xFFFD\x10000\x10FFFF]'))
+                                }
                             }
                         }
                     }
