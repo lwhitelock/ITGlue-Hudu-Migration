@@ -45,6 +45,9 @@ $FontAwesomeUpgrade = Get-FontAwesomeMap
 # Add Timed (Noninteractive) Messages Helper
 . $PSScriptRoot\Public\Write-TimedMessage.ps1
 
+# Add numeral casting helper method
+. $PSScriptRoot\Public\Get-CastIfNumeric.ps1
+
 ############################### End of Functions ###############################
 
 
@@ -123,6 +126,7 @@ New-HuduBaseUrl $HuduBaseDomain
 # Check we have the correct version
 $RequiredHuduVersion = "2.1.5.9"
 $HuduAppInfo = Get-HuduAppInfo
+$CurrentVersion = [version]$HuduAppInfo.version
 If ([version]$HuduAppInfo.version -lt [version]$RequiredHuduVersion) {
     Write-Host "This script requires at least version $RequiredHuduVersion. Please update your version of Hudu and run the script again. Your version is $($HuduAppInfo.version)"
     exit 1
@@ -1440,8 +1444,14 @@ $ITGPasswordsRaw = Import-CSV -Path "$ITGLueExportPath\passwords.csv"
                                 }
                                 $null = $MatchedAssetPasswords.add($MigratedPassword)
                             } else {
-                                $null = $AssetFields.add("$($field.HuduParsedName)", ($_.value -replace '[^\x09\x0A\x0D\x20-\xD7FF\xE000-\xFFFD\x10000\x10FFFF]'))
-                            }
+                                if ($CurrentVersion  -eq [version]"2.37.1") {
+                                    # This version won't cast doubles for 'number' fields. It expects only integers.
+                                    $coerced = Get-CastIfNumeric ($_.value -replace '[^\x09\x0A\x0D\x20-\xD7FF\xE000-\xFFFD\x10000\x10FFFF]')
+                                    $null = $AssetFields.add("$($field.HuduParsedName)", $coerced)
+                                }  else {
+                                    $null = $AssetFields.add("$($field.HuduParsedName)", ($_.value -replace '[^\x09\x0A\x0D\x20-\xD7FF\xE000-\xFFFD\x10000\x10FFFF]'))
+                                }
+			    }
                         }
                     }
 
