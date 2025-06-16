@@ -45,9 +45,13 @@ $FontAwesomeUpgrade = Get-FontAwesomeMap
 # Add Timed (Noninteractive) Messages Helper
 . $PSScriptRoot\Public\Write-TimedMessage.ps1
 
+# Add numeral casting helper method
+. $PSScriptRoot\Public\Get-CastIfNumeric.ps1
+
 # Add String/Filename Normalization Helper, image Normalization helper
 . $PSScriptRoot\Public\Normalize-String.ps1
 . $PSScriptRoot\Public\Normalize-And-ConvertImage.ps1
+
 ############################### End of Functions ###############################
 
 
@@ -112,23 +116,32 @@ if ((get-host).version.major -ne 7) {
 
 
 #Get the Hudu API Module if not installed
-if ((Get-Module -ListAvailable -Name HuduAPI).version -ge '2.4.4') {
+
+$HAPImodulePath = "C:\Users\$env:USERNAME\Documents\GitHub\HuduAPI\HuduAPI\HuduAPI.psm1"
+if (Test-Path $HAPImodulePath) {
+    Import-Module $HAPImodulePath -Force
+    Write-Host "Module imported from $HAPImodulePath"
+} elseif ((Get-Module -ListAvailable -Name HuduAPI).version -ge '2.4.4') {
+    Write-Host "Module imported from $HAPImodulePath"
     Import-Module HuduAPI
 } else {
     Install-Module HuduAPI -MinimumVersion 2.4.5 -Scope CurrentUser
     Import-Module HuduAPI
 }
   
-
+  
 #Login to Hudu
 New-HuduAPIKey $HuduAPIKey
 New-HuduBaseUrl $HuduBaseDomain
 
 # Check we have the correct version
 $RequiredHuduVersion = "2.1.5.9"
+$DisallowedVersions = @([version]"2.37.0")
 $HuduAppInfo = Get-HuduAppInfo
-If ([version]$HuduAppInfo.version -lt [version]$RequiredHuduVersion) {
-    Write-Host "This script requires at least version $RequiredHuduVersion. Please update your version of Hudu and run the script again. Your version is $($HuduAppInfo.version)"
+$CurrentVersion = [version]$HuduAppInfo.version
+
+if ($CurrentVersion -lt [version]$RequiredHuduVersion -or $DisallowedVersions -contains $CurrentVersion) {
+    Write-Host "This script requires at least version $RequiredHuduVersion and cannot run with version $CurrentVersion. Please update your version of Hudu."
     exit 1
 }
 
@@ -143,9 +156,6 @@ If (Get-Module -ListAvailable -Name "ITGlueAPIv2") {
     Install-Module ITGlueAPIv2 -Force
     Import-Module ITGlueAPIv2
 }
-
-# override this method, since it's retry method fails
-. $PSScriptRoot\Public\Invoke-HuduRequest.ps1
 
 
 #Settings IT-Glue logon information
@@ -193,20 +203,26 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Companies.json")) {
 
     Write-Host "$($ITGCompanies.count) ITG Glue Companies Found" 
 	
-	
-	
+    $nameTracker = @{}
+    $MatchedCompanies = foreach ($itgcompany in $ITGCompanies) {
+        $originalName = $itgcompany.attributes.name
 
-    $MatchedCompanies = foreach ($itgcompany in $ITGCompanies ) {
-        $HuduCompany = $HuduCompanies | where-object -filter { $_.name -eq $itgcompany.attributes.name }
-        if ($InternalCompany -eq $itgcompany.attributes.name) {
-            $intCompany = $true
+        # Create a unique name if it's already been seen
+        if ($nameTracker.ContainsKey($originalName)) {
+            $nameTracker[$originalName]++
+            $uniqueName = "$originalName-$($nameTracker[$originalName])"
         } else {
-            $intCompany = $false
+            $nameTracker[$originalName] = 0
+            $uniqueName = $originalName
         }
-	
+
+        $HuduCompany = $HuduCompanies | Where-Object -Filter { $_.name -eq $originalName }
+
+        $intCompany = $InternalCompany -eq $originalName
+
         if ($HuduCompany) {
             [PSCustomObject]@{
-                "CompanyName"       = $itgcompany.attributes.name
+                "CompanyName"       = $uniqueName
                 "ITGID"             = $itgcompany.id
                 "HuduID"            = $HuduCompany.id
                 "Matched"           = $true
@@ -214,11 +230,10 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Companies.json")) {
                 "HuduCompanyObject" = $HuduCompany
                 "ITGCompanyObject"  = $itgcompany
                 "Imported"          = "Pre-Existing"
-			
             }
         } else {
             [PSCustomObject]@{
-                "CompanyName"       = $itgcompany.attributes.name
+                "CompanyName"       = $uniqueName
                 "ITGID"             = $itgcompany.id
                 "HuduID"            = ""
                 "Matched"           = $false
@@ -267,7 +282,7 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Companies.json")) {
             foreach ($unmatchedcompany in ($MatchedCompanies | Where-Object { $_.Matched -eq $false })) {
                 $unmatchedcompany.ITGCompanyObject.attributes.'quick-notes' = ($ITGCompaniesFromCSV | Where-Object {$_.id -eq $unmatchedcompany.ITGID}).quick_notes
                 $unmatchedcompany.ITGCompanyObject.attributes.alert = ($ITGCompaniesFromCSV | Where-Object {$_.id -eq $unmatchedcompany.ITGID}).alert
-                Confirm-Import -ImportObjectName $unmatchedcompany.CompanyName -ImportObject $unmatchedcompany -ImportSetting $importCOption
+                Confirm-Import -ImportObjectName $($unmatchedcompany.CompanyName) -ImportObject $unmatchedcompany -ImportSetting $importCOption
 						
                 Write-Host "Starting $($unmatchedcompany.CompanyName)"
                 $PrimaryLocation = $ITGLocations | Where-Object { $unmatchedcompany.ITGID -eq $_.attributes."organization-id" -and $_.attributes.primary -eq $true }
@@ -281,7 +296,7 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Companies.json")) {
 
                 if ($PrimaryLocation -and $PrimaryLocation.count -eq 1) {
                     $CompanySplat = @{
-                        "name"           = $unmatchedcompany.CompanyName
+                        "name"           = $($unmatchedcompany.CompanyName)
                         "nickname"       = $unmatchedcompany.ITGCompanyObject.attributes."short-name"
                         "address_line_1" = $PrimaryLocation.attributes."address-1"
                         "address_line_2" = $PrimaryLocation.attributes."address-2"
@@ -298,7 +313,7 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Companies.json")) {
                     $CompaniesMigrated = $CompaniesMigrated + 1
                 } else {
                     Write-Host "No Location Found, creating company without address details"
-                    $HuduNewCompany = (New-HuduCompany -name $unmatchedcompany.CompanyName -nickname $unmatchedcompany.ITGCompanyObject.attributes."short-name" -notes $CompanyNotes -CompanyType $unmatchedcompany.attributes.'organization-type-name').company
+                    $HuduNewCompany = (New-HuduCompany -name $($unmatchedcompany.CompanyName) -nickname $unmatchedcompany.ITGCompanyObject.attributes."short-name" -notes $CompanyNotes -CompanyType $unmatchedcompany.attributes.'organization-type-name').company
                     $CompaniesMigrated = $CompaniesMigrated + 1
                 }
 			
@@ -1408,22 +1423,21 @@ $ITGPasswordsRaw = Import-CSV -Path "$ITGLueExportPath\passwords.csv"
 
                             if ($field.FieldType -eq "Password") {
                                 $ITGPassword = (Get-ITGluePasswords -id $ITGValues -include related_items).data
-				$ITGPasswordValue = ($ITGPasswordsRaw |Where-Object {$_.id -eq $ITGPassword.id}).password
+				                $ITGPasswordValue = ($ITGPasswordsRaw |Where-Object {$_.id -eq $ITGPassword.id}).password
                                 try {
-					if ($ITGPasswordValue) {
-						$NewPasswordObject = [pscustomobject]@{
-							Name =  "$($UpdateAsset.name) $($Field.fieldname) $($ITGPassword.Username) Password"
-							Username = $ITGPassword.Username
-							URL = $ITGPassword.url
-							ITGID = $ITGPassword.id
-							Description = $ITGpassword.notes
-							CompanyId = $UpdateAsset.HuduObject.company_id
-							Password = $ITGPasswordValue
-							};
-                                    		$null = $AssetFields.add("$($field.HuduParsedName)", $ITGPasswordValue)
-                                    		$MigratedPasswordStatus = "Into Asset"
-					}
-     				} catch {
+                                    if ($ITGPasswordValue) {
+                                        $NewPasswordObject = [pscustomobject]@{
+                                        Name =  "$($UpdateAsset.name) $($Field.fieldname) $($ITGPassword.Username) Password"
+                                        Username = $ITGPassword.Username
+                                        URL = $ITGPassword.url
+                                        ITGID = $ITGPassword.id
+                                        Description = $ITGpassword.notes
+                                        CompanyId = $UpdateAsset.HuduObject.company_id
+                                        Password = $ITGPasswordValue};
+                                        $null = $AssetFields.add("$($field.HuduParsedName)", $ITGPasswordValue)
+                                        $MigratedPasswordStatus = "Into Asset"
+                                        }
+                                    } catch {
                                     Write-Host "Error occured adding field, possible duplicate name" -ForegroundColor Red
                                     $ManualLog = [PSCustomObject]@{
                                         Document_Name = $UpdateAsset.Name
@@ -1450,7 +1464,13 @@ $ITGPasswordsRaw = Import-CSV -Path "$ITGLueExportPath\passwords.csv"
                                 }
                                 $null = $MatchedAssetPasswords.add($MigratedPassword)
                             } else {
-                                $null = $AssetFields.add("$($field.HuduParsedName)", ($_.value -replace '[^\x09\x0A\x0D\x20-\xD7FF\xE000-\xFFFD\x10000\x10FFFF]'))
+                                if ($CurrentVersion  -eq [version]"2.37.1") {
+                                    # This version won't cast doubles for 'number' fields. It expects only integers.
+                                    $coerced = Get-CastIfNumeric ($_.value -replace '[^\x09\x0A\x0D\x20-\xD7FF\xE000-\xFFFD\x10000\x10FFFF]')
+                                    $null = $AssetFields.add("$($field.HuduParsedName)", $coerced)
+                                }  else {
+                                    $null = $AssetFields.add("$($field.HuduParsedName)", ($_.value -replace '[^\x09\x0A\x0D\x20-\xD7FF\xE000-\xFFFD\x10000\x10FFFF]'))
+                                }
                             }
                         }
                     }
@@ -2018,9 +2038,18 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Passwords.json")) {
                     }
 					
                     if (!($($unmatchedPassword.ITGObject.attributes."resource-type") -eq "flexible-asset-traits")) {
-						
 
+                        $validated_otp = "$($unmatchedPassword.ITGObject.attributes.otp_secret)".Trim().ToUpper()
 
+                        $isValidBase32 = $validated_otp -match '^[A-Z2-7]+$'
+                        $lengthOK = $validated_otp.Length -ge 16 -and $validated_otp.Length -le 80
+
+                        $validated_otp = if ($isValidBase32 -and $lengthOK) { $validated_otp } else { $null }
+
+                        if (-not ($isValidBase32 -and $lengthOK)) {
+                            Write-Warning "Invalid OTP secret for $($unmatchedPassword.ITGObject.attributes.name): $($unmatchedPassword.ITGObject.attributes.otp_secret)... valid base32? $isValidBase32 length ok? $lengthOK (min / max is 16 / 80 chars)"
+                        }
+                        $passwordRaw = "$($unmatchedPassword.ITGObject.attributes.password)"
                         $PasswordSplat = @{
                             name              = "$($unmatchedPassword.ITGObject.attributes.name)"
                             company_id        = $company.HuduCompanyObject.ID
@@ -2031,22 +2060,34 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Passwords.json")) {
                             password          = $unmatchedPassword.ITGObject.attributes.password
                             url               = $unmatchedPassword.ITGObject.attributes.url
                             username          = $unmatchedPassword.ITGObject.attributes.username
-                            otpsecret         = $unmatchedPassword.ITGObject.attributes.otp_secret
+                            otpsecret         = $validated_otp
 
                         }
-
-                        $HuduNewPassword = (New-HuduPassword @PasswordSplat).asset_password
-
-
-                        $unmatchedPassword.matched = $true
-                        $unmatchedPassword.HuduID = $HuduNewPassword.id
-                        $unmatchedPassword."HuduObject" = $HuduNewPassword
-                        $unmatchedPassword.Imported = "Created-By-Script"
-
-                        $ImportsMigrated = $ImportsMigrated + 1
-
-                        Write-host "$($HuduNewPassword.Name) Has been created in Hudu"
-
+                        if ([string]::IsNullOrWhiteSpace($passwordRaw) -or $passwordRaw.Length -lt 1) {                            
+                            $manualActions.add([PSCustomObject]@{
+                                name              = "$($unmatchedPassword.ITGObject.attributes.name)"
+                                company_id        = $company.HuduCompanyObject.ID
+                                description       = $unmatchedPassword.ITGObject.attributes.notes
+                                passwordable_type = $PasswordableType
+                                passwordable_id   = $ParentItemID
+                                in_portal         = $false
+                                password          = ""
+                                url               = $unmatchedPassword.ITGObject.attributes.url
+                                username          = $unmatchedPassword.ITGObject.attributes.username
+                                otpsecret         = "removed for security purposes"
+                                problem           = "password was null or empty"
+                            })
+                            $unmatchedPassword.matched = $false
+                            Write-host "$($HuduNewPassword.Name) Has been skipped and added to manual actions due to being empty"                            
+                        } else {
+                            $HuduNewPassword = (New-HuduPassword @PasswordSplat).asset_password 
+                            $unmatchedPassword.matched = $true
+                            $unmatchedPassword.HuduID = $HuduNewPassword.id
+                            $unmatchedPassword."HuduObject" = $HuduNewPassword
+                            $unmatchedPassword.Imported = "Created-By-Script"
+                            $ImportsMigrated = $ImportsMigrated + 1
+                            Write-host "$($HuduNewPassword.Name) Has been created in Hudu"
+                        }
                     }
                 }
             }
@@ -2101,24 +2142,45 @@ Write-TimedMessage -Timeout 3 -Message "Snapshot Point: Article URLs Replaced. C
 # Assets
 $assetsUpdated = @()
 foreach ($assetFound in $UpdateAssets.HuduObject) {
-    $fieldsFound = $assetFound.fields | Where-Object {$_.value -like "*$ITGURL*"}
     $originalAsset = $assetFound
-    foreach ($field in $fieldsFound) {
-        $NewContent = Update-StringWithCaptureGroups -inputString $field.value -pattern $RichRegexPatternToMatchSansAssets -type "rich"
-        $NewContent = Update-StringWithCaptureGroups -inputString $NewContent -pattern $RichRegexPatternToMatchWithAssets -type "rich"
-        if ($NewContent) {
-            Write-Host "Replacing Asset $($assetFound.name) field $($field.caption) with replaced Content" -ForegroundColor 'Red'
-            ($assetFound.fields | Where-Object {$_.id -eq $field.id}).value = $NewContent
-            $replacedStatus = 'replaced'
+    $replacedStatus = 'clean'
+    $customFields = @()
+
+    foreach ($field in $assetFound.fields) {
+        # Convert the caption to snake_case to match API expectations for 2.37.1
+        $label = ($field.caption -replace '[^\w\s]', '') -replace '\s+', '_' | ForEach-Object { $_.ToLower() }
+
+        if ($label -in @('itglue_url', 'itglue_id', 'imported_from_itglue') -and $field.value -like "*$ITGURL*") {
+            $NewContent = Update-StringWithCaptureGroups -inputString $field.value -pattern $RichRegexPatternToMatchSansAssets -type "rich"
+            $NewContent = Update-StringWithCaptureGroups -inputString $NewContent -pattern $RichRegexPatternToMatchWithAssets -type "rich"
+
+            if ($NewContent -and $NewContent -ne $field.value) {
+                Write-Host "Replacing Asset $($assetFound.name) field $($field.caption) with updated content" -ForegroundColor 'Red'
+                $customFields += @{ $label = $NewContent }
+                $replacedStatus = 'replaced'
+            } else {
+                $customFields += @{ $label = $field.value }
+            }
+        } else {
+            # For other fields, preserve existing value (optional)
+            $customFields += @{ $label = $field.value }
         }
     }
-    if ($replacedStatus -ne 'replaced') {$replacedStatus = 'clean'}
-    else {
-        Write-Host "Updating Asset $($assetFound.name) with replaced field values" -ForegroundColor 'Green'
-        $AssetPost = Set-HuduAsset -asset_layout_id $assetFound.asset_layout_id -Name $assetFound.name -AssetId $assetFound.id -CompanyId $assetFound.company_id -Fields $assetFound.fields
-    }
-    $assetsUpdated = $assetsUpdated + @{"status" = $replacedStatus; "original_asset" = $originalAsset; "updated_asset" = $AssetPost.asset}
 
+    if ($replacedStatus -eq 'replaced') {
+        Write-Host "Updating Asset $($assetFound.name) with new custom_fields array" -ForegroundColor 'Green'
+        $AssetPost = Invoke-HuduRequest -Method PUT -Resource "api/v1/companies/$($assetFound.company_id)/assets/$($assetFound.id)" -Body @{
+            name              = $assetFound.name
+            asset_layout_id   = $assetFound.asset_layout_id
+            custom_fields     = $customFields
+        }
+    }
+
+    $assetsUpdated += @{
+        status         = $replacedStatus
+        original_asset = $originalAsset
+        updated_asset  = $AssetPost.asset
+    }
 }
 
 $assetsUpdated | ConvertTo-Json -depth 100 |Out-file "$MigrationLogs\ReplacedAssetsURL.json"
