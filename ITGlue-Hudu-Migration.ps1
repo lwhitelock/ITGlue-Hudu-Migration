@@ -2017,7 +2017,16 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Passwords.json")) {
 					
                     if (!($($unmatchedPassword.ITGObject.attributes."resource-type") -eq "flexible-asset-traits")) {
 						
+                        $validated_otp = "$($unmatchedPassword.ITGObject.attributes.otp_secret)".Trim().ToUpper()
 
+                        $isValidBase32 = $validated_otp -match '^[A-Z2-7]+$'
+                        $lengthOK = $validated_otp.Length -ge 16 -and $validated_otp.Length -le 80
+
+                        $validated_otp = if ($isValidBase32 -and $lengthOK) { $validated_otp } else { $null }
+
+                        if (-not ($isValidBase32 -and $lengthOK)) {
+                            Write-Warning "Invalid OTP secret for $($unmatchedPassword.ITGObject.attributes.name): $($unmatchedPassword.ITGObject.attributes.otp_secret)... valid base32? $isValidBase32 length ok? $lengthOK (min / max is 16 / 80 chars)"
+                        }
 
                         $PasswordSplat = @{
                             name              = "$($unmatchedPassword.ITGObject.attributes.name)"
@@ -2029,28 +2038,37 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Passwords.json")) {
                             password          = $unmatchedPassword.ITGObject.attributes.password
                             url               = $unmatchedPassword.ITGObject.attributes.url
                             username          = $unmatchedPassword.ITGObject.attributes.username
-                            otpsecret         = $unmatchedPassword.ITGObject.attributes.otp_secret
-
+                            otpsecret         = $validated_otp
                         }
-
-                        $HuduNewPassword = (New-HuduPassword @PasswordSplat).asset_password
-
-
-                        $unmatchedPassword.matched = $true
-                        $unmatchedPassword.HuduID = $HuduNewPassword.id
-                        $unmatchedPassword."HuduObject" = $HuduNewPassword
-                        $unmatchedPassword.Imported = "Created-By-Script"
-
-                        $ImportsMigrated = $ImportsMigrated + 1
-
-                        Write-host "$($HuduNewPassword.Name) Has been created in Hudu"
-
+                        if ([string]::IsNullOrWhiteSpace($passwordRaw) -or $passwordRaw.Length -lt 1) {
+                            $manualActions.add([PSCustomObject]@{
+                                name              = "$($unmatchedPassword.ITGObject.attributes.name)"
+                                company_id        = $company.HuduCompanyObject.ID
+                                description       = $unmatchedPassword.ITGObject.attributes.notes
+                                passwordable_type = $PasswordableType
+                                passwordable_id   = $ParentItemID
+                                in_portal         = $false
+                                password          = ""
+                                url               = $unmatchedPassword.ITGObject.attributes.url
+                                username          = $unmatchedPassword.ITGObject.attributes.username
+                                otpsecret         = "removed for security purposes"
+                                problem           = "password was null or empty"
+                            })
+                            $unmatchedPassword.matched = $false
+                            Write-host "$($HuduNewPassword.Name) Has been skipped and added to manual actions due to being empty"                            
+                        } else {
+                            $HuduNewPassword = (New-HuduPassword @PasswordSplat).asset_password 
+                            $unmatchedPassword.matched = $true
+                            $unmatchedPassword.HuduID = $HuduNewPassword.id
+                            $unmatchedPassword."HuduObject" = $HuduNewPassword
+                            $unmatchedPassword.Imported = "Created-By-Script"
+                            $ImportsMigrated = $ImportsMigrated + 1
+                            Write-host "$($HuduNewPassword.Name) Has been created in Hudu"
+                        }
                     }
                 }
             }
         }
-
-
     } else {
         if ($UnmappedPasswordCount -eq 0) {
             Write-Host "All Passwords matched, no migration required" -foregroundcolor green
