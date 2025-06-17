@@ -2096,26 +2096,45 @@ Write-TimedMessage -Timeout 3 -Message "Snapshot Point: Article URLs Replaced. C
 # Assets
 $assetsUpdated = @()
 foreach ($assetFound in $UpdateAssets.HuduObject) {
-    $fieldsFound = $assetFound.fields | Where-Object {$_.value -like "*$ITGURL*"}
-    $originalAsset = $assetFound
-    foreach ($field in $fieldsFound) {
-        $NewContent = Update-StringWithCaptureGroups -inputString $field.value -pattern $RichRegexPatternToMatchSansAssets -type "rich"
-        $NewContent = Update-StringWithCaptureGroups -inputString $NewContent -pattern $RichRegexPatternToMatchWithAssets -type "rich"
-        if ($NewContent) {
-            Write-Host "Replacing Asset $($assetFound.name) field $($field.caption) with replaced Content" -ForegroundColor 'Red'
-            ($assetFound.fields | Where-Object {$_.id -eq $field.id}).value = $NewContent
-            $replacedStatus = 'replaced'
+    $replacedStatus = 'clean'
+    $customFields = @()
+
+    foreach ($field in $assetFound.fields) {
+        # Convert the caption to snake_case to match API expectations for 2.37.1
+        $label = ($field.caption -replace '[^\w\s]', '') -replace '\s+', '_' | ForEach-Object { $_.ToLower() }
+
+        if ($label -in @('itglue_url', 'itglue_id', 'imported_from_itglue') -and $field.value -like "*$ITGURL*") {
+            $NewContent = Update-StringWithCaptureGroups -inputString $field.value -pattern $RichRegexPatternToMatchSansAssets -type "rich"
+            $NewContent = Update-StringWithCaptureGroups -inputString $NewContent -pattern $RichRegexPatternToMatchWithAssets -type "rich"
+
+            if ($NewContent -and $NewContent -ne $field.value) {
+                Write-Host "Replacing Asset $($assetFound.name) field $($field.caption) with updated content" -ForegroundColor 'Red'
+                $customFields += @{ $label = $NewContent }
+                $replacedStatus = 'replaced'
+            } else {
+                $customFields += @{ $label = $field.value }
+            }
+        } else {
+            # For other fields, preserve existing value (optional)
+            $customFields += @{ $label = $field.value }
         }
     }
-    if ($replacedStatus -ne 'replaced') {$replacedStatus = 'clean'}
-    else {
-        Write-Host "Updating Asset $($assetFound.name) with replaced field values" -ForegroundColor 'Green'
-        $AssetPost = Set-HuduAsset -asset_layout_id $assetFound.asset_layout_id -Name $assetFound.name -AssetId $assetFound.id -CompanyId $assetFound.company_id -Fields $assetFound.fields
+
+    if ($replacedStatus -eq 'replaced') {
+        Write-Host "Updating Asset $($assetFound.name) with new custom_fields array" -ForegroundColor 'Green'
+        $AssetPost = Invoke-HuduRequest -Method PUT -Resource "api/v1/companies/$($assetFound.company_id)/assets/$($assetFound.id)" -Body @{
+            name              = $assetFound.name
+            asset_layout_id   = $assetFound.asset_layout_id
+            custom_fields     = $customFields
+        }
     }
-    $assetsUpdated = $assetsUpdated + @{"status" = $replacedStatus; "original_asset" = $originalAsset; "updated_asset" = $AssetPost.asset}
 
+    $assetsUpdated += @{
+        status         = $replacedStatus
+        original_asset = $originalAsset
+        updated_asset  = $AssetPost.asset
+    }
 }
-
 $assetsUpdated | ConvertTo-Json -depth 100 |Out-file "$MigrationLogs\ReplacedAssetsURL.json"
 Write-TimedMessage -Timeout 3 -Message  "Snapshot Point: Assets URLs Replaced. Continue?" -DefaultResponse "continue to Passwords Matching, please."
 
