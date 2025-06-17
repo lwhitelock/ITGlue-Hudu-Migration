@@ -124,7 +124,7 @@ New-HuduAPIKey $HuduAPIKey
 New-HuduBaseUrl $HuduBaseDomain
 
 # Check we have the correct version
-$RequiredHuduVersion = "2.63.1"
+$RequiredHuduVersion = "2.36.1"
 $HuduAppInfo = Get-HuduAppInfo
 If ([version]$HuduAppInfo.version -lt [version]$RequiredHuduVersion) {
     Write-Host "This script requires at least version $RequiredHuduVersion. Please update your version of Hudu and run the script again. Your version is $($HuduAppInfo.version)"
