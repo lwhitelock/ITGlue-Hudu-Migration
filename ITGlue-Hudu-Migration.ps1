@@ -221,6 +221,20 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Companies.json")) {
         if ($ScopedForCompanies.Count -eq 0) {
             Write-Error "You didn't select any companies for scoped migration. Please try again."
             exit 1
+        } else {
+            #uniquify selection and confirm with user.
+            $ScopedForCompanies = $ScopedForCompanies | Sort-Object { $_.id } -Unique
+            $companyNames = $ScopedForCompanies | ForEach-Object { $_.attributes.name }
+            $confirmationMessage = "You've elected to migrate these companies:`n$($companyNames -join ', ')`nContinue?"
+            $userChoice = $(Select-ObjectFromList -objects @("yes", "no") -message "$confirmationMessage")
+
+            if ($userChoice -eq "no") {
+                Write-Host "Migration cancelled by user."
+                exit 1
+            } else {
+                Write-Host "limiting migration to the companies you elected to migrate."
+                $ITGCompanies = $ITGCompanies | Where-Object { $ScopedForCompanies.id -contains $_.id }
+            }
         }
     }
 

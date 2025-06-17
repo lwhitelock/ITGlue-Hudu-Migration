@@ -49,18 +49,21 @@ function ConvertSecureStringToPlainText {
 function Select-ObjectFromList($objects,$message,$allowNull = $false) {
     $validated=$false
     while ($validated -eq $false){
-        Write-Host $message
-        if ($allowNull -eq $true) {
-            Write-Host "0: None/Custom"
-        }
+
         for ($i = 0; $i -lt $objects.Count; $i++) {
             $object = $objects[$i]
             if ($null -ne $object.name) {
                 Write-Host "$($i+1): $($object.name)"
+            } elseif ($null -ne $object.attributes.name) {
+                Write-Host "$($i+1): $($object.attributes.name)"
             } else {
                 Write-Host "$($i+1): $($object)"
             }
         }
+        if ($allowNull -eq $true) {
+            Write-Host "0: None/Custom"
+        }        
+        Write-Host $message
         $choice = Read-Host
         if ($null -eq $choice -or $choice -lt 0 -or $choice -gt $objects.Count +1) {
             Write-Host -message "Invalid selection. Please enter a number from above"
