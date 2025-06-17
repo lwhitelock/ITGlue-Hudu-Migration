@@ -26,10 +26,19 @@ param(
 )
 
 ############################### Settings ###############################
-# Define the path to the settings.json file in the user's AppData folder
+# Determine top part of settings path
+if($IsWindows){
+    $settingsTop = $env:APPDATA
+} else {
+    $settingsTop = Join-Path $env:HOME ".config"
+}
+
+# Define the path to the settings.json file in the detected platform's folder:
+# Running on Windows will save to the user's AppData
+# Running on Linux/macOS will save to `.config` in the user's HOME directory
   # Something awesome will be here soon.
-$settingsFiles = Get-Item "$env:APPDATA\HuduMigration\*\settings.json"
-$defaultSettingsPath = "$env:APPDATA\HuduMigration\settings.json"
+$settingsFiles = Get-Item "$settingsTop\HuduMigration\*\settings.json"
+$defaultSettingsPath = "$settingsTop\HuduMigration\settings.json"
 
 # Function to read back securely stored keys used in the settings.json file
 function ConvertSecureStringToPlainText {
@@ -43,7 +52,36 @@ function ConvertSecureStringToPlainText {
     [System.Runtime.InteropServices.Marshal]::ZeroFreeBSTR($BSTR)
     return $plainText
 }
+function Select-ObjectFromList($objects,$message,$allowNull = $false) {
+    $validated=$false
+    while ($validated -eq $false){
 
+        for ($i = 0; $i -lt $objects.Count; $i++) {
+            $object = $objects[$i]
+            if ($null -ne $object.name) {
+                Write-Host "$($i+1): $($object.name)"
+            } elseif ($null -ne $object.attributes.name) {
+                Write-Host "$($i+1): $($object.attributes.name)"
+            } else {
+                Write-Host "$($i+1): $($object)"
+            }
+        }
+        if ($allowNull -eq $true) {
+            Write-Host "0: None/Custom"
+        }        
+        Write-Host $message
+        $choice = Read-Host
+        if ($null -eq $choice -or $choice -lt 0 -or $choice -gt $objects.Count +1) {
+            Write-Host -message "Invalid selection. Please enter a number from above"
+        }
+        if ($choice -eq 0 -and $true -eq $allowNull) {
+            return $null
+        }
+        if ($null -ne $objects[$choice - 1]){
+            return $objects[$choice - 1]
+        }
+    }
+}
 
 # Prompt the user for various settings and save the responses
 function CollectAndSaveSettings {
@@ -72,9 +110,9 @@ function CollectAndSaveSettings {
      }
 
     # Migration Log Settings
-    $settings.MigrationLogs = Read-Host "Enter the path for the migration logs, or press enter to accept the Default path (%appdata%\HuduMigration\$instance\MigrationLogs)"
+    $settings.MigrationLogs = Read-Host "Enter the path for the migration logs, or press enter to accept the Default path ($settingsTop\HuduMigration\$instance\MigrationLogs)"
     if (!($settings.MigrationLogs)) {
-        $settings.MigrationLogs = "$ENV:appdata\HuduMigration\$instance\MigrationLogs"
+        $settings.MigrationLogs = "$settingsTop\HuduMigration\$instance\MigrationLogs"
     }
 
     $settings.ConPromptPrefix = Read-Host "Would you like a Prefix in front of Configuration names created in Hudu? This can make it easy to review and you can rename them later. Enter the prefix here, otherwise leave it blank. (e.g. ITGlue-)"
@@ -84,7 +122,7 @@ function CollectAndSaveSettings {
     $json = $settings | ConvertTo-Json
 
     # Save the JSON to the settings file
-    if (!(Test-Path -Path "$env:APPDATA\HuduMigration\$instance")) { New-Item "$env:APPDATA\HuduMigration\$instance" -ItemType Directory }
+    if (!(Test-Path -Path "$settingsTop\HuduMigration\$instance")) { New-Item "$settingsTop\HuduMigration\$instance" -ItemType Directory }
     $json | Out-File -FilePath $defaultSettingsPath
 }
 
@@ -344,7 +382,14 @@ if ($InitType -eq 'Full') {
     switch ($NonInteractive) {
         "1" {$NonInteractive = $false}
         "2" {$NonInteractive = $true}
-    }    
+    }
+
+    ############################### Scoped ###############################
+    while ($ScopedMigration -notin (1,2)) {$ScopedMigration = Read-Host "1) Run normally `n2) Perform migration scoped to certain companies `n(1/2)"}
+    switch ($ScopedMigration) {
+        "1" {$ScopedMigration = $false}
+        "2" {$ScopedMigration = $true}
+    }
 }
 ############################ Migration Logs Path ##############################
 $MigrationLogs = $environmentSettings.MigrationLogs
