@@ -131,7 +131,7 @@ New-HuduAPIKey $HuduAPIKey
 New-HuduBaseUrl $HuduBaseDomain
 
 # Check we have the correct version
-$RequiredHuduVersion = "2.1.5.9"
+$RequiredHuduVersion = "2.37.0"
 $DisallowedVersions = @([version]"2.37.0")
 $HuduAppInfo = Get-HuduAppInfo
 $CurrentVersion = [version]$HuduAppInfo.version
@@ -198,6 +198,32 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Companies.json")) {
     $ITGCompaniesFromCSV = Import-CSV (Join-Path -Path $ITGlueExportPath -ChildPath "organizations.csv")
 
     Write-Host "$($ITGCompanies.count) ITG Glue Companies Found" 
+    $ScopedForCompanies = [System.Collections.ArrayList]@()
+
+    if ($true -eq $ScopedMigration) {
+        Write-Host "Scoped Migration Mode. Select companies to migrate from IT Glue."
+
+        $selection = $null
+        while ($true) {
+            $selection = Select-ObjectFromList -allowNull $true `
+                        -message "Select a number corresponding to a company to add to migration list. Press Enter with nothing selected to finish." `
+                        -objects $ITGCompanies
+
+            if ($null -eq $selection) {
+                break
+            }
+
+            [void]$ScopedForCompanies.Add($selection)
+        }
+
+        Write-Host "Selected $($ScopedForCompanies.Count) companies for scoped migration"
+
+        if ($ScopedForCompanies.Count -eq 0) {
+            Write-Error "You didn't select any companies for scoped migration. Please try again."
+            exit 1
+        }
+    }
+
 	
     $nameTracker = @{}
     $MatchedCompanies = foreach ($itgcompany in $ITGCompanies) {

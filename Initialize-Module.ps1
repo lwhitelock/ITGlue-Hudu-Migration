@@ -419,6 +419,12 @@ if ($InitType -eq 'Full') {
         "1" {$NonInteractive = $false}
         "2" {$NonInteractive = $true}
     }    
+    ############################### Unattended ###############################
+    while ($ScopedMigration -notin (1,2)) {$ScopedMigration = Read-Host "1) Run normally `n2) Perform migration scoped to certain companies `n(1/2)"}
+    switch ($ScopedMigration) {
+        "1" {$ScopedMigration = $false}
+        "2" {$ScopedMigration = $true}
+    }        
 }
 ############################ Migration Logs Path ##############################
 $MigrationLogs = $environmentSettings.MigrationLogs
