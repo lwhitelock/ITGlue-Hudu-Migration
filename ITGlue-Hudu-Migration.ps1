@@ -134,7 +134,7 @@ New-HuduAPIKey $HuduAPIKey
 New-HuduBaseUrl $HuduBaseDomain
 
 # Check we have the correct version
-$RequiredHuduVersion = "2.37.0"
+$RequiredHuduVersion = "2.37.1"
 $DisallowedVersions = @([version]"2.37.0")
 $HuduAppInfo = Get-HuduAppInfo
 $CurrentVersion = [version]$HuduAppInfo.version
