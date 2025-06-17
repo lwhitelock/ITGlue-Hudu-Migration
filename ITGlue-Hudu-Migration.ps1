@@ -233,10 +233,13 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Companies.json")) {
                 exit 1
             } else {
                 Write-Host "limiting migration to the companies you elected to migrate."
-                $ITGCompanies = $ITGCompanies | Where-Object { $ScopedForCompanies.id -contains $_.id }
-            }
+            $ITGCompanies = $ITGCompanies | Where-Object {
+                ($ScopedForCompanies.id -contains $_.id) -or
+                ($_.attributes.name -eq $InternalCompany)
+            }            
         }
     }
+}
 
 	
     $nameTracker = @{}
