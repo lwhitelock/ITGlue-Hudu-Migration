@@ -206,7 +206,7 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Companies.json")) {
         $selection = $null
         while ($true) {
             $selection = Select-ObjectFromList -allowNull $true `
-                        -message "Select a number corresponding to a company to add to migration list. Press Enter with nothing selected to finish." `
+                        -message "Select a number corresponding to a company to add to migration list. Press Enter with nothing/0 selected to finish." `
                         -objects $ITGCompanies
 
             if ($null -eq $selection) {
@@ -1469,7 +1469,8 @@ $ITGPasswordsRaw = Import-CSV -Path "$ITGLueExportPath\passwords.csv"
                                         Field_Name    = "$field.HuduParsedName"
                                         Notes         = "Failed to add password to Asset"
                                         Action        = "Manually add the password to the asset"
-                                        Data          = ($ITGPassword.attributes.'resource-url' -replace '[^\x09\x0A\x0D\x20-\xD7FF\xE000-\xFFFD\x10000\x10FFFF]')                                        Hudu_URL      = $UpdateAsset.HuduObject.url
+                                        Data          = ($ITGPassword.attributes.'resource-url' -replace '[^\x09\x0A\x0D\x20-\xD7FF\xE000-\xFFFD\x10000\x10FFFF]')                                        
+                                        Hudu_URL      = $UpdateAsset.HuduObject.url
                                         ITG_URL       = $UpdateAsset.ITGObject.attributes.'resource-url'
                                     }
                                     $null = $ManualActions.add($ManualLog)
