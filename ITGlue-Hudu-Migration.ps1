@@ -122,7 +122,7 @@ New-HuduBaseUrl $HuduBaseDomain
 
 # Check we have the correct version
 # Check we have the correct version
-$RequiredHuduVersion = "2.1.5.9"
+$RequiredHuduVersion = "2.36.1"
 $DisallowedVersions = @([version]"2.37.0")
 $HuduAppInfo = Get-HuduAppInfo
 $CurrentVersion = [version]$HuduAppInfo.version
