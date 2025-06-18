@@ -204,8 +204,12 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Companies.json")) {
 
     if ($ScopedMigration) {
         $OriginalCompanyCount = $($ITGcompanies.count)
-        Write-Host "Setting companies to those in scope..." -foregroundcolor Yellow
-        $ITGCompanies = Set-MigrationScope -AllITGCompanies $ITGCompanies -InternalCompany $InternalCompany
+        Write-Host "Setting companies to those in scope..." -foregroundcolor Yellow 
+        if ($null -ne $Prescoped) {
+            $ITGCompanies = Set-PredefinedScope -AllITGCompanies $ITGCompanies -Prescoped $Prescoped -InternalCompany $InternalCompany
+        } else {
+            $ITGCompanies = Set-MigrationScope -AllITGCompanies $ITGCompanies -InternalCompany $InternalCompany
+        }
         Write-Host "Companies scoped... $OriginalCompanyCount => $($Itgcompanies.count)"
     }
 

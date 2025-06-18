@@ -1,14 +1,19 @@
 
 $project_workdir="$PSScriptRoot"
 $debug_folder=$(join-path "$project_workdir" "debug")
+$errors_folder=$(join-path $debug_folder "errors")
+$global:GLOBAL_ERRORS_DIRECTORY="$errors_folder"
+$global:HAPI_ERRORS_DIRECTORY=$(join-path "$errors_folder" "huduapi")
+$global:ITG_ERRORS_DIRECTORY=$(join-path "$errors_folder" "itglue")
+
 $settings_folder=$(join-path "$project_workdir" "debug\settings")
 $logs_folder=$(join-path "$project_workdir" "debug\logs")
-$defaultSettingsPath=$(join-path "$settings_folder" "environ1.json")
+$defaultSettingsPath=$(join-path "$settings_folder" "masond.json")
 
-if (!(Test-Path -Path "$debug_folder")) { New-Item "$debug_folder" -ItemType Directory }
-if (!(Test-Path -Path "$settings_folder")) { New-Item "$settings_folder" -ItemType Directory }
-if (!(Test-Path -Path "$logs_folder")) { New-Item "$logs_folder" -ItemType Directory }
-
+foreach ($folder in @($debug_folder, $errors_folder, $logs_folder, $settings_folder, $HAPI_ERRORS_DIRECTORY, $ITG_ERRORS_DIRECTORY)) {
+    if (!(Test-Path -Path "$folder")) { New-Item "$folder" -ItemType Directory }
+    Get-ChildItem -Path "$folder" -File -Recurse -Force | Remove-Item -Force
+}
 
 $InitType = "full"
 $settings = @{
@@ -41,6 +46,34 @@ $ImportFlexibleAssetLayouts = 1
 $ImportFlexibleAssets       = 1
 $ImportArticles             = 1
 $ImportPasswords            = 1
-$NonInteractive             = 1
 $NonInteractive             = 2
+$ScopedMigration            = 2
+# prescoped Companies
+$Prescoped = @(
+905
+859
+1009
+1328
+1288
+2254
+2140
+99
+651
+1707
+1869
+1707
+2176
+1381
+1374
+1945
+739
+465
+936
+474
+1387
+1152
+20
+1231
+932
+)
 . .\ITGlue-Hudu-Migration.ps1
