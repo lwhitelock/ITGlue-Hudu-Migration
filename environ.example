@@ -1,18 +1,14 @@
-# this just is really for making automated testing or running concurrent tests easier. you can ignore this!
-# in this example environ file, we can set all of our vars and execute to kick of tests for this specific host. - note: it clears old results, so be sure to save if restoring/re-running
-$project_workdir="$PSScriptRoot"
 
+$project_workdir="$PSScriptRoot"
 $debug_folder=$(join-path "$project_workdir" "debug")
 $errors_folder=$(join-path $debug_folder "errors")
 $global:GLOBAL_ERRORS_DIRECTORY="$errors_folder"
 $global:HAPI_ERRORS_DIRECTORY=$(join-path "$errors_folder" "huduapi")
 $global:ITG_ERRORS_DIRECTORY=$(join-path "$errors_folder" "itglue")
 
-
 $settings_folder=$(join-path "$project_workdir" "debug\settings")
 $logs_folder=$(join-path "$project_workdir" "debug\logs")
-$defaultSettingsPath=$(join-path "$settings_folder" "$envname.json")
-
+$defaultSettingsPath=$(join-path "$settings_folder" "masond.json")
 
 foreach ($folder in @($debug_folder, $errors_folder, $logs_folder, $settings_folder, $HAPI_ERRORS_DIRECTORY, $ITG_ERRORS_DIRECTORY)) {
     if (!(Test-Path -Path "$folder")) { New-Item "$folder" -ItemType Directory }
@@ -50,6 +46,16 @@ $ImportFlexibleAssetLayouts = 1
 $ImportFlexibleAssets       = 1
 $ImportArticles             = 1
 $ImportPasswords            = 1
-$NonInteractive             = 1
 $NonInteractive             = 2
+$ScopedMigration            = 2
+# prescoped Companies
+$Prescoped = @(
+905
+859
+1387
+1152
+20
+1231
+932
+)
 . .\ITGlue-Hudu-Migration.ps1
