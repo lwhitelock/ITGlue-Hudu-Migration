@@ -35,7 +35,7 @@ param(
 if($IsWindows){
     $settingsTop = $env:APPDATA
 } else {
-    $settingsTop = Join-Path $env:HOME ".config"
+    $settingsTop = Join-Path "$home" ".config"
 }
 
 # Define the path to the settings.json file in the detected platform's folder:
