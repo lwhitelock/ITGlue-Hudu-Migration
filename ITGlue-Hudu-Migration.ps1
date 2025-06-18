@@ -45,6 +45,13 @@ $FontAwesomeUpgrade = Get-FontAwesomeMap
 # Add Timed (Noninteractive) Messages Helper
 . $PSScriptRoot\Public\Write-TimedMessage.ps1
 
+# Add numeral casting helper method
+. $PSScriptRoot\Public\Get-CastIfNumeric.ps1
+
+# Add migration scope helper
+. $PSScriptRoot\Public\Set-MigrationScope.ps1
+
+
 ############################### End of Functions ###############################
 
 
@@ -121,8 +128,11 @@ New-HuduAPIKey $HuduAPIKey
 New-HuduBaseUrl $HuduBaseDomain
 
 # Check we have the correct version
-$RequiredHuduVersion = "2.1.5.9"
+$RequiredHuduVersion = "2.36.1"
+$DisallowedVersions = @([version]"2.37.0")
 $HuduAppInfo = Get-HuduAppInfo
+$CurrentVersion = [version]$HuduAppInfo.version
+
 If ([version]$HuduAppInfo.version -lt [version]$RequiredHuduVersion) {
     Write-Host "This script requires at least version $RequiredHuduVersion. Please update your version of Hudu and run the script again. Your version is $($HuduAppInfo.version)"
     exit 1
@@ -183,9 +193,13 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Companies.json")) {
     $ITGCompaniesFromCSV = Import-CSV (Join-Path -Path $ITGlueExportPath -ChildPath "organizations.csv")
 
     Write-Host "$($ITGCompanies.count) ITG Glue Companies Found" 
-	
-	
-	
+    if ($ScopedMigration) {
+        $OriginalCompanyCount = $($ITGcompanies.count)
+        Write-Host "Setting companies to those in scope..." -foregroundcolor Yellow
+        $ITGCompanies = Set-MigrationScope -AllITGCompanies $ITGCompanies -InternalCompany $InternalCompany
+        Write-Host "Companies scoped... $OriginalCompanyCount => $($Itgcompanies.count)"
+    }
+    $ScopedITGCompanyIds = $ITGCompanies.id
 
     $MatchedCompanies = foreach ($itgcompany in $ITGCompanies ) {
         $HuduCompany = $HuduCompanies | where-object -filter { $_.name -eq $itgcompany.attributes.name }
@@ -246,7 +260,12 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Companies.json")) {
     Write-Host "Fetching Locations from IT Glue" -ForegroundColor Green
     $LocationsSelect = { (Get-ITGlueLocations -page_size 1000 -page_number $i -include related_items).data }
     $ITGLocations = Import-ITGlueItems -ItemSelect $LocationsSelect
-
+   if ($ScopedMigration) {
+        $OriginalLocationsCount = $($ITGLocations.count)
+        Write-Host "Setting locations to those in scope..." -foregroundcolor Yellow
+        $ITGLocations         = $ITGLocations | Where-Object { $ScopedITGCompanyIds -contains $_.attributes.'organization-id' }
+        Write-Host "locations scoped... $OriginalLocationsCount => $($ITGLocations.count)"
+    }
 
     # Import Companies
     $UnmappedCompanyCount = ($MatchedCompanies | Where-Object { $_.Matched -eq $false } | measure-object).count
@@ -451,6 +470,12 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Websites.json")) {
     Write-Host "Fetching Domains from IT Glue" -ForegroundColor Green
     $DomainSelect = { (Get-ITGlueDomains -page_size 1000 -page_number $i).data }
     $ITGDomains = Import-ITGlueItems -ItemSelect $DomainSelect
+    if ($ScopedMigration) {
+        $OriginalDomainsCount = $($ITGDomains.count)
+        Write-Host "Setting domains to those in scope..." -foregroundcolor Yellow
+        $ITGDomains          = $ITGdomains | Where-Object { $ScopedITGCompanyIds -contains $_.attributes.'organization-id' }
+        Write-Host "domains scoped... $OriginalDomainsCount => $($ITGDomains.count)"
+    }
 
     Write-Host "$($ITGDomains.count) ITG Glue Domains Found" 
 
@@ -560,8 +585,13 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Configurations.json")
     Write-Host "Fetching Configurations from IT Glue" -ForegroundColor Green
     $ConfigurationsSelect = { (Get-ITGlueConfigurations -page_size 1000 -page_number $i -include related_items).data }
     $ITGConfigurations = Import-ITGlueItems -ItemSelect $ConfigurationsSelect
+    if ($ScopedMigration) {
+        $OriginalConfigurationCount = $($ITGConfigurations.count)
+        Write-Host "Setting configurations to those in scope..." -foregroundcolor Yellow        
+        $ITGConfigurations    = $ITGConfigurations | Where-Object { $ScopedITGCompanyIds -contains $_.attributes.'organization-id' }
+        Write-Host "configurations scoped... $OriginalConfigurationCount => $($ITGConfigurations.count)"
+    }
 
-		
     $ConfigAssetLayoutFields = @(
         @{
             label        = 'Hostname'
@@ -863,7 +893,12 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Contacts.json")) {
     Write-Host "Fetching Contacts from IT Glue" -ForegroundColor Green
     $ContactsSelect = { (Get-ITGlueContacts -page_size 1000 -page_number $i -include related_items).data }
     $ITGContacts = Import-ITGlueItems -ItemSelect $ContactsSelect
-
+    if ($ScopedMigration) {
+        $OriginalContactsCount = $($ITGContacts.count)
+        Write-Host "Setting contacts to those in scope..." -foregroundcolor Yellow               
+        $ITGContacts          = $ITGContacts | Where-Object { $ScopedITGCompanyIds -contains $_.attributes.'organization-id' }
+        Write-Host "Contacts scoped... $OriginalContactsCount => $($ITGContacts.count)"
+    }
     #($ITGContacts.attributes | sort-object -property name, "organization-name" -Unique)
 
     $ConHuduItemFilter = { ($_.name -eq $itgimport.attributes.name -and $_.company_name -eq $itgimport.attributes."organization-name") }
@@ -1256,6 +1291,12 @@ $ITGPasswordsRaw = Import-CSV -Path "$ITGLueExportPath\passwords.csv"
         $MatchedAssetPasswords = [System.Collections.ArrayList]@()
 
         #We need to do a first pass creating empty assets with just the ITG migrated data. This builds an array we need to use to lookup relations when populating the entire assets
+        if ($ScopedMigration) {
+            $OriginalLayoutsCount = $($MatchedLayouts.count)
+            Write-Host "Setting layouts to those in scope..." -foregroundcolor Yellow               
+            $MatchedLayouts = Filter-ScopedAssets -Layouts $MatchedLayouts -ScopedCompanyIds $ScopedITGCompanyIds
+            Write-Host "Layouts scoped... $OriginalLayoutsCount => $($MatchedLayouts.count)"
+        }
 
         Foreach ($Layout in $MatchedLayouts) {
             Write-Host "Creating base assets for $($layout.name)"
@@ -1440,8 +1481,14 @@ $ITGPasswordsRaw = Import-CSV -Path "$ITGLueExportPath\passwords.csv"
                                 }
                                 $null = $MatchedAssetPasswords.add($MigratedPassword)
                             } else {
-                                $null = $AssetFields.add("$($field.HuduParsedName)", ($_.value -replace '[^\x09\x0A\x0D\x20-\xD7FF\xE000-\xFFFD\x10000\x10FFFF]'))
-                            }
+                                if ($CurrentVersion  -eq [version]"2.37.1") {
+                                    # This version won't cast doubles for 'number' fields. It expects only integers.
+                                    $coerced = Get-CastIfNumeric ($_.value -replace '[^\x09\x0A\x0D\x20-\xD7FF\xE000-\xFFFD\x10000\x10FFFF]')
+                                    $null = $AssetFields.add("$($field.HuduParsedName)", $coerced)
+                                }  else {
+                                    $null = $AssetFields.add("$($field.HuduParsedName)", ($_.value -replace '[^\x09\x0A\x0D\x20-\xD7FF\xE000-\xFFFD\x10000\x10FFFF]'))
+                                }
+			    }
                         }
                     }
 
@@ -1853,6 +1900,13 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Passwords.json")) {
     Write-Host "Fetching Passwords from IT Glue" -ForegroundColor Green
     $PasswordSelect = { (Get-ITGluePasswords -page_size 1000 -page_number $i).data }
     $ITGPasswords = Import-ITGlueItems -ItemSelect $PasswordSelect -MigrationName 'Passwords'
+    if ($ScopedMigration) {
+        $OriginalPasswordsCount = $($ITGPasswords.count)
+        Write-Host "Setting passwords to those in scope..." -foregroundcolor Yellow        
+        $ITGPasswords         = $ITGPasswords | Where-Object { $ScopedITGCompanyIds -contains $_.attributes.'organization-id' }
+        Write-Host "Passwords scoped... $OriginalPasswordsCount => $($ITGPasswords.count)"
+    }
+    
     try {
         Write-Host "Loading Passwords from CSV for faster import" -foregroundcolor Cyan
         $ITGPasswordsRaw = Import-CSV -Path "$ITGLueExportPath\passwords.csv"
@@ -2014,7 +2068,16 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Passwords.json")) {
 					
                     if (!($($unmatchedPassword.ITGObject.attributes."resource-type") -eq "flexible-asset-traits")) {
 						
+                        $validated_otp = "$($unmatchedPassword.ITGObject.attributes.otp_secret)".Trim().ToUpper()
 
+                        $isValidBase32 = $validated_otp -match '^[A-Z2-7]+$'
+                        $lengthOK = $validated_otp.Length -ge 16 -and $validated_otp.Length -le 80
+
+                        $validated_otp = if ($isValidBase32 -and $lengthOK) { $validated_otp } else { $null }
+
+                        if (-not ($isValidBase32 -and $lengthOK)) {
+                            Write-Warning "Invalid OTP secret for $($unmatchedPassword.ITGObject.attributes.name): $($unmatchedPassword.ITGObject.attributes.otp_secret)... valid base32? $isValidBase32 length ok? $lengthOK (min / max is 16 / 80 chars)"
+                        }
 
                         $PasswordSplat = @{
                             name              = "$($unmatchedPassword.ITGObject.attributes.name)"
@@ -2026,28 +2089,37 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Passwords.json")) {
                             password          = $unmatchedPassword.ITGObject.attributes.password
                             url               = $unmatchedPassword.ITGObject.attributes.url
                             username          = $unmatchedPassword.ITGObject.attributes.username
-                            otpsecret         = $unmatchedPassword.ITGObject.attributes.otp_secret
-
+                            otpsecret         = $validated_otp
                         }
-
-                        $HuduNewPassword = (New-HuduPassword @PasswordSplat).asset_password
-
-
-                        $unmatchedPassword.matched = $true
-                        $unmatchedPassword.HuduID = $HuduNewPassword.id
-                        $unmatchedPassword."HuduObject" = $HuduNewPassword
-                        $unmatchedPassword.Imported = "Created-By-Script"
-
-                        $ImportsMigrated = $ImportsMigrated + 1
-
-                        Write-host "$($HuduNewPassword.Name) Has been created in Hudu"
-
+                        if ([string]::IsNullOrWhiteSpace($passwordRaw) -or $passwordRaw.Length -lt 1) {
+                            $manualActions.add([PSCustomObject]@{
+                                name              = "$($unmatchedPassword.ITGObject.attributes.name)"
+                                company_id        = $company.HuduCompanyObject.ID
+                                description       = $unmatchedPassword.ITGObject.attributes.notes
+                                passwordable_type = $PasswordableType
+                                passwordable_id   = $ParentItemID
+                                in_portal         = $false
+                                password          = ""
+                                url               = $unmatchedPassword.ITGObject.attributes.url
+                                username          = $unmatchedPassword.ITGObject.attributes.username
+                                otpsecret         = "removed for security purposes"
+                                problem           = "password was null or empty"
+                            })
+                            $unmatchedPassword.matched = $false
+                            Write-host "$($HuduNewPassword.Name) Has been skipped and added to manual actions due to being empty"                            
+                        } else {
+                            $HuduNewPassword = (New-HuduPassword @PasswordSplat).asset_password 
+                            $unmatchedPassword.matched = $true
+                            $unmatchedPassword.HuduID = $HuduNewPassword.id
+                            $unmatchedPassword."HuduObject" = $HuduNewPassword
+                            $unmatchedPassword.Imported = "Created-By-Script"
+                            $ImportsMigrated = $ImportsMigrated + 1
+                            Write-host "$($HuduNewPassword.Name) Has been created in Hudu"
+                        }
                     }
                 }
             }
         }
-
-
     } else {
         if ($UnmappedPasswordCount -eq 0) {
             Write-Host "All Passwords matched, no migration required" -foregroundcolor green
@@ -2096,26 +2168,45 @@ Write-TimedMessage -Timeout 3 -Message "Snapshot Point: Article URLs Replaced. C
 # Assets
 $assetsUpdated = @()
 foreach ($assetFound in $UpdateAssets.HuduObject) {
-    $fieldsFound = $assetFound.fields | Where-Object {$_.value -like "*$ITGURL*"}
-    $originalAsset = $assetFound
-    foreach ($field in $fieldsFound) {
-        $NewContent = Update-StringWithCaptureGroups -inputString $field.value -pattern $RichRegexPatternToMatchSansAssets -type "rich"
-        $NewContent = Update-StringWithCaptureGroups -inputString $NewContent -pattern $RichRegexPatternToMatchWithAssets -type "rich"
-        if ($NewContent) {
-            Write-Host "Replacing Asset $($assetFound.name) field $($field.caption) with replaced Content" -ForegroundColor 'Red'
-            ($assetFound.fields | Where-Object {$_.id -eq $field.id}).value = $NewContent
-            $replacedStatus = 'replaced'
+    $replacedStatus = 'clean'
+    $customFields = @()
+
+    foreach ($field in $assetFound.fields) {
+        # Convert the caption to snake_case to match API expectations for 2.37.1
+        $label = ($field.caption -replace '[^\w\s]', '') -replace '\s+', '_' | ForEach-Object { $_.ToLower() }
+
+        if ($label -in @('itglue_url', 'itglue_id', 'imported_from_itglue') -and $field.value -like "*$ITGURL*") {
+            $NewContent = Update-StringWithCaptureGroups -inputString $field.value -pattern $RichRegexPatternToMatchSansAssets -type "rich"
+            $NewContent = Update-StringWithCaptureGroups -inputString $NewContent -pattern $RichRegexPatternToMatchWithAssets -type "rich"
+
+            if ($NewContent -and $NewContent -ne $field.value) {
+                Write-Host "Replacing Asset $($assetFound.name) field $($field.caption) with updated content" -ForegroundColor 'Red'
+                $customFields += @{ $label = $NewContent }
+                $replacedStatus = 'replaced'
+            } else {
+                $customFields += @{ $label = $field.value }
+            }
+        } else {
+            # For other fields, preserve existing value (optional)
+            $customFields += @{ $label = $field.value }
         }
     }
-    if ($replacedStatus -ne 'replaced') {$replacedStatus = 'clean'}
-    else {
-        Write-Host "Updating Asset $($assetFound.name) with replaced field values" -ForegroundColor 'Green'
-        $AssetPost = Set-HuduAsset -asset_layout_id $assetFound.asset_layout_id -Name $assetFound.name -AssetId $assetFound.id -CompanyId $assetFound.company_id -Fields $assetFound.fields
+
+    if ($replacedStatus -eq 'replaced') {
+        Write-Host "Updating Asset $($assetFound.name) with new custom_fields array" -ForegroundColor 'Green'
+        $AssetPost = Invoke-HuduRequest -Method PUT -Resource "api/v1/companies/$($assetFound.company_id)/assets/$($assetFound.id)" -Body @{
+            name              = $assetFound.name
+            asset_layout_id   = $assetFound.asset_layout_id
+            custom_fields     = $customFields
+        }
     }
-    $assetsUpdated = $assetsUpdated + @{"status" = $replacedStatus; "original_asset" = $originalAsset; "updated_asset" = $AssetPost.asset}
 
+    $assetsUpdated += @{
+        status         = $replacedStatus
+        original_asset = $originalAsset
+        updated_asset  = $AssetPost.asset
+    }
 }
-
 $assetsUpdated | ConvertTo-Json -depth 100 |Out-file "$MigrationLogs\ReplacedAssetsURL.json"
 Write-TimedMessage -Timeout 3 -Message  "Snapshot Point: Assets URLs Replaced. Continue?" -DefaultResponse "continue to Passwords Matching, please."
 
