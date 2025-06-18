@@ -2114,8 +2114,9 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Passwords.json")) {
                             passwordable_id   = $ParentItemID
                             in_portal         = $false
                             password          = $unmatchedPassword.ITGObject.attributes.password
-                            url               = $unmatchedPassword.ITGObject.attributes.url
-                            username          = $unmatchedPassword.ITGObject.attributes.username
+			    Hudu_URL          = $unmatchedPassword.HuduObject.url
+			    ITG_URL           = $unmatchedPassword.ITGObject.attributes.url                            
+   			    username          = $unmatchedPassword.ITGObject.attributes.username
                             otpsecret         = $validated_otp
 
                         }
