@@ -48,6 +48,9 @@ $FontAwesomeUpgrade = Get-FontAwesomeMap
 # Add numeral casting helper method
 . $PSScriptRoot\Public\Get-CastIfNumeric.ps1
 
+# Add migration scope helper
+. $PSScriptRoot\Public\Set-MigrationScope.ps1
+
 # Add String/Filename Normalization Helper, image Normalization helper
 . $PSScriptRoot\Public\Normalize-String.ps1
 . $PSScriptRoot\Public\Normalize-And-ConvertImage.ps1
@@ -135,7 +138,7 @@ New-HuduAPIKey $HuduAPIKey
 New-HuduBaseUrl $HuduBaseDomain
 
 # Check we have the correct version
-$RequiredHuduVersion = "2.1.5.9"
+$RequiredHuduVersion = "2.37.1"
 $DisallowedVersions = @([version]"2.37.0")
 $HuduAppInfo = Get-HuduAppInfo
 $CurrentVersion = [version]$HuduAppInfo.version
@@ -252,7 +255,20 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Companies.json")) {
     $ITGCompaniesFromCSV = Import-CSV (Join-Path -Path $ITGlueExportPath -ChildPath "organizations.csv")
 
     Write-Host "$($ITGCompanies.count) ITG Glue Companies Found" 
-	
+
+    if ($ScopedMigration) {
+        $OriginalCompanyCount = $($ITGcompanies.count)
+        Write-Host "Setting companies to those in scope..." -foregroundcolor Yellow 
+        if ($null -ne $Prescoped) {
+            $ITGCompanies = Set-PredefinedScope -AllITGCompanies $ITGCompanies -Prescoped $Prescoped -InternalCompany $InternalCompany
+        } else {
+            $ITGCompanies = Set-MigrationScope -AllITGCompanies $ITGCompanies -InternalCompany $InternalCompany
+        }
+        Write-Host "Companies scoped... $OriginalCompanyCount => $($Itgcompanies.count)"
+    }
+
+	$ScopedITGCompanyIds = $ITGCompanies.id
+
     $nameTracker = @{}
     $MatchedCompanies = foreach ($itgcompany in $ITGCompanies) {
         $originalName = $itgcompany.attributes.name
@@ -320,7 +336,12 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Companies.json")) {
     Write-Host "Fetching Locations from IT Glue" -ForegroundColor Green
     $LocationsSelect = { (Get-ITGlueLocations -page_size 1000 -page_number $i -include related_items).data }
     $ITGLocations = Import-ITGlueItems -ItemSelect $LocationsSelect
-
+    if ($ScopedMigration) {
+        $OriginalLocationsCount = $($ITGLocations.count)
+        Write-Host "Setting locations to those in scope..." -foregroundcolor Yellow
+        $ITGLocations         = $ITGLocations | Where-Object { $ScopedITGCompanyIds -contains $_.attributes.'organization-id' }
+        Write-Host "locations scoped... $OriginalLocationsCount => $($ITGLocations.count)"
+    }
 
     # Import Companies
     $UnmappedCompanyCount = ($MatchedCompanies | Where-Object { $_.Matched -eq $false } | measure-object).count
@@ -526,6 +547,13 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Websites.json")) {
     $DomainSelect = { (Get-ITGlueDomains -page_size 1000 -page_number $i).data }
     $ITGDomains = Import-ITGlueItems -ItemSelect $DomainSelect
 
+    if ($ScopedMigration) {
+        $OriginalDomainsCount = $($ITGDomains.count)
+        Write-Host "Setting domains to those in scope..." -foregroundcolor Yellow
+        $ITGDomains          = $ITGdomains | Where-Object { $ScopedITGCompanyIds -contains $_.attributes.'organization-id' }
+        Write-Host "domains scoped... $OriginalDomainsCount => $($ITGDomains.count)"
+    }
+
     Write-Host "$($ITGDomains.count) ITG Glue Domains Found" 
 
     $MatchedWebsites = foreach ($itgdomain in $ITGDomains ) {
@@ -635,7 +663,13 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Configurations.json")
     $ConfigurationsSelect = { (Get-ITGlueConfigurations -page_size 1000 -page_number $i -include related_items).data }
     $ITGConfigurations = Import-ITGlueItems -ItemSelect $ConfigurationsSelect
 
-		
+    if ($ScopedMigration) {
+        $OriginalConfigurationCount = $($ITGConfigurations.count)
+        Write-Host "Setting configurations to those in scope..." -foregroundcolor Yellow        
+        $ITGConfigurations    = $ITGConfigurations | Where-Object { $ScopedITGCompanyIds -contains $_.attributes.'organization-id' }
+        Write-Host "configurations scoped... $OriginalConfigurationCount => $($ITGConfigurations.count)"
+    }
+
     $ConfigAssetLayoutFields = @(
         @{
             label        = 'Hostname'
@@ -939,6 +973,14 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Contacts.json")) {
     $ITGContacts = Import-ITGlueItems -ItemSelect $ContactsSelect
 
     #($ITGContacts.attributes | sort-object -property name, "organization-name" -Unique)
+
+
+    if ($ScopedMigration) {
+        $OriginalContactsCount = $($ITGContacts.count)
+        Write-Host "Setting contacts to those in scope..." -foregroundcolor Yellow               
+        $ITGContacts          = $ITGContacts | Where-Object { $ScopedITGCompanyIds -contains $_.attributes.'organization-id' }
+        Write-Host "Contacts scoped... $OriginalContactsCount => $($ITGContacts.count)"
+    }
 
     $ConHuduItemFilter = { ($_.name -eq $itgimport.attributes.name -and $_.company_name -eq $itgimport.attributes."organization-name") }
 
@@ -1323,14 +1365,23 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Assets.json")) {
     $RelationsToCreate = [System.Collections.ArrayList](Get-Content "$MigrationLogs\RelationsToCreate.json" -raw | Out-String | ConvertFrom-Json -depth 100)
     $ManualActions = [System.Collections.ArrayList](Get-Content "$MigrationLogs\ManualActions.json" -raw | Out-String | ConvertFrom-Json -depth 100)
 } else {
-# Load raw passwords for embedded fields and future use
-$ITGPasswordsRaw = Import-CSV -Path "$ITGLueExportPath\passwords.csv"
+    # Load raw passwords for embedded fields and future use
+    $ITGPasswordsRaw = Import-CSV -Path "$ITGLueExportPath\passwords.csv"
+    
     if ($ImportFlexibleAssets -eq $true) {
         $RelationsToCreate = [System.Collections.ArrayList]@()
         $MatchedAssets = [System.Collections.ArrayList]@()
         $MatchedAssetPasswords = [System.Collections.ArrayList]@()
 
         #We need to do a first pass creating empty assets with just the ITG migrated data. This builds an array we need to use to lookup relations when populating the entire assets
+        
+        #limit scope for matched layouts.
+        if ($ScopedMigration) {
+            $OriginalLayoutsCount = $($MatchedLayouts.count)
+            Write-Host "Setting layouts to those in scope..." -foregroundcolor Yellow               
+            $MatchedLayouts = Filter-ScopedAssets -Layouts $MatchedLayouts -ScopedCompanyIds $ScopedITGCompanyIds
+            Write-Host "Layouts scoped... $OriginalLayoutsCount => $($MatchedLayouts.count)"
+        }
 
         Foreach ($Layout in $MatchedLayouts) {
             Write-Host "Creating base assets for $($layout.name)"
@@ -1944,6 +1995,14 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Passwords.json")) {
     $PasswordSelect = { (Get-ITGluePasswords -page_size 1000 -page_number $i).data }
 
     $ITGPasswords = Import-ITGlueItems -ItemSelect $PasswordSelect -MigrationName 'Passwords'
+
+    if ($ScopedMigration) {
+        $OriginalPasswordsCount = $($ITGPasswords.count)
+        Write-Host "Setting passwords to those in scope..." -foregroundcolor Yellow        
+        $ITGPasswords         = $ITGPasswords | Where-Object { $ScopedITGCompanyIds -contains $_.attributes.'organization-id' }
+        Write-Host "Passwords scoped... $OriginalPasswordsCount => $($ITGPasswords.count)"
+    }
+
     try {
         Write-Host "Loading Passwords from CSV for faster import" -foregroundcolor Cyan
         $ITGPasswordsRaw = Import-CSV -Path "$ITGLueExportPath\passwords.csv"
@@ -2124,7 +2183,6 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Passwords.json")) {
                             passwordable_id   = $ParentItemID
                             in_portal         = $false
                             password          = $unmatchedPassword.ITGObject.attributes.password
-                            url               = $unmatchedPassword.ITGObject.attributes.url
                             username          = $unmatchedPassword.ITGObject.attributes.username
                             otpsecret         = $validated_otp
 
@@ -2138,8 +2196,9 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Passwords.json")) {
                                 passwordable_id   = $ParentItemID
                                 in_portal         = $false
                                 password          = ""
-                                url               = $unmatchedPassword.ITGObject.attributes.url
-                                username          = $unmatchedPassword.ITGObject.attributes.username
+                        				Hudu_URL      	  = $unmatchedPassword.HuduObject.url
+                                ITG_URL           = $unmatchedPassword.ITGObject.attributes.url
+				                        username          = $unmatchedPassword.ITGObject.attributes.username
                                 otpsecret         = "removed for security purposes"
                                 problem           = "password was null or empty"
                             })

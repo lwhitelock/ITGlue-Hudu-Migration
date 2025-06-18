@@ -10,6 +10,11 @@ ___
 
 **The original blog post may still be relevant in some cases but is mostly outdated.** See [this link instead](https://mspbook.mspgeek.org/books/hudu-scripts-in-progress/page/itglue-to-hudu-migration) or [this other link here](https://demort.hosteddocs.io/shared_article/7BKhGktLGN1FEDSVEkh1bLpF)
 
+## Note- This is the Hudu Technologies Fork of an amazing open-source project
+
+The original project was started by Luke Whitelock and often being maintained by Mendy Green and community contributors. This fork is tested for and intended to be used with the very newest Hudu versions. It includes some features that may not (yet) be present in the main repo, [here](https://github.com/lwhitelock/ITGlue-Hudu-Migration). It also includes a more rigid minimum Hudu version requirement.
+
+At present, this fork works very well with 2.37.1 and is also being tested against some beta builds. 
 
 # Known Issues
  - Password Relations to Articles and SSL Certificates are not currently included
