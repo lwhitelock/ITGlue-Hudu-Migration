@@ -195,8 +195,12 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Companies.json")) {
     Write-Host "$($ITGCompanies.count) ITG Glue Companies Found" 
     if ($ScopedMigration) {
         $OriginalCompanyCount = $($ITGcompanies.count)
-        Write-Host "Setting companies to those in scope..." -foregroundcolor Yellow
-        $ITGCompanies = Set-MigrationScope -AllITGCompanies $ITGCompanies -InternalCompany $InternalCompany
+        Write-Host "Setting companies to those in scope..." -foregroundcolor Yellow 
+        if ($null -ne $Prescoped) {
+            $ITGCompanies = Set-PredefinedScope -AllITGCompanies $ITGCompanies -Prescoped $Prescoped -InternalCompany $InternalCompany
+        } else {
+            $ITGCompanies = Set-MigrationScope -AllITGCompanies $ITGCompanies -InternalCompany $InternalCompany
+        }
         Write-Host "Companies scoped... $OriginalCompanyCount => $($Itgcompanies.count)"
     }
     $ScopedITGCompanyIds = $ITGCompanies.id
@@ -2099,12 +2103,12 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Passwords.json")) {
                             passwordable_type = $PasswordableType
                             passwordable_id   = $ParentItemID
                             in_portal         = $false
-                            password          = $unmatchedPassword.ITGObject.attributes.password
+                            password          = $v
                             url               = $unmatchedPassword.ITGObject.attributes.url
                             username          = $unmatchedPassword.ITGObject.attributes.username
                             otpsecret         = $validated_otp
                         }
-                        if ([string]::IsNullOrWhiteSpace($passwordRaw) -or $passwordRaw.Length -lt 1) {
+                        if ([string]::IsNullOrWhiteSpace($unmatchedPassword.ITGObject.attributes.password) -or $unmatchedPassword.ITGObject.attributes.password.Length -lt 1) {
                             $manualActions.add([PSCustomObject]@{
                                 name              = "$($unmatchedPassword.ITGObject.attributes.name)"
                                 company_id        = $company.HuduCompanyObject.ID
@@ -2113,7 +2117,7 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Passwords.json")) {
                                 passwordable_id   = $ParentItemID
                                 in_portal         = $false
                                 password          = ""
-				Hudu_URL      	  = $unmatchedPassword.HuduObject.url
+				                Hudu_URL      	  = $unmatchedPassword.HuduObject.url
                                 ITG_URL           = $unmatchedPassword.ITGObject.attributes.url
                                 username          = $unmatchedPassword.ITGObject.attributes.username
                                 otpsecret         = "removed for security purposes"
