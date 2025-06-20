@@ -228,7 +228,7 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Companies.json")) {
             $uniqueName = $originalName
         }
 
-        $HuduCompany = $HuduCompanies | Where-Object -Filter { $_.name -eq $originalName }
+        $HuduCompany = $HuduCompanies | where-object { $_.name -eq $itgcompany.attributes.name }
 
         $intCompany = $InternalCompany -eq $originalName
 
@@ -357,6 +357,10 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Companies.json")) {
 
     # Save the results to resume from if needed
     $MatchedCompanies | ConvertTo-Json -depth 100 | Out-File "$MigrationLogs\Companies.json"
+    $ITGCompaniesHashTable = @{}
+    foreach ($ITGC in $MatchedCompanies) {
+        $ITGCompaniesHashTable[$ITGC.itgid] = $ITGC
+    }    
     Write-TimedMessage -Timeout 3 -Message "Snapshot Point: Companies Migrated Continue?"  -DefaultResponse "continue to Locations, please."
 
 }
@@ -371,11 +375,11 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Locations.json")) {
     Write-Host "Loading Previous Locations Migration"
     $MatchedLocations = Get-Content "$MigrationLogs\Locations.json" -raw | Out-String | ConvertFrom-Json -depth 100
 } else {
+    $ITGLocations = $ITGLocations |select @{n='HuduCompanyId';e={ $ITGCompaniesHashTable["$($_.attributes.'organization-id')"].huduid}},*
 
-
-    $LocHuduItemFilter = { ($_.name -eq $itgimport.attributes.name -and $_.company_name -eq $itgimport.attributes."organization-name")`
-            -or ($ITGPrimaryLocationNames -contains $itgimport.attributes.name -and $HuduPrimaryLocationNames -contains $_.name -and $_.company_name -eq $itgimport.attributes."organization-name")`
-            -or ($itgimport.attributes.primary -eq $true -and $HuduPrimaryLocationNames -contains $_.name -and $_.company_name -eq $itgimport.attributes."organization-name") }
+    $LocHuduItemFilter = { ($_.name -eq $itgimport.attributes.name -and $_.company_id -eq $itgimport.HuduCompanyId)`
+            -or ($ITGPrimaryLocationNames -contains $itgimport.attributes.name -and $HuduPrimaryLocationNames -contains $_.name -and $_.company_id -eq $itgimport.HuduCompanyId)`
+            -or ($itgimport.attributes.primary -eq $true -and $HuduPrimaryLocationNames -contains $_.name -and $_.company_id -eq $itgimport.HuduCompanyId) }
 
     $LocImportEnabled = $ImportLocations
 
@@ -469,7 +473,10 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Locations.json")) {
 
     #Import Locations
     $MatchedLocations = Import-Items @LocImportSplat
-
+    $ITGLocationsHashTable = @{}
+    foreach ($ITGL in $MatchedLocations) {
+        $ITGLocationsHashTable[$ITGL.itgid] = $ITGL
+    }
     # Save the results to resume from if needed
     $MatchedLocations | ConvertTo-Json -depth 100 | Out-File "$MigrationLogs\Locations.json"
     Write-TimedMessage -Timeout 3 -Message "Snapshot Point: Locations Migrated Continue?"  -DefaultResponse "continue to Websites, please."
@@ -503,8 +510,7 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Websites.json")) {
     Write-Host "$($ITGDomains.count) ITG Glue Domains Found" 
 
     $MatchedWebsites = foreach ($itgdomain in $ITGDomains ) {
-        $HuduWebsite = $HuduWebsites | where-object -filter { ($_.name -eq "https://$($itgdomain.attributes.name)" -and $_.company_name -eq $itgdomain.attributes."organization-name") }
-
+        $HuduWebsite = $HuduWebsites | Where-Object { ($_.name -eq "https://$($itgdomain.attributes.name)" -and $_.company_name -eq $itgdomain.attributes."organization-name") }
         if ($HuduWebsite) {
             [PSCustomObject]@{
                 "Name"       = $itgdomain.attributes.name
@@ -608,7 +614,7 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Configurations.json")
     Write-Host "Fetching Configurations from IT Glue" -ForegroundColor Green
     $ConfigurationsSelect = { (Get-ITGlueConfigurations -page_size 1000 -page_number $i -include related_items).data }
     $ITGConfigurations = Import-ITGlueItems -ItemSelect $ConfigurationsSelect
-
+    $ITGConfigurations = $ITGConfigurations |select @{n='HuduCompanyId';e={ $ITGCompaniesHashTable["$($_.attributes.'organization-id')"].huduid}},*
     if ($ScopedMigration) {
         $OriginalConfigurationCount = $($ITGConfigurations.count)
         Write-Host "Setting configurations to those in scope..." -foregroundcolor Yellow        
@@ -759,7 +765,7 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Configurations.json")
     )
 
 
-    $ConfigHuduItemFilter = { ($_.name -eq $itgimport.attributes.name -and $_.company_name -eq $itgimport.attributes."organization-name") }
+    $ConfigHuduItemFilter = { ($_.name -eq $itgimport.attributes.name -and $_.company_id -eq $itgimport.HuduCompanyId) }
 	
     $ConfigImportEnabled = $ImportConfigurations
 
@@ -828,7 +834,7 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Configurations.json")
 
             Write-Host "Processing $ConfigType"
 
-            $ParsedITGConfigs = $ITGConfigurations | Where-Object -filter { $_.attributes."configuration-type-name" -eq $ConfigType }
+            $ParsedITGConfigs = $ITGConfigurations | Where-Object { $_.attributes."configuration-type-name" -eq $ConfigType }
 
             $ConfigMigrationName = "$($ConfigurationPrefix)$($ConfigType)"
             $ConfigImportAssetLayoutName = "$($ConfigurationPrefix)$($ConfigType)"
@@ -868,7 +874,7 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Configurations.json")
             $ConfigImportAssetLayoutName = $(Write-TimedMessage -Timeout 12 -Message "Please enter layout name" -DefaultResponse $ConfigType)
 		
 
-            $ParsedITGConfigs = $ITGConfigurations | Where-Object -filter { $_.attributes."configuration-type-name" -eq $ConfigType }
+            $ParsedITGConfigs = $ITGConfigurations | Where-Object { $_.attributes."configuration-type-name" -eq $ConfigType }
 
             $ConfigMigrationName = $ConfigImportAssetLayoutName
 			
@@ -917,6 +923,8 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Contacts.json")) {
     Write-Host "Fetching Contacts from IT Glue" -ForegroundColor Green
     $ContactsSelect = { (Get-ITGlueContacts -page_size 1000 -page_number $i -include related_items).data }
     $ITGContacts = Import-ITGlueItems -ItemSelect $ContactsSelect
+    $ITGContacts = $ITGContacts |select @{n='HuduCompanyId';e={ $ITGCompaniesHashTable["$($_.attributes.'organization-id')"].huduid}},*
+
     #($ITGContacts.attributes | sort-object -property name, "organization-name" -Unique)
 
 
@@ -927,7 +935,7 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Contacts.json")) {
         Write-Host "Contacts scoped... $OriginalContactsCount => $($ITGContacts.count)"
     }
 
-    $ConHuduItemFilter = { ($_.name -eq $itgimport.attributes.name -and $_.company_name -eq $itgimport.attributes."organization-name") }
+    $ConHuduItemFilter = { ($_.name -eq $itgimport.attributes.name -and $_.company_id -eq $itgimport.HuduCompanyId) }
 
     $ConImportEnabled = $ImportContacts
 
@@ -1000,7 +1008,7 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Contacts.json")) {
             'last_name'    = $unmatchedImport."ITGObject".attributes."last-name"
             'title'        = $unmatchedImport."ITGObject".attributes."title"
             'contact_type' = $unmatchedImport."ITGObject".attributes."contact-type-name"
-            'location'     = "[$($MatchedLocations | where-object -filter {$_.ITGID -eq $unmatchedImport."ITGObject".attributes."location-id"} | Select-Object @{N='id';E={$_.HuduID}}, @{N='name';E={$_.Name}} | convertto-json -compress | out-string)]" -replace "`r`n", ""
+            'location'     = $ITGLocationsHashTable["$($unmatchedImport."ITGObject".attributes.'location-id')"] | Select-Object @{N='id';E={$_.HuduID}}, @{N='name';E={$_.Name}} | convertto-json -AsArray -Compress | out-string
             'important'    = $unmatchedImport."ITGObject".attributes."important"
             'notes'        = $unmatchedImport."ITGObject".attributes."notes"
             'emails'       = $unmatchedImport."ITGObject".attributes."contact-emails" | convertto-html -fragment | out-string
@@ -1059,7 +1067,7 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\AssetLayouts.json")) 
 
     # Match to existing layouts
     $MatchedLayouts = foreach ($ITGLayout in $FlexLayouts) {
-        $HuduLayout = $HuduLayouts | where-object -filter { $_.name -eq "$($FlexibleLayoutPrefix)$($ITGLayout.attributes.name)" }
+        $HuduLayout = $HuduLayouts | Where-Object { $_.name -eq "$($FlexibleLayoutPrefix)$($ITGLayout.attributes.name)" }
 		
         if ($HuduLayout) {
             [PSCustomObject]@{
@@ -1205,7 +1213,7 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\AssetLayouts.json")) 
                         $LayoutField.add("field_type", "RichText")
                     }
                     "Upload" {
-                        Write-Host "Upload fields are not supported $($ITGField.Attributes.name) in $($UpdateLayout.name) this will be added when the Hudu API supports it, Sorry!"
+                        Write-Host "Upload fields are handled by an external script. $($ITGField.Attributes.name) in $($UpdateLayout.name)! Make sure you run the Add-HuduAttachmentsViaAPI.ps1 after"
                         $supported = $false
                     }
                     "Tag" {
@@ -1235,7 +1243,7 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\AssetLayouts.json")) 
                             "SslCertificates" { Write-Host "Tags to SSL Certificates are not supported $($ITGField.Attributes.name) in $($UpdateLayout.name) will need to be manually migrated, Sorry!"; $supported = $false }
                             "Tickets" { Write-Host "Tags to Tickets are not supported $($ITGField.Attributes.name) in $($UpdateLayout.name) will need to be manually migrated, Sorry!"; $supported = $false }
                             "FlexibleAssetType" {	
-                                $MatchedLayoutID = ($MatchedLayouts | where-object -filter { $_.ITGID -eq ($ITGField.Attributes."tag-type").split(" ")[1] }).HuduID
+                                $MatchedLayoutID = ($MatchedLayouts | Where-Object { $_.ITGID -eq ($ITGField.Attributes."tag-type").split(" ")[1] }).HuduID
                                 $LayoutField.add("field_type", "AssetTag")
                                 $LayoutField.add("linkable_id", $MatchedLayoutID)
                             }
@@ -1332,7 +1340,7 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Assets.json")) {
             Write-Host "Creating base assets for $($layout.name)"
             foreach ($ITGAsset in $Layout.ITGAssets) {
                 # Match Company
-                $HuduCompanyID = ($MatchedCompanies | where-object -filter { $_.ITGID -eq $ITGAsset.attributes.'organization-id' }).HuduID
+                $HuduCompanyID = ($MatchedCompanies | Where-Object { $_.ITGID -eq $ITGAsset.attributes.'organization-id' }).HuduID
 
                 $AssetFields = @{ 
                     'imported_from_itglue' = Get-Date -Format "o"
@@ -1372,7 +1380,7 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Assets.json")) {
                 # Find the corresponding field we are working on
                 $ITGParsed = $_.name
                 $ITGValues = $_.value
-                $field = $AllFields | where-object -filter { $_.IGLayoutID -eq $UpdateAsset.ITGObject.attributes.'flexible-asset-type-id' -and $_.ITGParsedName -eq $ITGParsed }
+                $field = $AllFields | Where-Object { $_.IGLayoutID -eq $UpdateAsset.ITGObject.attributes.'flexible-asset-type-id' -and $_.ITGParsedName -eq $ITGParsed }
                 if ($field) {
                     $supported = $true
 
@@ -1384,7 +1392,7 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Assets.json")) {
                             "ChecklistTemplates" { Write-Host "Tags to Checklists Templates are not supported $($field.FieldName) in $($UpdateAsset.Name) will need to be manually migrated, Sorry!"; $supported = $false }
                             "Contacts" {
                                 $ContactsLinked = foreach ($IDMatch in $ITGValues.values) {
-                                    $($MatchedContacts | where-object -filter { $_.ITGID -eq $IDMatch.id } | Select-Object @{N = 'id'; E = { $_.HuduID } }, @{N = 'name'; E = { $_.Name } })
+                                    $($MatchedContacts | Where-Object { $_.ITGID -eq $IDMatch.id } | Select-Object @{N = 'id'; E = { $_.HuduID } }, @{N = 'name'; E = { $_.Name } })
                                 }
                                 $ReturnData = $ContactsLinked | convertto-json -compress -AsArray | Out-String
                                 $null = $AssetFields.add("$($field.HuduParsedName)", ("$ReturnData"))
@@ -1393,7 +1401,7 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Assets.json")) {
                             }
                             "Configurations" {
                                 $ConfigsLinked = foreach ($IDMatch in $ITGValues.values) {
-                                    $($MatchedConfigurations | where-object -filter { $_.ITGID -eq $IDMatch.id } | Select-Object @{N = 'id'; E = { $_.HuduID } }, @{N = 'name'; E = { $_.Name } })
+                                    $($MatchedConfigurations | Where-Object { $_.ITGID -eq $IDMatch.id } | Select-Object @{N = 'id'; E = { $_.HuduID } }, @{N = 'name'; E = { $_.Name } })
                                 }
                                 $ReturnData = $ConfigsLinked | convertto-json -compress -AsArray | Out-String
                                 $null = $AssetFields.add("$($field.HuduParsedName)", ("$ReturnData"))
@@ -1402,7 +1410,7 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Assets.json")) {
                             "Documents" { $RelationsToCreate += foreach ($IDMatch in $ITGValues.values) { @{hudu_from_id = $UpdateAsset.HuduID; relation_type = 'Article'; itg_to_id = $IDMatch.id}} ;Write-Host "Tags to Articles $($field.FieldName) in $($UpdateAsset.Name) has been recorded for later."; $supported = $true }
                             "Domains" { 
                                 $DomainsLinked = foreach ($IDMatch in $ITGValues.values) {
-                                    $MatchedWebsites | Where-Object -filter { $_.ITGID -eq $IDMatch.id }
+                                    $MatchedWebsites | Where-Object { $_.ITGID -eq $IDMatch.id }
                                 } 
                                 $DomainsLinked | ForEach-Object {
                                      if ($WebsiteRelation = New-HuduRelation -FromableType 'Asset' -ToableType 'Website' -FromableID $UpdateAsset.HuduID -ToableID $_.HuduID) {
@@ -1413,7 +1421,7 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Assets.json")) {
                             "Passwords" { $RelationsToCreate += foreach ($IDMatch in $ITGValues.values) { @{hudu_from_id = $UpdateAsset.HuduID; relation_type = 'AssetPassword'; itg_to_id = $IDMatch.id}}; Write-Host "Tags to Password $($field.FieldName) in $($UpdateAsset.Name) has been recorded for later."; $supported = $true }
                             "Locations" {
                                 $LocationsLinked = foreach ($IDMatch in $ITGValues.values) {
-                                    $($MatchedLocations | where-object -filter { $_.ITGID -eq $IDMatch.id } | Select-Object @{N = 'id'; E = { $_.HuduID } }, @{N = 'name'; E = { $_.Name } })
+                                    $($MatchedLocations | Where-Object { $_.ITGID -eq $IDMatch.id } | Select-Object @{N = 'id'; E = { $_.HuduID } }, @{N = 'name'; E = { $_.Name } })
                                 }
                                 $ReturnData = $LocationsLinked | convertto-json -compress -AsArray | Out-String
                                 $null = $AssetFields.add("$($field.HuduParsedName)", ("$ReturnData"))
@@ -1424,7 +1432,7 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Assets.json")) {
                             "Tickets" { Write-Host "Tags to Tickets are not supported $($field.FieldName) in $($UpdateAsset.Name) will need to be manually migrated, Sorry!"; $supported = $false }
                             "FlexibleAssetType" {	
                                 $AssetsLinked = foreach ($IDMatch in $ITGValues.values) {
-                                    $($MatchedAssets | where-object -filter { $_.ITGID -eq $IDMatch.id } | Select-Object @{N = 'id'; E = { $_.HuduID } }, @{N = 'name'; E = { $_.Name } })
+                                    $($MatchedAssets | Where-Object { $_.ITGID -eq $IDMatch.id } | Select-Object @{N = 'id'; E = { $_.HuduID } }, @{N = 'name'; E = { $_.Name } })
                                 }
                                 $ReturnData = $AssetsLinked | convertto-json -compress -AsArray | Out-String
                                 $null = $AssetFields.add("$($field.HuduParsedName)", ("$ReturnData"))
@@ -1593,7 +1601,7 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\ArticleBase.json")) {
             }
 
 
-            $company = $MatchedCompanies | where-object -filter { $_.CompanyName -eq $doc.organization }
+            $company = $MatchedCompanies | Where-Object { $_.CompanyName -eq $doc.organization }
             if (($company | Measure-Object).count -eq 1) {
 
                 $art_folder_id = $null
