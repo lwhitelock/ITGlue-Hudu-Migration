@@ -193,6 +193,7 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Companies.json")) {
     $ITGCompaniesFromCSV = Import-CSV (Join-Path -Path $ITGlueExportPath -ChildPath "organizations.csv")
 
     Write-Host "$($ITGCompanies.count) ITG Glue Companies Found" 
+
     if ($ScopedMigration) {
         $OriginalCompanyCount = $($ITGcompanies.count)
         Write-Host "Setting companies to those in scope..." -foregroundcolor Yellow 
@@ -201,9 +202,10 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Companies.json")) {
         } else {
             $ITGCompanies = Set-MigrationScope -AllITGCompanies $ITGCompanies -InternalCompany $InternalCompany
         }
+        $ScopedCompanyIds = $ITGCompanies.id
         Write-Host "Companies scoped... $OriginalCompanyCount => $($Itgcompanies.count)"
     }
-    $ScopedITGCompanyIds = $ITGCompanies.id
+    $ITGCompaniesHashTable = @{}
 
     $MatchedCompanies = foreach ($itgcompany in $ITGCompanies ) {
         $HuduCompany = $HuduCompanies | where-object { $_.name -eq $itgcompany.attributes.name }
@@ -212,7 +214,8 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Companies.json")) {
         } else {
             $intCompany = $false
         }
-	
+	    $ITGCompaniesHashTable[$itgcompany.itgid] = $itgcompany
+
         if ($HuduCompany) {
             [PSCustomObject]@{
                 "CompanyName"       = $itgcompany.attributes.name
