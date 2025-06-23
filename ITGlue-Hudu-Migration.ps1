@@ -1841,21 +1841,29 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Articles.json")) {
 
                         # Test the path to ensure that a file extension exists, if no file extension we get problems later on. We rename it if there's no ext.
                         if ($imagePath -and (Test-Path $imagePath -ErrorAction SilentlyContinue)) {
+                            write-host "file present at purported image path, $imagePath... checking for image..." -ForegroundColor DarkRed
                             $imageType = Invoke-ImageTest $imagePath
                             if ($imageType) {
+                                write-host " $imagePath appears to contqain image... normalizing..." -ForegroundColor DarkRed
                                 $imageInfo = Normalize-And-ConvertImage -InputPath "$imagePath"
-                                $imagePath = "$($imageInfo.FinalPath ?? $imagePath)"
+                                write-host " $imagePath => $($imageInfo.FinalPath)" -ForegroundColor DarkRed
+                                $imagePath = $imageInfo.FinalPath ?? $imagePath
+
                                 $OriginalFullImagePath = $imageInfo.Original                                
                                 Write-Host "Uploading new/copied ITGlue image $($imageInfo.Original) => $($imageInfo.FinalPath)"
                                 try {
-                                    $UploadImage = New-HuduPublicPhoto -FilePath "$imagePath" -record_id $Article.HuduID -record_type 'Article'
+                                    $UploadImage = New-HuduPublicPhoto -FilePath "$imagePath".ToLower() -record_id $Article.HuduID -record_type 'Article'
                                     $NewImageURL = $UploadImage.public_photo.url.replace($HuduBaseDomain, '')
                                     $ImgLink = $html.Links | Where-Object {$_.innerHTML -eq $imgHTML}
                                     Write-Host "Setting image to: $NewImageURL"
                                     $_.src = [string]$NewImageURL
                                     # Update Links for this image
-                                    $ImgLink.href = [string]$NewImageUrl
-
+                                    $ImgLink = ($html.Links | Where-Object {$_.innerHTML -eq $imgHTML}) | Select-Object -First 1
+                                    if ($ImgLink -and $ImgLink.PSObject.Properties.Match("href")) {
+                                        $ImgLink.href = [string]$NewImageURL
+                                    } else {
+                                        Write-Warning "No image link found or 'href' property missing for $imgHTML"
+                                    }
                                 }
                                 catch {
                                     $ManualLog = [PSCustomObject]@{
