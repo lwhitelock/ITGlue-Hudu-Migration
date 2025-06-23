@@ -192,10 +192,6 @@ $HuduCompanies = Get-HuduCompanies
 if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Companies.json")) {
     Write-Host "Loading Previous Companies Migration"
     $MatchedCompanies = Get-Content "$MigrationLogs\Companies.json" -raw | Out-String | ConvertFrom-Json
-    if ($ScopedMigration) {
-        $ScopedCompanyIds = $ITGCompanies.id
-        $MatchedCompanies = $MatchedCompanies | Where-Object { $ScopedCompanyIds -contains $_.itgid }
-    }
 } else {
 
     #Import Companies
@@ -217,11 +213,6 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Companies.json")) {
             $ITGCompanies = Set-MigrationScope -AllITGCompanies $ITGCompanies -InternalCompany $InternalCompany
         }
         $ScopedCompanyIds = $ITGCompanies.id
-        if ($MatchedCompanies) {
-            $MatchedCompanies = $MatchedCompanies | Where-Object { $ScopedCompanyIds -contains $_.itgid }
-        }
-        $ITGCompanies = $ITGCompanies | Where-Object { $ScopedCompanyIds -contains $_.itgid }
-        $ITGCompaniesFromCSV = $ITGCompaniesFromCSV | Where-Object { $ScopedCompanyIds -contains $_.itgid }
         Write-Host "Companies scoped... $OriginalCompanyCount => $($Itgcompanies.count)"
     }
     $ITGCompaniesHashTable = @{}
