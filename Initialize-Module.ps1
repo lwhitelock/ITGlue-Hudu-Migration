@@ -30,9 +30,20 @@ param(
 
 ############################### Settings ###############################
 # Define the path to the settings.json file in the user's AppData folder
+
+# Determine top part of settings path
+if($IsWindows){
+    $settingsTop = $env:APPDATA
+} else {
+    $settingsTop = Join-Path "$home" ".config"
+}
+
+# Define the path to the settings.json file in the detected platform's folder:
+# Running on Windows will save to the user's AppData
+# Running on Linux/macOS will save to `.config` in the user's HOME directory
   # Something awesome will be here soon.
-$settingsFiles = $settingsFiles ?? $(Get-Item "$env:APPDATA\HuduMigration\*\settings.json")
-$defaultSettingsPath = $defaultSettingsPath ?? "$env:APPDATA\HuduMigration\settings.json"
+$settingsFiles = $settingsFiles ?? $(Get-Item "$settingsTop\HuduMigration\*\settings.json")
+$defaultSettingsPath = $defaultSettingsPath ?? "$settingsTop\HuduMigration\settings.json"
 
 # Function to read back securely stored keys used in the settings.json file
 function ConvertSecureStringToPlainText {
@@ -140,13 +151,13 @@ function CollectAndSaveSettings {
     $settings.ITGLueExportPath = $settings.ITGLueExportPath ?? 
         $(Read-Host 'Enter the path of the ITGLue Export. (e.g. C:\Temp\ITGlue\Export) ️')
     $settings.MigrationLogs = $settings.MigrationLogs ??
-        $(Read-Host "Enter the path for the migration logs, or press enter to accept the Default path (%appdata%\HuduMigration\$instance\MigrationLogs)")
+        $(Read-Host "Enter the path for the migration logs, or press enter to accept the Default path ($settingsTop\HuduMigration\$instance\MigrationLogs)")
     # Fallback for Migrationlogs setting
     if (!($settings.MigrationLogs)) {
-        $settings.MigrationLogs = "$ENV:appdata\HuduMigration\$instance\MigrationLogs"
+        $settings.MigrationLogs = "$settingsTop\HuduMigration\$instance\MigrationLogs"
     }
     # Ensure folder is created for settings file
-    if (!(Test-Path -Path "$env:APPDATA\HuduMigration\$instance")) { New-Item "$env:APPDATA\HuduMigration\$instance" -ItemType Directory }
+    if (!(Test-Path -Path "$settingsTop\HuduMigration\$instance")) { New-Item "$settingsTop\HuduMigration\$instance" -ItemType Directory }
 
 
     # Verify settings, save or exit and retry
