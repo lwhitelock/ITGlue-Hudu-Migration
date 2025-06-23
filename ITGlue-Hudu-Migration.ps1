@@ -343,10 +343,6 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Companies.json")) {
 
     # Save the results to resume from if needed
     $MatchedCompanies | ConvertTo-Json -depth 100 | Out-File "$MigrationLogs\Companies.json"
-    $ITGCompaniesHashTable = @{}
-    foreach ($ITGC in $MatchedCompanies) {
-        $ITGCompaniesHashTable[$ITGC.itgid] = $ITGC
-    }      
     Write-TimedMessage -Timeout 3 -Message "Snapshot Point: Companies Migrated Continue?"  -DefaultResponse "continue to Locations, please."
 
 }
