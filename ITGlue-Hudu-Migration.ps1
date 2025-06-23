@@ -217,6 +217,7 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Companies.json")) {
     }
     $ITGCompaniesHashTable = @{}
 
+
     $nameTracker = @{}
     $MatchedCompanies = foreach ($itgcompany in $ITGCompanies) {
         $originalName = $itgcompany.attributes.name
@@ -229,7 +230,6 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Companies.json")) {
             $nameTracker[$originalName] = 0
             $uniqueName = $originalName
         }
-        $ITGCompaniesHashTable[$itgcompany.itgid] = $itgcompany
 
         $HuduCompany = $HuduCompanies | where-object { $_.name -eq $itgcompany.attributes.name }
 
@@ -259,7 +259,9 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Companies.json")) {
             }
         }
     }
-
+    foreach ($ITGC in $MatchedCompanies) {
+        $ITGCompaniesHashTable[$ITGC.itgid] = $ITGC
+    }
     # Check if the internal company was found and that there was only 1 of them
     $PrimaryCompany = $MatchedCompanies | Sort-Object CompanyName | Where-Object { $_.InternalCompany -eq $true } | Select-Object CompanyName
 
