@@ -192,6 +192,10 @@ $HuduCompanies = Get-HuduCompanies
 if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Companies.json")) {
     Write-Host "Loading Previous Companies Migration"
     $MatchedCompanies = Get-Content "$MigrationLogs\Companies.json" -raw | Out-String | ConvertFrom-Json
+    if ($ScopedMigration) {
+        $ScopedCompanyIds = $ITGCompanies.id
+        $MatchedCompanies = $MatchedCompanies | Where-Object { $ScopedCompanyIds -contains $_.itgid }
+    }
 } else {
 
     #Import Companies
@@ -199,6 +203,8 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Companies.json")) {
     $CompanySelect = { (Get-ITGlueOrganizations -page_size 1000 -page_number $i).data }
     $ITGCompanies = Import-ITGlueItems -ItemSelect $CompanySelect
     $ITGCompaniesFromCSV = Import-CSV (Join-Path -Path $ITGlueExportPath -ChildPath "organizations.csv")
+
+
 
     Write-Host "$($ITGCompanies.count) ITG Glue Companies Found" 
 
@@ -210,10 +216,18 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Companies.json")) {
         } else {
             $ITGCompanies = Set-MigrationScope -AllITGCompanies $ITGCompanies -InternalCompany $InternalCompany
         }
+        $ScopedCompanyIds = $ITGCompanies.id
+        if ($MatchedCompanies) {
+            $MatchedCompanies = $MatchedCompanies | Where-Object { $ScopedCompanyIds -contains $_.itgid }
+        }
+        $ITGCompanies = $ITGCompanies | Where-Object { $ScopedCompanyIds -contains $_.itgid }
+        $ITGCompaniesFromCSV = $ITGCompaniesFromCSV | Where-Object { $ScopedCompanyIds -contains $_.itgid }
         Write-Host "Companies scoped... $OriginalCompanyCount => $($Itgcompanies.count)"
     }
-
-	$ScopedITGCompanyIds = $ITGCompanies.id
+    $ITGCompaniesHashTable = @{}
+    foreach ($ITGC in $MatchedCompanies) {
+        $ITGCompaniesHashTable[$ITGC.itgid] = $ITGC
+    }
 
     $nameTracker = @{}
     $MatchedCompanies = foreach ($itgcompany in $ITGCompanies) {
@@ -285,7 +299,7 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Companies.json")) {
     if ($ScopedMigration) {
         $OriginalLocationsCount = $($ITGLocations.count)
         Write-Host "Setting locations to those in scope..." -foregroundcolor Yellow
-        $ITGLocations         = $ITGLocations | Where-Object { $ScopedITGCompanyIds -contains $_.attributes.'organization-id' }
+        $ITGLocations         = $ITGLocations | Where-Object { $ScopedCompanyIds -contains $_.attributes.'organization-id' }
         Write-Host "locations scoped... $OriginalLocationsCount => $($ITGLocations.count)"
     }
 
@@ -357,10 +371,6 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Companies.json")) {
 
     # Save the results to resume from if needed
     $MatchedCompanies | ConvertTo-Json -depth 100 | Out-File "$MigrationLogs\Companies.json"
-    $ITGCompaniesHashTable = @{}
-    foreach ($ITGC in $MatchedCompanies) {
-        $ITGCompaniesHashTable[$ITGC.itgid] = $ITGC
-    }    
     Write-TimedMessage -Timeout 3 -Message "Snapshot Point: Companies Migrated Continue?"  -DefaultResponse "continue to Locations, please."
 
 }
@@ -503,7 +513,7 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Websites.json")) {
     if ($ScopedMigration) {
         $OriginalDomainsCount = $($ITGDomains.count)
         Write-Host "Setting domains to those in scope..." -foregroundcolor Yellow
-        $ITGDomains          = $ITGdomains | Where-Object { $ScopedITGCompanyIds -contains $_.attributes.'organization-id' }
+        $ITGDomains          = $ITGdomains | Where-Object { $ScopedCompanyIds -contains $_.attributes.'organization-id' }
         Write-Host "domains scoped... $OriginalDomainsCount => $($ITGDomains.count)"
     }
 
@@ -618,7 +628,7 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Configurations.json")
     if ($ScopedMigration) {
         $OriginalConfigurationCount = $($ITGConfigurations.count)
         Write-Host "Setting configurations to those in scope..." -foregroundcolor Yellow        
-        $ITGConfigurations    = $ITGConfigurations | Where-Object { $ScopedITGCompanyIds -contains $_.attributes.'organization-id' }
+        $ITGConfigurations    = $ITGConfigurations | Where-Object { $ScopedCompanyIds -contains $_.attributes.'organization-id' }
         Write-Host "configurations scoped... $OriginalConfigurationCount => $($ITGConfigurations.count)"
     }
 
@@ -931,7 +941,7 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Contacts.json")) {
     if ($ScopedMigration) {
         $OriginalContactsCount = $($ITGContacts.count)
         Write-Host "Setting contacts to those in scope..." -foregroundcolor Yellow               
-        $ITGContacts          = $ITGContacts | Where-Object { $ScopedITGCompanyIds -contains $_.attributes.'organization-id' }
+        $ITGContacts          = $ITGContacts | Where-Object { $ScopedCompanyIds -contains $_.attributes.'organization-id' }
         Write-Host "Contacts scoped... $OriginalContactsCount => $($ITGContacts.count)"
     }
 
@@ -1332,7 +1342,7 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Assets.json")) {
         if ($ScopedMigration) {
             $OriginalLayoutsCount = $($MatchedLayouts.count)
             Write-Host "Setting layouts to those in scope..." -foregroundcolor Yellow               
-            $MatchedLayouts = Filter-ScopedAssets -Layouts $MatchedLayouts -ScopedCompanyIds $ScopedITGCompanyIds
+            $MatchedLayouts = Filter-ScopedAssets -Layouts $MatchedLayouts -ScopedCompanyIds $ScopedCompanyIds
             Write-Host "Layouts scoped... $OriginalLayoutsCount => $($MatchedLayouts.count)"
         }
 
@@ -1942,7 +1952,7 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Passwords.json")) {
     if ($ScopedMigration) {
         $OriginalPasswordsCount = $($ITGPasswords.count)
         Write-Host "Setting passwords to those in scope..." -foregroundcolor Yellow        
-        $ITGPasswords         = $ITGPasswords | Where-Object { $ScopedITGCompanyIds -contains $_.attributes.'organization-id' }
+        $ITGPasswords         = $ITGPasswords | Where-Object { $ScopedCompanyIds -contains $_.attributes.'organization-id' }
         Write-Host "Passwords scoped... $OriginalPasswordsCount => $($ITGPasswords.count)"
     }
 
