@@ -216,9 +216,6 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Companies.json")) {
         Write-Host "Companies scoped... $OriginalCompanyCount => $($Itgcompanies.count)"
     }
     $ITGCompaniesHashTable = @{}
-    foreach ($ITGC in $MatchedCompanies) {
-        $ITGCompaniesHashTable[$ITGC.itgid] = $ITGC
-    }
 
     $nameTracker = @{}
     $MatchedCompanies = foreach ($itgcompany in $ITGCompanies) {
@@ -232,6 +229,7 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Companies.json")) {
             $nameTracker[$originalName] = 0
             $uniqueName = $originalName
         }
+        $ITGCompaniesHashTable[$itgcompany.itgid] = $itgcompany
 
         $HuduCompany = $HuduCompanies | where-object { $_.name -eq $itgcompany.attributes.name }
 
