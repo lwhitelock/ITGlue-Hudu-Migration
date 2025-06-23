@@ -2124,7 +2124,7 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Passwords.json")) {
                                 problem           = "password was null or empty"
                             })
                             $unmatchedPassword.matched = $false
-                            Write-host "$($HuduNewPassword.Name) Has been skipped and added to manual actions due to being empty"                            
+                            Write-Warning "$($HuduNewPassword.Name) Has been skipped and added to manual actions due to being empty"                            
                         } else {
                             $HuduNewPassword = (New-HuduPassword @PasswordSplat).asset_password 
                             $unmatchedPassword.matched = $true
