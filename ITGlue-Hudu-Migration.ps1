@@ -193,13 +193,19 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Companies.json")) {
     $ITGCompaniesFromCSV = Import-CSV (Join-Path -Path $ITGlueExportPath -ChildPath "organizations.csv")
 
     Write-Host "$($ITGCompanies.count) ITG Glue Companies Found" 
+
     if ($ScopedMigration) {
         $OriginalCompanyCount = $($ITGcompanies.count)
-        Write-Host "Setting companies to those in scope..." -foregroundcolor Yellow
-        $ITGCompanies = Set-MigrationScope -AllITGCompanies $ITGCompanies -InternalCompany $InternalCompany
+        Write-Host "Setting companies to those in scope..." -foregroundcolor Yellow 
+        if ($null -ne $Prescoped) {
+            $ITGCompanies = Set-PredefinedScope -AllITGCompanies $ITGCompanies -Prescoped $Prescoped -InternalCompany $InternalCompany
+        } else {
+            $ITGCompanies = Set-MigrationScope -AllITGCompanies $ITGCompanies -InternalCompany $InternalCompany
+        }
+        $ScopedCompanyIds = $ITGCompanies.id
         Write-Host "Companies scoped... $OriginalCompanyCount => $($Itgcompanies.count)"
     }
-    $ScopedITGCompanyIds = $ITGCompanies.id
+    $ITGCompaniesHashTable = @{}
 
     $MatchedCompanies = foreach ($itgcompany in $ITGCompanies ) {
         $HuduCompany = $HuduCompanies | where-object { $_.name -eq $itgcompany.attributes.name }
@@ -234,7 +240,9 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Companies.json")) {
             }
         }
     }
-
+    foreach ($ITGC in $MatchedCompanies) {
+        $ITGCompaniesHashTable[$ITGC.itgid] = $ITGC
+    }
     # Check if the internal company was found and that there was only 1 of them
     $PrimaryCompany = $MatchedCompanies | Sort-Object CompanyName | Where-Object { $_.InternalCompany -eq $true } | Select-Object CompanyName
 
@@ -263,7 +271,7 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Companies.json")) {
    if ($ScopedMigration) {
         $OriginalLocationsCount = $($ITGLocations.count)
         Write-Host "Setting locations to those in scope..." -foregroundcolor Yellow
-        $ITGLocations         = $ITGLocations | Where-Object { $ScopedITGCompanyIds -contains $_.attributes.'organization-id' }
+        $ITGLocations         = $ITGLocations | Where-Object { $ScopedCompanyIds -contains $_.attributes.'organization-id' }
         Write-Host "locations scoped... $OriginalLocationsCount => $($ITGLocations.count)"
     }
 
@@ -335,10 +343,6 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Companies.json")) {
 
     # Save the results to resume from if needed
     $MatchedCompanies | ConvertTo-Json -depth 100 | Out-File "$MigrationLogs\Companies.json"
-    $ITGCompaniesHashTable = @{}
-    foreach ($ITGC in $MatchedCompanies) {
-        $ITGCompaniesHashTable[$ITGC.itgid] = $ITGC
-    }      
     Write-TimedMessage -Timeout 3 -Message "Snapshot Point: Companies Migrated Continue?"  -DefaultResponse "continue to Locations, please."
 
 }
@@ -482,7 +486,7 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Websites.json")) {
     if ($ScopedMigration) {
         $OriginalDomainsCount = $($ITGDomains.count)
         Write-Host "Setting domains to those in scope..." -foregroundcolor Yellow
-        $ITGDomains          = $ITGdomains | Where-Object { $ScopedITGCompanyIds -contains $_.attributes.'organization-id' }
+        $ITGDomains          = $ITGdomains | Where-Object { $ScopedCompanyIds -contains $_.attributes.'organization-id' }
         Write-Host "domains scoped... $OriginalDomainsCount => $($ITGDomains.count)"
     }
 
@@ -599,7 +603,7 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Configurations.json")
     if ($ScopedMigration) {
         $OriginalConfigurationCount = $($ITGConfigurations.count)
         Write-Host "Setting configurations to those in scope..." -foregroundcolor Yellow        
-        $ITGConfigurations    = $ITGConfigurations | Where-Object { $ScopedITGCompanyIds -contains $_.attributes.'organization-id' }
+        $ITGConfigurations    = $ITGConfigurations | Where-Object { $ScopedCompanyIds -contains $_.attributes.'organization-id' }
         Write-Host "configurations scoped... $OriginalConfigurationCount => $($ITGConfigurations.count)"
     }
 
@@ -909,7 +913,7 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Contacts.json")) {
     if ($ScopedMigration) {
         $OriginalContactsCount = $($ITGContacts.count)
         Write-Host "Setting contacts to those in scope..." -foregroundcolor Yellow               
-        $ITGContacts          = $ITGContacts | Where-Object { $ScopedITGCompanyIds -contains $_.attributes.'organization-id' }
+        $ITGContacts          = $ITGContacts | Where-Object { $ScopedCompanyIds -contains $_.attributes.'organization-id' }
         Write-Host "Contacts scoped... $OriginalContactsCount => $($ITGContacts.count)"
     }
     #($ITGContacts.attributes | sort-object -property name, "organization-name" -Unique)
@@ -1307,7 +1311,7 @@ $ITGPasswordsRaw = Import-CSV -Path "$ITGLueExportPath\passwords.csv"
         if ($ScopedMigration) {
             $OriginalLayoutsCount = $($MatchedLayouts.count)
             Write-Host "Setting layouts to those in scope..." -foregroundcolor Yellow               
-            $MatchedLayouts = Filter-ScopedAssets -Layouts $MatchedLayouts -ScopedCompanyIds $ScopedITGCompanyIds
+            $MatchedLayouts = Filter-ScopedAssets -Layouts $MatchedLayouts -ScopedCompanyIds $ScopedCompanyIds
             Write-Host "Layouts scoped... $OriginalLayoutsCount => $($MatchedLayouts.count)"
         }
 
@@ -1916,7 +1920,7 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Passwords.json")) {
     if ($ScopedMigration) {
         $OriginalPasswordsCount = $($ITGPasswords.count)
         Write-Host "Setting passwords to those in scope..." -foregroundcolor Yellow        
-        $ITGPasswords         = $ITGPasswords | Where-Object { $ScopedITGCompanyIds -contains $_.attributes.'organization-id' }
+        $ITGPasswords         = $ITGPasswords | Where-Object { $ScopedCompanyIds -contains $_.attributes.'organization-id' }
         Write-Host "Passwords scoped... $OriginalPasswordsCount => $($ITGPasswords.count)"
     }
     
@@ -2099,12 +2103,12 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Passwords.json")) {
                             passwordable_type = $PasswordableType
                             passwordable_id   = $ParentItemID
                             in_portal         = $false
-                            password          = $unmatchedPassword.ITGObject.attributes.password
+                            password          = $v
                             url               = $unmatchedPassword.ITGObject.attributes.url
                             username          = $unmatchedPassword.ITGObject.attributes.username
                             otpsecret         = $validated_otp
                         }
-                        if ([string]::IsNullOrWhiteSpace($passwordRaw) -or $passwordRaw.Length -lt 1) {
+                        if ([string]::IsNullOrWhiteSpace($unmatchedPassword.ITGObject.attributes.password) -or $unmatchedPassword.ITGObject.attributes.password.Length -lt 1) {
                             $manualActions.add([PSCustomObject]@{
                                 name              = "$($unmatchedPassword.ITGObject.attributes.name)"
                                 company_id        = $company.HuduCompanyObject.ID
@@ -2113,7 +2117,7 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Passwords.json")) {
                                 passwordable_id   = $ParentItemID
                                 in_portal         = $false
                                 password          = ""
-				Hudu_URL      	  = $unmatchedPassword.HuduObject.url
+				                Hudu_URL      	  = $unmatchedPassword.HuduObject.url
                                 ITG_URL           = $unmatchedPassword.ITGObject.attributes.url
                                 username          = $unmatchedPassword.ITGObject.attributes.username
                                 otpsecret         = "removed for security purposes"
