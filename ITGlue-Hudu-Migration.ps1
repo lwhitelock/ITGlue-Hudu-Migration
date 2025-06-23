@@ -51,6 +51,10 @@ $FontAwesomeUpgrade = Get-FontAwesomeMap
 # Add migration scope helper
 . $PSScriptRoot\Public\Set-MigrationScope.ps1
 
+# Add String/Filename Normalization Helper, image Normalization helper
+. $PSScriptRoot\Public\Normalize-String.ps1
+. $PSScriptRoot\Public\Normalize-And-ConvertImage.ps1
+
 ############################### End of Functions ###############################
 
 
@@ -181,6 +185,56 @@ if (Test-Path -Path "$MigrationLogs") {
 # Setup some variables
 
 $ManualActions = [System.Collections.ArrayList]@()
+
+
+# add image debug to file
+
+function Write-ImageErrorObjectToFile {
+    param (
+        [Parameter(Mandatory)]
+        [object]$ErrorObject,
+
+        [Parameter()]
+        [string]$Name = "Unnamed-Image"
+    )
+
+    $stringOutput = try {
+        $ErrorObject | Format-List -Force | Out-String
+    } catch {
+        "Failed to stringify object: $_"
+    }
+
+    $propertyDump = try {
+        $props = $ErrorObject | Get-Member -MemberType Properties | Select-Object -ExpandProperty Name
+        $lines = foreach ($p in $props) {
+            try {
+                "$p = $($ErrorObject.$p)"
+            } catch {
+                "$p = <unreadable>"
+            }
+        }
+        $lines -join "`n"
+    } catch {
+        "Failed to enumerate properties: $_"
+    }
+
+    $logContent = @"
+==== OBJECT STRING ====
+$stringOutput
+
+==== PROPERTY DUMP ====
+$propertyDump
+"@
+
+    if ($global:ITG_ERRORS_DIRECTORY -and (Test-Path $global:ITG_ERRORS_DIRECTORY)) {
+        $filename = "$($Name -replace '\s+', '')_error_$(Get-Date -Format 'yyyyMMdd_HHmmss').log"
+        $fullPath = Join-Path $global:ITG_ERRORS_DIRECTORY $filename
+        Set-Content -Path $fullPath -Value $logContent -Encoding UTF8
+        Write-Host "Error written to $fullPath" -ForegroundColor Yellow
+    }
+
+    Write-Host "$logContent" -ForegroundColor Yellow
+}
 
 
 ############################### Companies ###############################
@@ -1501,7 +1555,7 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Assets.json")) {
                                         Field_Name    = "$field.HuduParsedName"
                                         Notes         = "Failed to add password to Asset"
                                         Action        = "Manually add the password to the asset"
-                                        Data          = ($ITGPassword.attributes.'resource-url' -replace '[^\x09\x0A\x0D\x20-\xD7FF\xE000-\xFFFD\x10000\x10FFFF]')                                        
+                                        Data          = ($ITGPassword.attributes.'resource-url' -replace '[^\x09\x0A\x0D\x20-\xD7FF\xE000-\xFFFD\x10000\x10FFFF]')
                                         Hudu_URL      = $UpdateAsset.HuduObject.url
                                         ITG_URL       = $UpdateAsset.ITGObject.attributes.'resource-url'
                                     }
@@ -1778,7 +1832,7 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Articles.json")) {
                             Actions = "Neither $fullImgPath or $tnImgPath were found, validate the images exist in the export, or retrieve them from ITGlue directly"
                             Data = "$InFile"
                             Hudu_URL = $Article.HuduObject.url
-			    ITG_URL = "$ITGURL/$($Article.ITGLocator)"
+			                ITG_URL = "$ITGURL/$($Article.ITGLocator)"
                             }
 
                             $null = $ManualActions.add($ManualLog)
@@ -1787,24 +1841,18 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Articles.json")) {
 
                         # Test the path to ensure that a file extension exists, if no file extension we get problems later on. We rename it if there's no ext.
                         if ($imagePath -and (Test-Path $imagePath -ErrorAction SilentlyContinue)) {
-                            if ((Get-Item -path $imagePath).extension -eq '') {
-                                Write-Warning "$imagePath is undetermined image. Testing..."
-                                if ($Magick = New-Object ImageMagick.MagickImage($imagePath)) {
-                                    $OriginalFullImagePath = $imagePath
-                                    $imagePath = "$($imagePath).$($Magick.format)"
-                                    $MovedItem = Move-Item -Path $OriginalFullImagePath -Destination $imagePath
-                                }
-                            }                        
-                            $imageType = Invoke-ImageTest($imagePath)
+                            $imageType = Invoke-ImageTest $imagePath
                             if ($imageType) {
-                                Write-Host "Uploading new image"
+                                $imageInfo = Normalize-And-ConvertImage -InputPath "$imagePath"
+                                $imagePath = "$($imageInfo.FinalPath)"
+                                $OriginalFullImagePath = $imageInfo.Original                                
+                                Write-Host "Uploading new/copied ITGlue image $($imageInfo.Original) => $($imageInfo.FinalPath)"
                                 try {
                                     $UploadImage = New-HuduPublicPhoto -FilePath "$imagePath" -record_id $Article.HuduID -record_type 'Article'
                                     $NewImageURL = $UploadImage.public_photo.url.replace($HuduBaseDomain, '')
                                     $ImgLink = $html.Links | Where-Object {$_.innerHTML -eq $imgHTML}
                                     Write-Host "Setting image to: $NewImageURL"
                                     $_.src = [string]$NewImageURL
-                                    
                                     # Update Links for this image
                                     $ImgLink.href = [string]$NewImageUrl
 
@@ -1819,8 +1867,14 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Articles.json")) {
                                         Action = "$imagePath failed to upload to Hudu backend with error $_`n Validate that uploads are working and you still have disk space."
                                         Data = "$InFile"
                                         Hudu_URL = $Article.HuduObject.url
-					ITG_URL = "$ITGURL/$($Article.ITGLocator)"
+					                    ITG_URL = "$ITGURL/$($Article.ITGLocator)"
                                     }
+                                    Write-ImageErrorObjectToFile -ErrorObject @{
+                                        LogEntry=$ManualLog
+                                        ImageLink=$ImgLink
+                                        ImageInfo=$imageInfo
+                                        Article=$Article
+                                    } -name "image-err-$($imageInfo.basename)"
 
                                     $null = $ManualActions.add($ManualLog)
                                 }
@@ -1841,9 +1895,14 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Articles.json")) {
                                     Action         = "$imagePath not detected as image, validate the identified file is an image, or imagemagick modules are loaded"        
                                     Data = "$InFile"
                                     Hudu_URL = $Article.HuduObject.url
-				    ITG_URL = "$ITGURL/$($Article.ITGLocator)"
+				                    ITG_URL = "$ITGURL/$($Article.ITGLocator)"
                                 }
 
+                                Write-ImageErrorObjectToFile -ErrorObject @{
+                                    LogEntry=$ManualLog
+                                    Article=$Article
+                                    FileName=$imagePath
+                                } -name "image-nd-$($imagePath)"
                                 $null = $ManualActions.add($ManualLog)
 
                             }
@@ -1851,19 +1910,24 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Articles.json")) {
                         else {
                             Write-Warning "Image $tnImgUrl file is missing"
                             $ManualLog = [PSCustomObject]@{
-                                    Document_Name = $Article.Name
-                                    Asset_Type    = "Article"
-                                    Company_Name  = $Article.Company.CompanyName
-				    Field_Name = 'N/A'
-                                    HuduID        = $Article.HuduID
-                                    Notes       = 'Image File Missing'
-                                    Action         = "$tnImgUrl is not present in export,validate the image exists in ITGlue and manually replace in Hudu"   
-                                    Data = "$InFile"
-                                    Hudu_URL = $Article.HuduObject.url
-				    ITG_URL = "$ITGURL/$($Article.ITGLocator)"
-                                }
-
-                                $null = $ManualActions.add($ManualLog)
+                                Document_Name = $Article.Name
+                                Asset_Type    = "Article"
+                                Company_Name  = $Article.Company.CompanyName
+                                Field_Name = 'N/A'
+                                HuduID        = $Article.HuduID
+                                Notes       = 'Image File Missing'
+                                Action         = "$tnImgUrl is not present in export,validate the image exists in ITGlue and manually replace in Hudu"   
+                                Data = "$InFile"
+                                Hudu_URL = $Article.HuduObject.url
+                                ITG_URL = "$ITGURL/$($Article.ITGLocator)"
+                            }
+                            Write-ImageErrorObjectToFile -ErrorObject @{
+                                LogEntry=$ManualLog
+                                ImageLink=$ImgLink
+                                ImageInfo=$imageInfo
+                                Article=$Article
+                            } -name "image-missing-$($imageInfo.basename)"
+                            $null = $ManualActions.add($ManualLog)
                         }
                     }
                 }
@@ -2117,7 +2181,6 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Passwords.json")) {
                         if (-not ($isValidBase32 -and $lengthOK)) {
                             Write-Warning "Invalid OTP secret for $($unmatchedPassword.ITGObject.attributes.name): $($unmatchedPassword.ITGObject.attributes.otp_secret)... valid base32? $isValidBase32 length ok? $lengthOK (min / max is 16 / 80 chars)"
                         }
-                        $passwordRaw = "$($unmatchedPassword.ITGObject.attributes.password)"
                         $PasswordSplat = @{
                             name              = "$($unmatchedPassword.ITGObject.attributes.name)"
                             company_id        = $company.HuduCompanyObject.ID
@@ -2130,7 +2193,7 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Passwords.json")) {
                             otpsecret         = $validated_otp
 
                         }
-                        if ([string]::IsNullOrWhiteSpace($passwordRaw) -or $passwordRaw.Length -lt 1) {                            
+                        if ([string]::IsNullOrWhiteSpace($unmatchedPassword.ITGObject.attributes.password) -or $unmatchedPassword.ITGObject.attributes.password.Length -lt 1) {                            
                             $manualActions.add([PSCustomObject]@{
                                 name              = "$($unmatchedPassword.ITGObject.attributes.name)"
                                 company_id        = $company.HuduCompanyObject.ID
@@ -2139,9 +2202,9 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Passwords.json")) {
                                 passwordable_id   = $ParentItemID
                                 in_portal         = $false
                                 password          = ""
-				                Hudu_URL      	  = $unmatchedPassword.HuduObject.url
+        				                Hudu_URL      	  = $unmatchedPassword.HuduObject.url
                                 ITG_URL           = $unmatchedPassword.ITGObject.attributes.url
-				                username          = $unmatchedPassword.ITGObject.attributes.username
+				                        username          = $unmatchedPassword.ITGObject.attributes.username
                                 otpsecret         = "removed for security purposes"
                                 problem           = "password was null or empty"
                             })
