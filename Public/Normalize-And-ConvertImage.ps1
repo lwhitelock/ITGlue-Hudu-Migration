@@ -1,4 +1,4 @@
-[string]$WorkingDirectory = "/tmp/safeimages"
+[string]$WorkingDirectory = "c:\tmp\images"
 
 function Get-ImageType {
     param (
@@ -61,16 +61,18 @@ function Normalize-And-ConvertImage {
     $normalized = Normalize-String -InputString $filename -PreserveExtension -PreserveWhitespace
     $limited = Limit-FilenameLength -FullFilename $normalized -MaxLength $MaxLength -PreserveExtension
 
+    # Rebuild parts
     $extension = [IO.Path]::GetExtension($limited)
     $basename = [IO.Path]::GetFileNameWithoutExtension($limited)
 
     if (-not $basename) { $basename = "file" }
     if (-not $extension) { $extension = ".$type" }
+
     if ($basename.Length -lt 5) {
         $basename = $basename.PadRight(5, '_')
     }
 
-    $finalFilename = "$basename$extension"
+    $finalFilename = "$basename$extension".ToLower()
     $finalPath = Join-Path -Path $directory -ChildPath $finalFilename
 
     if ($safePath -ne $finalPath) {

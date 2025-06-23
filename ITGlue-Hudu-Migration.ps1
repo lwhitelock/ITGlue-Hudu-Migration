@@ -1844,7 +1844,7 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Articles.json")) {
                             $imageType = Invoke-ImageTest $imagePath
                             if ($imageType) {
                                 $imageInfo = Normalize-And-ConvertImage -InputPath "$imagePath"
-                                $imagePath = "$($imageInfo.FinalPath)"
+                                $imagePath = "$($imageInfo.FinalPath ?? $imagePath)"
                                 $OriginalFullImagePath = $imageInfo.Original                                
                                 Write-Host "Uploading new/copied ITGlue image $($imageInfo.Original) => $($imageInfo.FinalPath)"
                                 try {
