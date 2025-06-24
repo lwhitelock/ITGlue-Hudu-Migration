@@ -1682,6 +1682,7 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Articles.json")) {
                             ITG_URL       = "$ITGURL/$($Article.ITGLocator)"
                         }
                 	$null = $ManualActions.add($ManualLog)
+		     }
                 }
             }
 
