@@ -1663,24 +1663,26 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Articles.json")) {
             # Check for attachments
             $attachdir = $Attachfiles | Where-Object { $_.PSIsContainer -eq $true -and $_.Name -match $Article.ITGID }
             if ($Attachdir) {
-                $InFile = ''
-                $html = ''
-                $rawsource = ''
-
-                $ManualLog = [PSCustomObject]@{
-                    Document_Name = $Article.Name
-                    Asset_Type    = "Article"
-                    Company_Name  = $Article.HuduObject.company_name
-                    HuduID        = $Article.HuduID
-                    Field_Name    = "N/A"
-                    Notes         = "Attached Files not Supported"
-                    Action        = "Manually Upload files to Related Files"
-                    Data          = $attachdir.fullname
-                    Hudu_URL      = $Article.HuduObject.url
-                    ITG_URL       = "$ITGURL/$($Article.ITGLocator)"
+                $attachmentFiles = Get-ChildItem -Path $Attachdir.FullName -File -Recurse
+                foreach ($file in $attachmentFiles) {
+                    try {
+                        Write-Host "Uploading attachment $($file.Name) for $($Article.Name)" -ForegroundColor Cyan
+                        New-HuduUpload -FilePath $file.FullName -uploadable_id $Article.HuduID -uploadable_type 'Article' | Out-Null
+                    } catch {
+                        Write-Warning "Failed to upload attachment $($file.FullName): $_"
+                        $ManualLog = [PSCustomObject]@{
+                            Document_Name = $Article.Name
+                            Asset_Type    = "Article"
+                            Company_Name  = $Article.Company.CompanyName
+                            HuduID        = $Article.HuduID
+                            Notes         = 'Attachment Upload Failed'
+                            Action        = "Could not upload $($file.FullName) to article."
+                            Data          = $file.FullName
+                            Hudu_URL      = $Article.HuduObject.url
+                            ITG_URL       = "$ITGURL/$($Article.ITGLocator)"
+                        }
+                	$null = $ManualActions.add($ManualLog)
                 }
-                $null = $ManualActions.add($ManualLog)
-
             }
 
 
