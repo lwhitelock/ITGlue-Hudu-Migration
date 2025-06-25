@@ -47,34 +47,35 @@ $ImportFlexibleAssets       = 1
 $ImportArticles             = 1
 $ImportPasswords            = 1
 $NonInteractive             = 2
-$ScopedMigration            = 2
+$ScopedMigration            = 1
+# $ScopedMigration            = 2
 # prescoped Companies
-$Prescoped = @(
-905
-859
-1009
-1328
-1288
-2254
-2140
-99
-651
-1707
-1869
-1707
-2176
-1381
-1374
-1945
-739
-465
-936
-474
-1387
-1152
-20
-1231
-932
-)
+# $Prescoped = @(
+# 905
+# 859
+# 1009
+# 1328
+# 1288
+# 2254
+# 2140
+# 99
+# 651
+# 1707
+# 1869
+# 1707
+# 2176
+# 1381
+# 1374
+# 1945
+# 739
+# 465
+# 936
+# 474
+# 1387
+# 1152
+# 20
+# 1231
+# 932
+# )
 . .\ITGlue-Hudu-Migration.ps1
 foreach ($layout in Get-HuduAssetLayouts) {Set-HuduAssetLayout -id $layout.id -Active $true}
