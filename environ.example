@@ -78,4 +78,4 @@ $ScopedMigration            = 1
 # 932
 # )
 . .\ITGlue-Hudu-Migration.ps1
-foreach ($layout in Get-HuduAssetLayouts) {Set-HuduAssetLayout -id $layout.id -Active $true}
+ foreach ($layout in Get-HuduAssetLayouts) {write-host "setting $($(Set-HuduAssetLayout -id $layout.id -Active $true).asset_layout.name) as active" }
