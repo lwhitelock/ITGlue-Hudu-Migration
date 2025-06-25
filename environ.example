@@ -24,8 +24,8 @@ $settings = @{
     ITGCustomDomains        = ""
     InternalCompany         = "changeme inc."
     GlobalKBFolder          = "y"
-    ConPromptPrefix         = "itg-"
-    FAPromptPrefix          = "itg-"
+    ConPromptPrefix         = ""
+    FAPromptPrefix          = ""
     ITGLueExportPath        = "c:\tmp\export"
     MigrationLogs           = "$logs_folder"
 }   
