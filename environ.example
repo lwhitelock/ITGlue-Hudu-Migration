@@ -88,7 +88,4 @@ $ScopedMigration            = 1
 foreach ($layout in Get-HuduAssetLayouts) {write-host "setting $($(Set-HuduAssetLayout -id $layout.id -Active $true).asset_layout.name) as active" }
 . .\Get-MissingRelations.ps1
 . .\Add-HuduAttachmentsViaAPI.ps1
-=======
-. .\ITGlue-Hudu-Migration.ps1
- foreach ($layout in Get-HuduAssetLayouts) {write-host "setting $($(Set-HuduAssetLayout -id $layout.id -Active $true).asset_layout.name) as active" }
->>>>>>> main
+ foreach ($layout in Get-HuduAssetLayouts) {write-host "setting $($(Set-HuduAssetLayout -id $layout.id -Active $true).asset_layout.name) as active" }$ConfigurationRelationsToCreate + $AssetRelationsToCreate | ForEach-Object {try {New-HuduRelation -FromableType  $_.FromableType -FromableID    $_.FromableID -ToableType    $_.ToableType -ToableID      $_.ToableID} catch {Write-Host "Skipped or errored: $_" -ForegroundColor Yellow}}
