@@ -2088,6 +2088,7 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Passwords.json")) {
     Write-Host "Passwords to Migrate"
     $MatchedPasswords | Sort-Object Name |  Select-Object Name | Format-Table
 
+
     $UnmappedPasswordCount = ($MatchedPasswords | Where-Object { $_.Matched -eq $false } | measure-object).count
 
     if ($ImportPasswords -eq $true -and $UnmappedPasswordCount -gt 0) {
@@ -2183,15 +2184,18 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Passwords.json")) {
                     if (!($($unmatchedPassword.ITGObject.attributes."resource-type") -eq "flexible-asset-traits")) {
 
                         $validated_otp = "$($unmatchedPassword.ITGObject.attributes.otp_secret)".Trim().ToUpper()
+                        if ($validated_otp) {
+                            $isValidBase32 = $validated_otp -match '^[A-Z2-7]+$'
+                            $lengthOK = $validated_otp.Length -ge 16 -and $validated_otp.Length -le 80
 
-                        $isValidBase32 = $validated_otp -match '^[A-Z2-7]+$'
-                        $lengthOK = $validated_otp.Length -ge 16 -and $validated_otp.Length -le 80
+                            $validated_otp = if ($isValidBase32 -and $lengthOK) { $validated_otp } else { $null }
 
-                        $validated_otp = if ($isValidBase32 -and $lengthOK) { $validated_otp } else { $null }
-
-                        if (-not ($isValidBase32 -and $lengthOK)) {
-                            Write-Warning "Invalid OTP secret for $($unmatchedPassword.ITGObject.attributes.name): $($unmatchedPassword.ITGObject.attributes.otp_secret)... valid base32? $isValidBase32 length ok? $lengthOK (min / max is 16 / 80 chars)"
+                            if (-not ($isValidBase32 -and $lengthOK)) {
+                                Write-Warning "Invalid OTP secret for $($unmatchedPassword.ITGObject.attributes.name): $($unmatchedPassword.ITGObject.attributes.otp_secret)... valid base32? $isValidBase32 length ok? $lengthOK (min / max is 16 / 80 chars)"
+                            }                            
                         }
+
+
                         $PasswordSplat = @{
                             name              = "$($unmatchedPassword.ITGObject.attributes.name)"
                             company_id        = $company.HuduCompanyObject.ID
@@ -2204,7 +2208,7 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Passwords.json")) {
                             otpsecret         = $validated_otp
 
                         }
-                        if ([string]::IsNullOrWhiteSpace($unmatchedPassword.ITGObject.attributes.password) -or $unmatchedPassword.ITGObject.attributes.password.Length -lt 1) {                            
+                        if ([string]::IsNullOrWhiteSpace($unmatchedPassword.ITGObject.attributes.password) -or $unmatchedPassword.ITGObject.attributes.password.Length -lt 1) {
                             $manualActions.add([PSCustomObject]@{
                                 name              = "$($unmatchedPassword.ITGObject.attributes.name)"
                                 company_id        = $company.HuduCompanyObject.ID
@@ -2213,14 +2217,14 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Passwords.json")) {
                                 passwordable_id   = $ParentItemID
                                 in_portal         = $false
                                 password          = ""
-        				                Hudu_URL      	  = $unmatchedPassword.HuduObject.url
+				                Hudu_URL      	  = $unmatchedPassword.HuduObject.url
                                 ITG_URL           = $unmatchedPassword.ITGObject.attributes.url
-				                        username          = $unmatchedPassword.ITGObject.attributes.username
+				                username          = $unmatchedPassword.ITGObject.attributes.username
                                 otpsecret         = "removed for security purposes"
                                 problem           = "password was null or empty"
                             })
                             $unmatchedPassword.matched = $false
-                            Write-host "$($HuduNewPassword.Name) Has been skipped and added to manual actions due to being empty"                            
+                            Write-Warning "$($HuduNewPassword.Name) Has been skipped and added to manual actions due to being empty"                            
                         } else {
                             $HuduNewPassword = (New-HuduPassword @PasswordSplat).asset_password 
                             $unmatchedPassword.matched = $true
