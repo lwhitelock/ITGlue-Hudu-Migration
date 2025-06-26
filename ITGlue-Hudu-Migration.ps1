@@ -189,7 +189,7 @@ $ManualActions = [System.Collections.ArrayList]@()
 
 # add image debug to file
 
-function Write-ImageErrorObjectToFile {
+function Write-ErrorObjectsToFile {
     param (
         [Parameter(Mandatory)]
         [object]$ErrorObject,
@@ -1839,25 +1839,41 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Articles.json")) {
 
                     }
 
-                        # Test the path to ensure that a file extension exists, if no file extension we get problems later on. We rename it if there's no ext.
-                        if ($imagePath -and (Test-Path $imagePath -ErrorAction SilentlyContinue)) {
+                                            # Test the path to ensure that a file extension exists, if no file extension we get problems later on. We rename it if there's no ext.
+                    if ($imagePath -and (Test-Path $imagePath -ErrorAction SilentlyContinue)) {
+                        Write-Host "File present at purported image path: $imagePath... checking for image..." -ForegroundColor DarkRed
+
                             $imageType = Invoke-ImageTest $imagePath
                             if ($imageType) {
-                                $imageInfo = Normalize-And-ConvertImage -InputPath "$imagePath"
-                                $imagePath = "$($imageInfo.FinalPath)"
-                                $OriginalFullImagePath = $imageInfo.Original                                
-                                Write-Host "Uploading new/copied ITGlue image $($imageInfo.Original) => $($imageInfo.FinalPath)"
-                                try {
-                                    $UploadImage = New-HuduPublicPhoto -FilePath "$imagePath" -record_id $Article.HuduID -record_type 'Article'
-                                    $NewImageURL = $UploadImage.public_photo.url.replace($HuduBaseDomain, '')
-                                    $ImgLink = $html.Links | Where-Object {$_.innerHTML -eq $imgHTML}
-                                    Write-Host "Setting image to: $NewImageURL"
-                                    $_.src = [string]$NewImageURL
-                                    # Update Links for this image
-                                    $ImgLink.href = [string]$NewImageUrl
+                                Write-Host "$imagePath appears to contain image... normalizing..." -ForegroundColor DarkRed
+                                $imageInfo = Normalize-And-ConvertImage -InputPath $imagePath
+                                Write-Host "$imagePath => $($imageInfo.FinalPath)" -ForegroundColor DarkRed
 
-                                }
-                                catch {
+                                $imagePath = $imageInfo.FinalPath ?? $imagePath
+                                $OriginalFullImagePath = $imageInfo.Original
+
+                                Write-Host "Uploading new/copied ITGlue image $OriginalFullImagePath => $imagePath"
+                                try {
+                                    $UploadImage = New-HuduPublicPhoto -FilePath $imagePath.ToLower() -record_id $Article.HuduID -record_type 'Article'
+                                    $NewImageURL = $UploadImage.public_photo.url.replace($HuduBaseDomain, '')
+                                    
+                                    # Update the <img> tag src
+                                    $_.src = [string]$NewImageURL
+                                    Write-Host "Setting <img>.src to: $NewImageURL"
+
+                                    # Try to find a matching <a> link around the image
+                                    $ImgLink = ($html.Links | Where-Object { $_.innerHTML -eq $imgHTML }) | Select-Object -First 1
+
+                                    if ($ImgLink) {
+                                        if ($ImgLink.PSObject.Properties.Match("href")) {
+                                            $ImgLink.href = [string]$NewImageURL
+                                        } else {
+                                            Write-Warning "Image link object found but 'href' property is not present on it"
+                                        }
+                                    } else {
+                                        Write-Warning "Image link object was not found for innerHTML: $imgHTML"
+                                    }
+                                } catch {
                                     $ManualLog = [PSCustomObject]@{
                                         Document_Name = $Article.Name
                                         Asset_Type    = "Article"
@@ -1869,7 +1885,7 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Articles.json")) {
                                         Hudu_URL = $Article.HuduObject.url
 					                    ITG_URL = "$ITGURL/$($Article.ITGLocator)"
                                     }
-                                    Write-ImageErrorObjectToFile -ErrorObject @{
+                                    Write-ErrorObjectsToFile -ErrorObject @{
                                         LogEntry=$ManualLog
                                         ImageLink=$ImgLink
                                         ImageInfo=$imageInfo
@@ -1878,11 +1894,6 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Articles.json")) {
 
                                     $null = $ManualActions.add($ManualLog)
                                 }
-
-                                if ($Magick -and $MovedItem) {
-                                    Move-Item -Path $imagePath -Destination $OriginalFullImagePath
-                                }
-        
                             }
                             else {
 
@@ -1898,7 +1909,7 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Articles.json")) {
 				                    ITG_URL = "$ITGURL/$($Article.ITGLocator)"
                                 }
 
-                                Write-ImageErrorObjectToFile -ErrorObject @{
+                                Write-ErrorObjectsToFile -ErrorObject @{
                                     LogEntry=$ManualLog
                                     Article=$Article
                                     FileName=$imagePath
@@ -1921,7 +1932,7 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Articles.json")) {
                                 Hudu_URL = $Article.HuduObject.url
                                 ITG_URL = "$ITGURL/$($Article.ITGLocator)"
                             }
-                            Write-ImageErrorObjectToFile -ErrorObject @{
+                            Write-ErrorObjectsToFile -ErrorObject @{
                                 LogEntry=$ManualLog
                                 ImageLink=$ImgLink
                                 ImageInfo=$imageInfo
