@@ -1,5 +1,53 @@
 # Check if this is a direct run, and load the logs if so the first time.
 
+function Write-ErrorObjectsToFile {
+    param (
+        [Parameter(Mandatory)]
+        [object]$ErrorObject,
+
+        [Parameter()]
+        [string]$Name = "Unnamed-Image"
+    )
+
+    $stringOutput = try {
+        $ErrorObject | Format-List -Force | Out-String
+    } catch {
+        "Failed to stringify object: $_"
+    }
+
+    $propertyDump = try {
+        $props = $ErrorObject | Get-Member -MemberType Properties | Select-Object -ExpandProperty Name
+        $lines = foreach ($p in $props) {
+            try {
+                "$p = $($ErrorObject.$p)"
+            } catch {
+                "$p = <unreadable>"
+            }
+        }
+        $lines -join "`n"
+    } catch {
+        "Failed to enumerate properties: $_"
+    }
+
+    $logContent = @"
+==== OBJECT STRING ====
+$stringOutput
+
+==== PROPERTY DUMP ====
+$propertyDump
+"@
+
+    if ($global:ITG_ERRORS_DIRECTORY -and (Test-Path $global:ITG_ERRORS_DIRECTORY)) {
+        $filename = "$($Name -replace '\s+', '')_error_$(Get-Date -Format 'yyyyMMdd_HHmmss').log"
+        $fullPath = Join-Path $global:ITG_ERRORS_DIRECTORY $filename
+        Set-Content -Path $fullPath -Value $logContent -Encoding UTF8
+        Write-Host "Error written to $fullPath" -ForegroundColor Yellow
+    }
+
+    Write-Host "$logContent" -ForegroundColor Yellow
+}
+
+
 if (-not ($FirstTimeLoad -eq 1)) {
     # General Settings Load
     . $PSScriptRoot\..\Initialize-Module.ps1 -InitType 'Lite'
@@ -225,6 +273,7 @@ if ($CSVMapping) {
                 }
             }
     } catch {
+        try {
             Write-ErrorObjectsToFile -ErrorObject @{
                 CSVMapping = $CSVMapping    
                 CSV = $CSV
@@ -233,6 +282,9 @@ if ($CSVMapping) {
                 record = $record
                 file_ref = $fr
             } -Name "Upload_$CSVHeader"
+            } catch {
+                write-host "upload err - $($record ?? 'record') - $($CSVHeader ?? 'header')"
+            }
         }  
     }
 }
