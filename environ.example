@@ -48,11 +48,8 @@ $ImportArticles             = 1
 $ImportPasswords            = 1
 $NonInteractive             = 2
 $ScopedMigration            = 1
-<<<<<<< chore/betterupload-postrun-trycatch
 
 # prescoped-
-=======
->>>>>>> main
 # $ScopedMigration            = 2
 # prescoped Companies
 # $Prescoped = @(
