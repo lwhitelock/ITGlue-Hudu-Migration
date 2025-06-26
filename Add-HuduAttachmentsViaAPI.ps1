@@ -1,4 +1,5 @@
 # Check if this is a direct run, and load the logs if so the first time.
+
 if (-not ($FirstTimeLoad -eq 1)) {
     # General Settings Load
     . $PSScriptRoot\..\Initialize-Module.ps1 -InitType 'Lite'
@@ -206,24 +207,37 @@ if (!($CSVMapping = Get-Content "$MigrationLogs\AttachmentFields-CSVMap.json"|Co
 
 if ($CSVMapping) {
     foreach ($n in $CSVMapping) { 
-        $CSVPath = Join-Path -Path $ITGLueExportPath -ChildPath $n.csv_file
-        $CSV = Import-Csv -Path $CSVPath
-        $CSVHeader = $n.csv_header 
-    
-        $CSVAttachmentsToUpload = $CSV | Where-Object {$_.$CSVHeader}
-        foreach ($record in $CSVAttachmentsToUpload) {
-            $FileReferences = $record.$CSVHeader.split(',').trim()
-            foreach ($fr in $FileReferences) {
-                $FileToUpload = Get-Item -path (Join-Path -Path $ITGlueExportPath -ChildPath "$($n.foldername)\$($fr)")
-                $HuduAssetID = $ITGlueAssets |Where-Object {$_.itgid -eq $record.id}  |Select-Object -ExpandProperty HuduID
-                $HuduAssetName = $ITGlueAssets |Where-Object {$_.itgid -eq $record.id}  |Select-Object -ExpandProperty Name
-                Write-Host "Uploading $($FileToUpload.fullname) to Hudu Asset $($HuduAssetName) - $($HuduAssetID)" -ForegroundColor Blue
-                $HuduUpload = New-HuduUpload -FilePath $FileToUpload.fullname -uploadable_id $HuduAssetID -uploadable_type 'Asset'
+        try {
+            $CSVPath = Join-Path -Path $ITGLueExportPath -ChildPath $n.csv_file
+            $CSV = Import-Csv -Path $CSVPath
+            $CSVHeader = $n.csv_header 
+        
+            $CSVAttachmentsToUpload = $CSV | Where-Object {$_.$CSVHeader}
+            foreach ($record in $CSVAttachmentsToUpload) {
+                $FileReferences = $record.$CSVHeader.split(',').trim()
+                foreach ($fr in $FileReferences) {
+                    $FileToUpload = Get-Item -path (Join-Path -Path $ITGlueExportPath -ChildPath "$($n.foldername)\$($fr)")
+                    $HuduAssetID = $ITGlueAssets |Where-Object {$_.itgid -eq $record.id}  |Select-Object -ExpandProperty HuduID
+                    $HuduAssetName = $ITGlueAssets |Where-Object {$_.itgid -eq $record.id}  |Select-Object -ExpandProperty Name
+                    Write-Host "Uploading $($FileToUpload.fullname) to Hudu Asset $($HuduAssetName) - $($HuduAssetID)" -ForegroundColor Blue
+                    $HuduUpload = New-HuduUpload -FilePath $FileToUpload.fullname -uploadable_id $HuduAssetID -uploadable_type 'Asset'
 
+                }
             }
-        }
+    } catch {
+            Write-ErrorObjectsToFile -ErrorObject @{
+                CSVMapping = $CSVMapping    
+                CSV = $CSV
+                N   = $n
+                Error = $_
+                record = $record
+                file_ref = $fr
+            } -Name "Upload_$CSVHeader"
+        }  
     }
 }
-
 Write-Host "All attachments have been processed."
 Pause
+    
+
+

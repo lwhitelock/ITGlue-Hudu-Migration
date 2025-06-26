@@ -189,7 +189,7 @@ $ManualActions = [System.Collections.ArrayList]@()
 
 # add image debug to file
 
-function Write-ImageErrorObjectToFile {
+function Write-ErrorObjectsToFile {
     param (
         [Parameter(Mandatory)]
         [object]$ErrorObject,
@@ -1885,7 +1885,7 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Articles.json")) {
                                         Hudu_URL = $Article.HuduObject.url
 					                    ITG_URL = "$ITGURL/$($Article.ITGLocator)"
                                     }
-                                    Write-ImageErrorObjectToFile -ErrorObject @{
+                                    Write-ErrorObjectsToFile -ErrorObject @{
                                         LogEntry=$ManualLog
                                         ImageLink=$ImgLink
                                         ImageInfo=$imageInfo
@@ -1909,7 +1909,7 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Articles.json")) {
 				                    ITG_URL = "$ITGURL/$($Article.ITGLocator)"
                                 }
 
-                                Write-ImageErrorObjectToFile -ErrorObject @{
+                                Write-ErrorObjectsToFile -ErrorObject @{
                                     LogEntry=$ManualLog
                                     Article=$Article
                                     FileName=$imagePath
@@ -1932,7 +1932,7 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Articles.json")) {
                                 Hudu_URL = $Article.HuduObject.url
                                 ITG_URL = "$ITGURL/$($Article.ITGLocator)"
                             }
-                            Write-ImageErrorObjectToFile -ErrorObject @{
+                            Write-ErrorObjectsToFile -ErrorObject @{
                                 LogEntry=$ManualLog
                                 ImageLink=$ImgLink
                                 ImageInfo=$imageInfo
