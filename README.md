@@ -33,7 +33,7 @@ Option 1: Clone with Git to ***expected path***
 
 Option 2: Download & Extract to ***expected path***
 
-***pwsh*** ```$dst="C:\Users\$env:USERNAME\Documents\GitHub\HuduAPI"; $zip="$env:TEMP\huduapi.zip"; Invoke-WebRequest -Uri "https://github.com/Hudu-Technologies-Inc/HuduAPI/archive/refs/heads/main.zip" -OutFile $zip; Expand-Archive $zip -DestinationPath $dst -Force; Move-Item "$dst\HuduAPI-main\*" $dst -Force; Remove-Item "$dst\HuduAPI-main",$zip -Recurse -Force```
+***pwsh*** ```$dst="C:\Users\$env:USERNAME\Documents\GitHub\HuduAPI"; $zip="$env:TEMP\huduapi.zip"; Invoke-WebRequest -Uri "https://github.com/Hudu-Technologies-Inc/ITGlue-Hudu-Migration/archive/refs/heads/main.zip" -OutFile $zip; Expand-Archive $zip -DestinationPath $dst -Force; Move-Item "$dst\HuduAPI-main\*" $dst -Force; Remove-Item "$dst\HuduAPI-main",$zip -Recurse -Force```
 
 ### 3. Invocation-
 
