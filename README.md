@@ -13,7 +13,7 @@ At this point in time **(Jun 27, 2025)**, the ideal version to be on when using 
 
 ***~$*** ```echo "RATE_LIMIT_REQUESTS=9999999" >> ~/hudu2/.env```
 
-### 3. Make sure you are on a newly-reset instance (or newly-reset with integrators set-up after full sync-cylce)---
+### 3. Make sure you are on a newly-reset instance --
 
 To reset:
 
