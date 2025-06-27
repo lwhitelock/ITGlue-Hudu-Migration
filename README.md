@@ -1,12 +1,74 @@
-___
+# ITGlue-Hudu-Migration
+
+# Getting Started
+You'll want to make sure your Hudu instance is prepared for migration and that your machine designated to run this script is also properly prepared.
+
+## Prerequisites-  ***Hudu Instance***
+
+### 1. Make sure you are on a known-compatible Hudu version--
+
+At this point in time **(Jun 27, 2025)**, the ideal version to be on when using this fork is at least `2.37.1` image. `2.38.0` is being tested at this very moment and likely works just fine as well.
+
+### 2. It's best to set ratelimit to be high. to do so, you can add this yo your .env file and perform a docker compose down/up
+
+***~$*** ```echo "RATE_LIMIT_REQUESTS=9999999" >> ~/hudu2/.env```
+
+### 3. Make sure you are on a newly-reset instance (or newly-reset with integrators set-up after full sync-cylce)---
+
+To reset:
+
+***~$*** ```cd ~/hudu2/ && docker compose down --volumes && docker compose up -d```
+
+## Prerequisites- ***Migration Setup***
+
+### 1. Ensure will need to be on powershell 7+, best ran from Windows Machine
+You can [download newest powershell release here](https://github.com/powershell/powershell/releases)
+
+### 2. Until ratelimiting fix is published for Hudu API module in PSgallery, it's reccomended to use our fork for this-- `https://github.com/Hudu-Technologies-Inc/HuduAPI` to this directory: `c:\users\$env:USERNAME\Documents\GitHub\HuduAPI`
+***See examples, below***
+
+Option 1: Clone with Git to ***expected path***
+
+***pwsh*** ```git clone https://github.com/Hudu-Technologies-Inc/HuduAPI "C:\Users\$env:USERNAME\Documents\GitHub\HuduAPI"```
+
+Option 2: Download & Extract to ***expected path***
+
+***pwsh*** ```$dst="C:\Users\$env:USERNAME\Documents\GitHub\HuduAPI"; $zip="$env:TEMP\huduapi.zip"; Invoke-WebRequest -Uri "https://github.com/Hudu-Technologies-Inc/HuduAPI/archive/refs/heads/main.zip" -OutFile $zip; Expand-Archive $zip -DestinationPath $dst -Force; Move-Item "$dst\HuduAPI-main\*" $dst -Force; Remove-Item "$dst\HuduAPI-main",$zip -Recurse -Force```
+
+### 3. Invocation-
+
+you can run via dot-sourcing a copy of environ.example that has been filled out or via dot-sourcing the main script. Here are some handy snippets that will already run if dot-sourcing from environ file, but you will want to run manually otherwise.
+
+***main invocation***
+
+```. .\ITGlue-Hudu-Migration.ps1```
+
+
+***set layouts as active post-run***
+
+```foreach ($layout in Get-HuduAssetLayouts) {write-host "setting $($(Set-HuduAssetLayout -id $layout.id -Active $true).asset_layout.name) as active" }```
+
+***populate remaining relations variables***
+
+```. .\Get-MissingRelations.ps1```
+
+***adding attachments***
+
+```. .\Add-HuduAttachmentsViaAPI.ps1```
+
+***add any remaining relations***
+
+```
+$ConfigurationRelationsToCreate + $AssetRelationsToCreate | ForEach-Object {try {New-HuduRelation -FromableType  $_.FromableType -FromableID    $_.FromableID -ToableType    $_.ToableType -ToableID      $_.ToableID} catch {Write-Host "Skipped or errored: $_" -ForegroundColor Yellow}}
+```
+
+
 # Please Read!
 We use the Magick.NET libraries that you can find here https://github.com/dlemstra/Magick.NET/ for image type validation and metadata building.
 
 Please review the licensed rights for Magick.NET here https://github.com/dlemstra/Magick.NET/blob/main/License.txt
 
 These are used only when the image extension was not properly retained in the export, and so we need to determine the type and rename them.
-___
-# ITGlue-Hudu-Migration
 
 **The original blog post may still be relevant in some cases but is mostly outdated.** See [this link instead](https://mspbook.mspgeek.org/books/hudu-scripts-in-progress/page/itglue-to-hudu-migration) or [this other link here](https://demort.hosteddocs.io/shared_article/7BKhGktLGN1FEDSVEkh1bLpF)
 
