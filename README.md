@@ -91,6 +91,12 @@ At present, this fork works very well with 2.37.1 and is also being tested again
 
 Password relations are only available from ITGlue when querying the API directly for each password individually. Since this will increase the runtime of the script by hours or days potentially we'll be making a script to run at the end which will loop through passwords and update the relations at that time. For right now relationships between Passwords and any entity that is not available in the API (Articles, and SSL Certificates) is completely invisbile to this migration script.
 
+# Disclaimer
+
+This PowerShell script, and all items contained within the repository, is provided "as-is" without any warranties or guarantees, express or implied. The authors and Hudu Technologies make no guarantees regarding the accuracy, reliability, or suitability of the script for any purpose.
+
+By using this script, you acknowledge that you do so at your own risk. The authors and Hudu Technologies shall not be liable for any damages, losses, or issues that may arise from its use, including but not limited to data loss, system failures, or security breaches. Always review the code thoroughly and test it in a safe environment before deploying it in a production setting.
+
 # Release Notes
 ## Get-MissingRelations.ps1 added
 This script should be run at the very end, with the Matched* variables existing from the migration, it'll loop through matched Configurations and Assets (Configurations and Flexible Assets in ITGlue) and pull the latest relations
