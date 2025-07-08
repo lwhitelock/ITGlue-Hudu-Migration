@@ -1,4 +1,4 @@
-# ITGlue-Hudu-Migration
+**Please Read this entire document before you begin**
 
 # Getting Started
 You'll want to make sure your Hudu instance is prepared for migration and that your machine designated to run this script is also properly prepared.
