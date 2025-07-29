@@ -118,10 +118,10 @@ function CollectAndSaveSettings {
             Write-Host "This doesn't seem to be a valid Hudu API key. It is $($HuduAPIKey.Length) characters long, but should be 24." -ForegroundColor Red
         }
     }
-    while ($ITGKey.Length -ne 101) {
-        $ITGKey = (Read-Host -Prompt 'Enter your ITGlue API Key (must have password access). Should be 101 characters.').Trim()
-        if ($ITGKey.Length -ne 101) {
-            Write-Host "This doesn't seem to be a valid ITGlue API key. It is $($ITGKey.Length) characters long, but should be 101." -ForegroundColor Red
+    while ($ITGKey.Length -notin 100..105) {
+        $ITGKey = (Read-Host -Prompt 'Enter your ITGlue API Key (must have password access). Should be 101-104 characters.').Trim()
+        if ($ITGKey.Length -notin 101..105) {
+            Write-Host "This doesn't seem to be a valid ITGlue API key. It is $($ITGKey.Length) characters long, but should be 101-104." -ForegroundColor Red
         }
     }
     $settings.ITGKey = ConvertTo-SecureString -String $ITGKey -AsPlainText -Force | ConvertFrom-SecureString
