@@ -2204,6 +2204,7 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Passwords.json")) {
                             passwordable_id   = $ParentItemID
                             in_portal         = $false
                             password          = $unmatchedPassword.ITGObject.attributes.password
+                            url               = if ($url = $unmatchedPassword.ITGObject.attributes.url) {$url} Else {$unmatchedPassword.ITGObject.attributes.'resource-url'}
                             username          = $unmatchedPassword.ITGObject.attributes.username
                             otpsecret         = $validated_otp
 
@@ -2218,8 +2219,8 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Passwords.json")) {
                                 in_portal         = $false
                                 password          = ""
 				                Hudu_URL      	  = $unmatchedPassword.HuduObject.url
-                                ITG_URL           = $unmatchedPassword.ITGObject.attributes.url
-				                username          = $unmatchedPassword.ITGObject.attributes.username
+                                ITG_URL           = if ($url = $unmatchedPassword.ITGObject.attributes.url) {$url} Else {$unmatchedPassword.ITGObject.attributes.'resource-url'}
+                                username          = $unmatchedPassword.ITGObject.attributes.username
                                 otpsecret         = "removed for security purposes"
                                 problem           = "password was null or empty"
                             })
