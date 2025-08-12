@@ -1,19 +1,25 @@
 ###### Configuration Meta Data #########
 
 # Types
-$ITGConfigurationTypes = Get-ITGlueConfigurationTypes
+$ConfigurationTypesSelect = { Get-ITGlueConfigurationTypes -page_size 1000 -page_number $i }
+$ITGConfigurationTypes = Import-ITGlueItems -ItemSelect $ConfigurationTypesSelect
 
 # Statuses
-$ITGConfigurationStatuses = Get-ITGlueConfigurationStatuses
+$ConfigurationStatusesSelect = { Get-ITGlueConfigurationStatuses -page_size 1000 -page_number $i }
+$ITGConfigurationStatuses = Import-ITGlueItems -ItemSelect $ConfigurationStatusesSelect
 
 # Manufacturers
-$ITGConfigurationManufacturers = Get-ITGlueManufacturers
+$ConfigurationManufacturersSelect = { Get-ITGlueManufacturers -page_size 1000 -page_number $i }
+$ITGConfigurationManufacturers = Import-ITGlueItems -ItemSelect $ConfigurationManufacturersSelect
 
 # Models
-$ITGConfigurationModels = Get-ITGlueModels
+$ConfigurationModelsSelect = { Get-ITGlueModels -page_size 1000 -page_number $i }
+$ITGConfigurationModels = Import-ITGlueItems -ItemSelect $ConfigurationModelsSelect
 
 # Operating Systems
-$ITGConfigurationOSes = Get-ITGlueOperatingSystems
+$ConfigurationOsSelect = { Get-ITGlueOperatingSystems -page_size 1000 -page_number $i } 
+$ITGConfigurationOSes = Import-ITGlueItems -ItemSelect $ConfigurationOsSelect
 
 # Platforms
-$ITGConfigurationPlatforms = Get-ITGluePlatforms
+$ConfigurationPlatformSelect = { Get-ITGluePlatforms -page_size 1000 -page_number $i }
+$ITGConfigurationPlatforms = Import-ITGlueItems -ItemSelect $ConfigurationPlatformSelect
