@@ -2523,15 +2523,35 @@ Write-Host "Manual Actions report can be found in ManualActions.html in the fold
 Write-Host "Logs of what was migrated can be found in the MigrationLogs folder"
 Write-TimedMessage -Message "Press any key to view the manual actions report or Ctrl+C to end" -Timeout 120  -DefaultResponse "continue, view generative Manual Actions webpage, please."
 
+write-host "wrapup... setting asset layouts as active"
+foreach ($layout in Get-HuduAssetLayouts) {write-host "setting $($(Set-HuduAssetLayout -id $layout.id -Active $true).asset_layout.name) as active" }
+
+write-host "wrapup... adding missing relations (this can take a while)"
+. .\Get-MissingRelations.ps1
+$ConfigurationRelationsToCreate + $AssetRelationsToCreate | ForEach-Object {try {New-HuduRelation -FromableType  $_.FromableType -FromableID    $_.FromableID -ToableType    $_.ToableType -ToableID      $_.ToableID} catch {Write-Host "Skipped or errored: $_" -ForegroundColor Yellow}}
+
+write-host "wrapup... adding attaqchments (this can take a while)"
+. .\Add-HuduAttachmentsViaAPI.ps1
+
+write-host "wrapup... adding attaqchments (this can take a while)"
+$ArchivedPasswords = $MatchedPasswords |? {$_.itgobject.attributes.archived -eq $true}
+$ArchivedConfigurations = $MatchedConfigurations |? {$_.ITGObject.attributes.archived -eq $true}    
+$ArchivedAssets = $MatchedAssets |? {$_.ITGObject.attributes.archived -eq $true}
+$DocsCsv = import-csv "$ITGLueExportPath\documents.csv"
+$ArchivedDocs = $DocsCsv |? {$_.archived -eq 'yes'}
+
+write-host "wrapup... archiving items..."
+$ptaresults = $ArchivedPasswords | % {Set-HuduPasswordArchive -id $_.huduid -Archive $true}
+$ctaresults = $ArchivedConfigurations |% {Set-HuduAssetArchive -Id $_.huduid -CompanyId $_.huduobject.company_id -Archive $true}
+$ataresults = $ArchivedAssets |% {Set-HuduAssetArchive -Id $_.huduid -CompanyId $_.huduobject.company_id -Archive $true}
+$dtaresults = $ArchivedDocs |% {$i = $_; $A2D = $MatchedArticles |? {$_.itgid -eq $i.id}; Set-HuduArticleArchive -Id $A2D.HuduId -Archive $true } 
+foreach ($obj in @(
+    @{Name = "passwords";   Archived = $ptaresults},
+    @{Name = "configs";       Archived = $ctaresults},
+    @{Name = "assets";  Archived = $ataresults},
+    @{Name = "docs";    Archived = $dtaresults})) {
+    $obj.Archived | ConvertTo-Json -depth 75 | Out-File $(join-path $settings.MigrationLogs "archived-$($obj.Name)")
+}
 Start-Process ManualActions.html
 
-if ($(Select-ObjectFromList -objects @("yes","no") -message "Would you like to set all asset layouts to active now?") -eq "yes"){
-    foreach ($layout in Get-HuduAssetLayouts) {write-host "setting $($(Set-HuduAssetLayout -id $layout.id -Active $true).asset_layout.name) as active" }
-}
-if ($(Select-ObjectFromList -objects @("yes","no") -message "Would you like to process missing relations now? This can take a while.") -eq "yes"){
-    . .\Get-MissingRelations.ps1
-    $ConfigurationRelationsToCreate + $AssetRelationsToCreate | ForEach-Object {try {New-HuduRelation -FromableType  $_.FromableType -FromableID    $_.FromableID -ToableType    $_.ToableType -ToableID      $_.ToableID} catch {Write-Host "Skipped or errored: $_" -ForegroundColor Yellow}}
-}
-if ($(Select-ObjectFromList -objects @("yes","no") -message "Would you like to wrap up uploads portion?") -eq "yes"){
-    . .\Add-HuduAttachmentsViaAPI.ps1
-}
+
