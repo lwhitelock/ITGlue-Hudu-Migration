@@ -1488,7 +1488,7 @@ $ITGPasswordsRaw = Import-CSV -Path "$ITGLueExportPath\passwords.csv"
                                 }
                                 $null = $MatchedAssetPasswords.add($MigratedPassword)
                             } else {
-                                if ($CurrentVersion  -eq [version]"2.37.1") {
+                                if ($CurrentVersion  -ge [version]"2.37.1") {
                                     # This version won't cast doubles for 'number' fields. It expects only integers.
                                     $coerced = Get-CastIfNumeric ($_.value -replace '[^\x09\x0A\x0D\x20-\xD7FF\xE000-\xFFFD\x10000\x10FFFF]')
                                     $null = $AssetFields.add("$($field.HuduParsedName)", $coerced)
