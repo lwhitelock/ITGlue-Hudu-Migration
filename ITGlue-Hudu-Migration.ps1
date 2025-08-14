@@ -765,6 +765,7 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Configurations.json")
             # 'updated_at'                = $unmatchedImport."ITGObject".attributes."updated-at"
             'configuration_type_name'   = $unmatchedImport."ITGObject".attributes."configuration-type-name"
             'configuration_type_kind'   = $unmatchedImport."ITGObject".attributes."configuration-type-kind"
+            'manufacturer_name'  		= $unmatchedImport."ITGObject".attributes."manufacturer-name"			
             'configuration_status_name' = $unmatchedImport."ITGObject".attributes."configuration-status-name"
             'operating_system_name'     = $unmatchedImport."ITGObject".attributes."operating-system-name"
             'location_name'             = $unmatchedImport."ITGObject".attributes."location-name"
