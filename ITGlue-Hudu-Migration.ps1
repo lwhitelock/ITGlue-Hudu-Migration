@@ -2522,19 +2522,19 @@ Write-Host "$(($MatchedPasswords | Measure-Object).count) : Passwords Migrated" 
 Write-Host "#######################################################" -ForegroundColor Green
 Write-Host "Manual Actions report can be found in ManualActions.html in the folder the script was run from"
 Write-Host "Logs of what was migrated can be found in the MigrationLogs folder"
-Write-TimedMessage -Message "Press any key to view the manual actions report or Ctrl+C to end" -Timeout 120  -DefaultResponse "continue, view generative Manual Actions webpage, please."
+Write-TimedMessage -Message "Press any key to start wrap-up tasks or Ctrl+C to end" -Timeout 120  -DefaultResponse "continue, view generative Manual Actions webpage, please."
 
 write-host "wrapup... setting asset layouts as active"
 foreach ($layout in Get-HuduAssetLayouts) {write-host "setting $($(Set-HuduAssetLayout -id $layout.id -Active $true).asset_layout.name) as active" }
 
-write-host "wrapup... adding missing relations (this can take a long while)"
+write-host "wrapup... adding missing relations (this can take a long while). Some errors will appear here, they can be safely ignored."
 . .\Get-MissingRelations.ps1
 $ConfigurationRelationsToCreate + $AssetRelationsToCreate | ForEach-Object {try {New-HuduRelation -FromableType  $_.FromableType -FromableID    $_.FromableID -ToableType    $_.ToableType -ToableID      $_.ToableID} catch {Write-Host "Skipped or errored: $_" -ForegroundColor Yellow}}
 
-write-host "wrapup... adding attaqchments (this can take a while)"
+write-host "wrapup... adding attachments (this can take a while)"
 . .\Add-HuduAttachmentsViaAPI.ps1
 
-write-host "wrapup... adding attaqchments (this can take a while)"
+write-host "wrapup... archiving passwords, assets, configurations as they had been in ITGlue (this can take a while)"
 $DocsCsv = import-csv "$ITGLueExportPath\documents.csv"
 $ArchivedPasswords = $MatchedPasswords |? {$_.itgobject.attributes.archived -eq $true}
 $ArchivedConfigurations = $MatchedConfigurations |? {$_.ITGObject.attributes.archived -eq $true}    
