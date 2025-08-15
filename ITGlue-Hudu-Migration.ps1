@@ -862,6 +862,7 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Configurations.json")
             # 'updated_at'                = $unmatchedImport."ITGObject".attributes."updated-at"
             'configuration_type_name'   = $unmatchedImport."ITGObject".attributes."configuration-type-name"
             'configuration_type_kind'   = $unmatchedImport."ITGObject".attributes."configuration-type-kind"
+            'manufacturer_name'  		= $unmatchedImport."ITGObject".attributes."manufacturer-name"			
             'configuration_status_name' = $unmatchedImport."ITGObject".attributes."configuration-status-name"
             'operating_system_name'     = $unmatchedImport."ITGObject".attributes."operating-system-name"
             'location_name'             = $unmatchedImport."ITGObject".attributes."location-name"
@@ -2526,7 +2527,7 @@ Write-TimedMessage -Message "Press any key to view the manual actions report or 
 write-host "wrapup... setting asset layouts as active"
 foreach ($layout in Get-HuduAssetLayouts) {write-host "setting $($(Set-HuduAssetLayout -id $layout.id -Active $true).asset_layout.name) as active" }
 
-write-host "wrapup... adding missing relations (this can take a while)"
+write-host "wrapup... adding missing relations (this can take a long while)"
 . .\Get-MissingRelations.ps1
 $ConfigurationRelationsToCreate + $AssetRelationsToCreate | ForEach-Object {try {New-HuduRelation -FromableType  $_.FromableType -FromableID    $_.FromableID -ToableType    $_.ToableType -ToableID      $_.ToableID} catch {Write-Host "Skipped or errored: $_" -ForegroundColor Yellow}}
 
@@ -2534,24 +2535,25 @@ write-host "wrapup... adding attaqchments (this can take a while)"
 . .\Add-HuduAttachmentsViaAPI.ps1
 
 write-host "wrapup... adding attaqchments (this can take a while)"
+$DocsCsv = import-csv "$ITGLueExportPath\documents.csv"
 $ArchivedPasswords = $MatchedPasswords |? {$_.itgobject.attributes.archived -eq $true}
 $ArchivedConfigurations = $MatchedConfigurations |? {$_.ITGObject.attributes.archived -eq $true}    
 $ArchivedAssets = $MatchedAssets |? {$_.ITGObject.attributes.archived -eq $true}
-$DocsCsv = import-csv "$ITGLueExportPath\documents.csv"
 $ArchivedDocs = $DocsCsv |? {$_.archived -eq 'yes'}
 
 write-host "wrapup... archiving items..."
-$ptaresults = $ArchivedPasswords | % {Set-HuduPasswordArchive -id $_.huduid -Archive $true}
-$ctaresults = $ArchivedConfigurations |% {Set-HuduAssetArchive -Id $_.huduid -CompanyId $_.huduobject.company_id -Archive $true}
-$ataresults = $ArchivedAssets |% {Set-HuduAssetArchive -Id $_.huduid -CompanyId $_.huduobject.company_id -Archive $true}
-$dtaresults = $ArchivedDocs |% {$i = $_; $A2D = $MatchedArticles |? {$_.itgid -eq $i.id}; Set-HuduArticleArchive -Id $A2D.HuduId -Archive $true } 
+$ptaresults = $ArchivedPasswords | % {if ($_.huduid -and $_.huduid -gt 0) {Set-HuduPasswordArchive -id $_.huduid -Archive $true}}
+$ctaresults = $ArchivedConfigurations |% {if ($_.huduid -and $_.huduid -gt 0) {Set-HuduAssetArchive -Id $_.huduid -CompanyId $_.huduobject.company_id -Archive $true}}
+$ataresults = $ArchivedAssets |% {if ($_.huduid -and $_.huduid -gt 0) {Set-HuduAssetArchive -Id $_.huduid -CompanyId $_.huduobject.company_id -Archive $true}}
+$dtaresults = $ArchivedDocs |% {$i = $_; $A2D = $MatchedArticles |? {$A2D.itgid -eq $i.id}; if ($A2D.huduid -and $A2D.huduid -gt 0) {Set-HuduArticleArchive -Id $A2D.HuduId -Archive $true}} 
 foreach ($obj in @(
-    @{Name = "passwords";   Archived = $ptaresults},
-    @{Name = "configs";       Archived = $ctaresults},
-    @{Name = "assets";  Archived = $ataresults},
-    @{Name = "docs";    Archived = $dtaresults})) {
-    $obj.Archived | ConvertTo-Json -depth 75 | Out-File $(join-path $settings.MigrationLogs "archived-$($obj.Name)")
+    @{Name = "passwords";       Archived = $ptaresults},
+    @{Name = "configs";         Archived = $ctaresults},
+    @{Name = "assets";          Archived = $ataresults},
+    @{Name = "docs";            Archived = $dtaresults})) {
+    $obj.Archived | ConvertTo-Json -depth 75 | Out-File $(join-path $settings.MigrationLogs "archived-$($obj.Name).json")
 }
+
 Start-Process ManualActions.html
 
 
