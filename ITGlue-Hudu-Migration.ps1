@@ -193,13 +193,19 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Companies.json")) {
     $ITGCompaniesFromCSV = Import-CSV (Join-Path -Path $ITGlueExportPath -ChildPath "organizations.csv")
 
     Write-Host "$($ITGCompanies.count) ITG Glue Companies Found" 
+
     if ($ScopedMigration) {
         $OriginalCompanyCount = $($ITGcompanies.count)
-        Write-Host "Setting companies to those in scope..." -foregroundcolor Yellow
-        $ITGCompanies = Set-MigrationScope -AllITGCompanies $ITGCompanies -InternalCompany $InternalCompany
+        Write-Host "Setting companies to those in scope..." -foregroundcolor Yellow 
+        if ($null -ne $Prescoped) {
+            $ITGCompanies = Set-PredefinedScope -AllITGCompanies $ITGCompanies -Prescoped $Prescoped -InternalCompany $InternalCompany
+        } else {
+            $ITGCompanies = Set-MigrationScope -AllITGCompanies $ITGCompanies -InternalCompany $InternalCompany
+        }
+        $ScopedCompanyIds = $ITGCompanies.id
         Write-Host "Companies scoped... $OriginalCompanyCount => $($Itgcompanies.count)"
     }
-    $ScopedITGCompanyIds = $ITGCompanies.id
+    $ITGCompaniesHashTable = @{}
 
     $MatchedCompanies = foreach ($itgcompany in $ITGCompanies ) {
         $HuduCompany = $HuduCompanies | where-object { $_.name -eq $itgcompany.attributes.name }
@@ -234,7 +240,9 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Companies.json")) {
             }
         }
     }
-
+    foreach ($ITGC in $MatchedCompanies) {
+        $ITGCompaniesHashTable[$ITGC.itgid] = $ITGC
+    }
     # Check if the internal company was found and that there was only 1 of them
     $PrimaryCompany = $MatchedCompanies | Sort-Object CompanyName | Where-Object { $_.InternalCompany -eq $true } | Select-Object CompanyName
 
@@ -263,7 +271,7 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Companies.json")) {
    if ($ScopedMigration) {
         $OriginalLocationsCount = $($ITGLocations.count)
         Write-Host "Setting locations to those in scope..." -foregroundcolor Yellow
-        $ITGLocations         = $ITGLocations | Where-Object { $ScopedITGCompanyIds -contains $_.attributes.'organization-id' }
+        $ITGLocations         = $ITGLocations | Where-Object { $ScopedCompanyIds -contains $_.attributes.'organization-id' }
         Write-Host "locations scoped... $OriginalLocationsCount => $($ITGLocations.count)"
     }
 
@@ -356,6 +364,7 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Locations.json")) {
 } else {
     $ITGLocations = $ITGLocations |select @{n='HuduCompanyId';e={ $ITGCompaniesHashTable["$($_.attributes.'organization-id')"].huduid}},*
 
+    $ITGLocations = $ITGLocations |select @{n='HuduCompanyId';e={ $ITGCompaniesHashTable["$($_.attributes.'organization-id')"].huduid}},*
 
     $LocHuduItemFilter = { ($_.name -eq $itgimport.attributes.name -and $_.company_id -eq $itgimport.HuduCompanyId)`
             -or ($ITGPrimaryLocationNames -contains $itgimport.attributes.name -and $HuduPrimaryLocationNames -contains $_.name -and $_.company_id -eq $itgimport.HuduCompanyId)`
@@ -452,6 +461,10 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Locations.json")) {
 
     #Import Locations
     $MatchedLocations = Import-Items @LocImportSplat
+    $ITGLocationsHashTable = @{}
+    foreach ($ITGL in $MatchedLocations) {
+        $ITGLocationsHashTable[$ITGL.itgid] = $ITGL
+    }
 
     $ITGLocationsHashTable = @{}
     foreach ($ITGL in $MatchedLocations) {
@@ -482,7 +495,7 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Websites.json")) {
     if ($ScopedMigration) {
         $OriginalDomainsCount = $($ITGDomains.count)
         Write-Host "Setting domains to those in scope..." -foregroundcolor Yellow
-        $ITGDomains          = $ITGdomains | Where-Object { $ScopedITGCompanyIds -contains $_.attributes.'organization-id' }
+        $ITGDomains          = $ITGdomains | Where-Object { $ScopedCompanyIds -contains $_.attributes.'organization-id' }
         Write-Host "domains scoped... $OriginalDomainsCount => $($ITGDomains.count)"
     }
 
@@ -589,10 +602,12 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Configurations.json")
     Write-Host "Fetching Configurations from IT Glue" -ForegroundColor Green
     $ConfigurationsSelect = { (Get-ITGlueConfigurations -page_size 1000 -page_number $i -include related_items).data }
     $ITGConfigurations = Import-ITGlueItems -ItemSelect $ConfigurationsSelect
+    $ITGConfigurations = $ITGConfigurations |select @{n='HuduCompanyId';e={ $ITGCompaniesHashTable["$($_.attributes.'organization-id')"].huduid}},*
+    
     if ($ScopedMigration) {
         $OriginalConfigurationCount = $($ITGConfigurations.count)
         Write-Host "Setting configurations to those in scope..." -foregroundcolor Yellow        
-        $ITGConfigurations    = $ITGConfigurations | Where-Object { $ScopedITGCompanyIds -contains $_.attributes.'organization-id' }
+        $ITGConfigurations    = $ITGConfigurations | Where-Object { $ScopedCompanyIds -contains $_.attributes.'organization-id' }
         Write-Host "configurations scoped... $OriginalConfigurationCount => $($ITGConfigurations.count)"
     }
     $ITGConfigurations = $ITGConfigurations |select @{n='HuduCompanyId';e={ $ITGCompaniesHashTable["$($_.attributes.'organization-id')"].huduid}},*
@@ -899,10 +914,12 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Contacts.json")) {
     Write-Host "Fetching Contacts from IT Glue" -ForegroundColor Green
     $ContactsSelect = { (Get-ITGlueContacts -page_size 1000 -page_number $i -include related_items).data }
     $ITGContacts = Import-ITGlueItems -ItemSelect $ContactsSelect
+    $ITGContacts = $ITGContacts |select @{n='HuduCompanyId';e={ $ITGCompaniesHashTable["$($_.attributes.'organization-id')"].huduid}},*
+    
     if ($ScopedMigration) {
         $OriginalContactsCount = $($ITGContacts.count)
         Write-Host "Setting contacts to those in scope..." -foregroundcolor Yellow               
-        $ITGContacts          = $ITGContacts | Where-Object { $ScopedITGCompanyIds -contains $_.attributes.'organization-id' }
+        $ITGContacts          = $ITGContacts | Where-Object { $ScopedCompanyIds -contains $_.attributes.'organization-id' }
         Write-Host "Contacts scoped... $OriginalContactsCount => $($ITGContacts.count)"
     }
     $ITGContacts = $ITGContacts |select @{n='HuduCompanyId';e={ $ITGCompaniesHashTable["$($_.attributes.'organization-id')"].huduid}},*
@@ -1302,7 +1319,7 @@ $ITGPasswordsRaw = Import-CSV -Path "$ITGLueExportPath\passwords.csv"
         if ($ScopedMigration) {
             $OriginalLayoutsCount = $($MatchedLayouts.count)
             Write-Host "Setting layouts to those in scope..." -foregroundcolor Yellow               
-            $MatchedLayouts = Filter-ScopedAssets -Layouts $MatchedLayouts -ScopedCompanyIds $ScopedITGCompanyIds
+            $MatchedLayouts = Filter-ScopedAssets -Layouts $MatchedLayouts -ScopedCompanyIds $ScopedCompanyIds
             Write-Host "Layouts scoped... $OriginalLayoutsCount => $($MatchedLayouts.count)"
         }
 
@@ -1911,7 +1928,7 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Passwords.json")) {
     if ($ScopedMigration) {
         $OriginalPasswordsCount = $($ITGPasswords.count)
         Write-Host "Setting passwords to those in scope..." -foregroundcolor Yellow        
-        $ITGPasswords         = $ITGPasswords | Where-Object { $ScopedITGCompanyIds -contains $_.attributes.'organization-id' }
+        $ITGPasswords         = $ITGPasswords | Where-Object { $ScopedCompanyIds -contains $_.attributes.'organization-id' }
         Write-Host "Passwords scoped... $OriginalPasswordsCount => $($ITGPasswords.count)"
     }
     
