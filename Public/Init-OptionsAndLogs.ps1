@@ -256,9 +256,11 @@ function Unset-Vars {
     )
 
     foreach ($scope in $scopes) {
-        if (Get-Variable -Name $varname -Scope $scope -ErrorAction SilentlyContinue) {
-            Remove-Variable -Name $varname -Scope $scope -Force -ErrorAction SilentlyContinue
-            Write-Host "Unset `$${varname} from scope: $scope"
-        }
+        try {
+            if (Get-Variable -Name $varname -Scope $scope -ErrorAction SilentlyContinue) {
+                Remove-Variable -Name $varname -Scope $scope -Force -ErrorAction SilentlyContinue
+                Write-Host "Unset `$${varname} from scope: $scope"
+            }
+        } catch {}
     }
 }
