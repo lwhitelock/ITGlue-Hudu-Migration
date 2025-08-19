@@ -1486,10 +1486,6 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Assets.json")) {
                                 $LocationsLinked = foreach ($IDMatch in $ITGValues.values) {
                                     $($MatchedLocations | Where-Object { $_.ITGID -eq $IDMatch.id } | Select-Object @{N = 'id'; E = { $_.HuduID } }, @{N = 'name'; E = { $_.Name } })
                                 }
-                                if (-not $LocationsLinked -or $LocationsLinked.Count -eq 0) {
-                                    $fallback = Get-DefaultLocationLink -CompanyId $UpdateAsset.HuduObject.company_id -MatchedLocations $MatchedLocations -LocationLayoutId $LocationLayout.ID
-                                    if ($fallback) { $LocationsLinked = @($fallback) }
-                                }
                                 $ReturnData = $LocationsLinked | convertto-json -compress -AsArray | Out-String
                                 $null = $AssetFields.add("$($field.HuduParsedName)", ("$ReturnData"))
 											
