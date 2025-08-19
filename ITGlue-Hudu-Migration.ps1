@@ -206,14 +206,24 @@ $ManualActions = [System.Collections.ArrayList]@()
 
 
 # add image debug to file
-
+if (-not $ErroredItemsFolder) {
+    $ErroredItemsFolder = "$PSScriptRoot.\debug"
+}
+if (-not (Test-Path $ErroredItemsFolder)) {
+    Get-ChildItem -Path "$ErroredItemsFolder" -File -Recurse -Force | Remove-Item -Force
+    New-Item -ItemType Directory -Path $ErroredItemsFolder -Force -ErrorAction Stop | Out-Null
+} else {write-host "Errored items path: $ErroredItemsFolder"}
 function Write-ErrorObjectsToFile {
     param (
         [Parameter(Mandatory)]
         [object]$ErrorObject,
 
         [Parameter()]
-        [string]$Name = "Unnamed-Image"
+        [string]$Name = "unnamed",
+
+        [Parameter()]
+        [ValidateSet("Black","DarkBlue","DarkGreen","DarkCyan","DarkRed","DarkMagenta","DarkYellow","Gray","DarkGray","Blue","Green","Cyan","Red","Magenta","Yellow","White")]
+        [string]$Color
     )
 
     $stringOutput = try {
@@ -244,16 +254,27 @@ $stringOutput
 $propertyDump
 "@
 
-    if ($global:ITG_ERRORS_DIRECTORY -and (Test-Path $global:ITG_ERRORS_DIRECTORY)) {
-        $filename = "$($Name -replace '\s+', '')_error_$(Get-Date -Format 'yyyyMMdd_HHmmss').log"
-        $fullPath = Join-Path $global:ITG_ERRORS_DIRECTORY $filename
+    if ($ErroredItemsFolder -and (Test-Path $ErroredItemsFolder)) {
+        $SafeName = ($Name -replace '[\\/:*?"<>|]', '_') -replace '\s+', ''
+        if ($SafeName.Length -gt 60) {
+            $SafeName = $SafeName.Substring(0, 60)
+        }
+        $filename = "${SafeName}_error_$(Get-Date -Format 'yyyyMMdd_HHmmss').log"
+        $fullPath = Join-Path $ErroredItemsFolder $filename
         Set-Content -Path $fullPath -Value $logContent -Encoding UTF8
-        Write-Host "Error written to $fullPath" -ForegroundColor Yellow
+        if ($Color) {
+            Write-Host "Error written to $fullPath" -ForegroundColor $Color
+        } else {
+            Write-Host "Error written to $fullPath"
+        }
     }
 
-    Write-Host "$logContent" -ForegroundColor Yellow
+    if ($Color) {
+        Write-Host "$logContent" -ForegroundColor $Color
+    } else {
+        Write-Host "$logContent"
+    }
 }
-
 
 ############################### Companies ###############################
 
