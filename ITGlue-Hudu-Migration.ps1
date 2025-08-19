@@ -1245,14 +1245,9 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\AssetLayouts.json")) 
             $FlexAssets = Import-ITGlueItems -ItemSelect $FlexAssetsSelect
             $fullyPopulated = Get-ITGFieldPopulated -FlexLayoutFields $FlexLayoutFields -FlexAssets $FlexAssets
 
-            foreach ($obj in @(@{Name="fullyPopulated"; Value = $fullyPopulated})) {
-                $obj.Value | ConvertTo-Json -depth 15 | Out-File $(join-path $settings.MigrationLogs "$($UpdateLayout.Name)-$($obj.Name).json")
-            }
-
             $UpdateLayoutFields = foreach ($ITGField in $FlexLayoutFields) {
                 $ITGFieldRequired = [bool]$ITGField.Attributes.required
-                $requiredForHudu = $ITGFieldRequired -and ($fullyPopulated[$ITGField.Attributes.name] -eq $true)
-                if ($true -eq $requiredForHudu) {write-host "$($ITGField.Attributes.name) required Field in Hudu (required in ITGlue and Always Populated)" -ForegroundColor DarkGreen}
+                $requiredForHudu = $ITGFieldRequired -and ($($fullyPopulated[$ITGField.Attributes.name] ?? $false) -eq $true)
             
                 $LayoutField = @{
                     label        = $ITGField.Attributes.name

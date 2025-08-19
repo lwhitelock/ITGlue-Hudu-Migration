@@ -1,41 +1,44 @@
-function Get-ITGFieldPopulated {
-    [CmdletBinding()]
-    param(
-        [Parameter(Mandatory)] $FlexLayoutFields,
-        [Parameter(Mandatory)] $FlexAssets,
-        [string[]] $ExcludeKinds = @('Header')
-    )
+function Test-ValuePresent {
+    param([object]$Value)
 
-    function Test-ValuePresent {
-        param([object]$Value)
+    if ($null -eq $Value) { return $false }
 
-        if ($null -eq $Value) { return $false }
-
-        # Tag/Upload pattern: @{ type='...'; values=@(...) }
-        if ($Value -is [pscustomobject] -or $Value -is [hashtable]) {
-            $props = $Value.PSObject.Properties
-            $hasValuesProp = $props['values'] -ne $null
-            if ($hasValuesProp) {
-                $vals = $props['values'].Value
-                return @($vals).Count -gt 0
-            }
-            # If it's some other object (e.g., single linked object), treat as present if non-null
-            return $true
+    # Tag/Upload pattern: @{ type='...'; values=@(...) }
+    if ($Value -is [pscustomobject] -or $Value -is [hashtable]) {
+        $props = $Value.PSObject.Properties
+        $hasValuesProp = $props['values'] -ne $null
+        if ($hasValuesProp) {
+            $vals = $props['values'].Value
+            return @($vals).Count -gt 0
         }
-
-        if ($Value -is [string]) {
-            return -not [string]::IsNullOrWhiteSpace($Value)
-        }
-
-        if ($Value -is [System.Collections.IEnumerable] -and -not ($Value -is [string])) {
-            return (@($Value).Count -gt 0)
-        }
-
-        # numbers, booleans, DateTime, etc.
+        # If it's some other object (e.g., single linked object), treat as present if non-null
         return $true
     }
 
-    # 1) Collect the data field keys we care about (by name-key)
+    if ($Value -is [string]) {
+        return -not [string]::IsNullOrWhiteSpace($Value)
+    }
+
+    if ($Value -is [System.Collections.IEnumerable] -and -not ($Value -is [string])) {
+        return (@($Value).Count -gt 0)
+    }
+
+    # numbers, booleans, DateTime, etc.
+    return $true
+}
+
+function Get-ITGFieldPopulated {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)] [array]$FlexLayoutFields,
+        [Parameter(Mandatory)] [array]$FlexAssets,
+        [string[]] $ExcludeKinds = @('Header')
+    )
+    foreach ($requiredForCalc in @($FlexLayoutFields, $FlexAssets)){
+        if (-not $requiredForCalc -or $null -eq $requiredForCalc -or $requiredForCalc.count -lt 1){
+            return @{}
+        }
+    }
     $dataFieldKeys = @{}
     foreach ($f in $FlexLayoutFields) {
         $kind = $f.Attributes.kind
@@ -45,12 +48,7 @@ function Get-ITGFieldPopulated {
         }
     }
 
-    # Early out: nothing to check
-    if ($dataFieldKeys.Count -eq 0) {
-        return @{}
-    }
-
-    # 2) Init counts
+    # Init counts
     $keyFilledCounts = @{}
     foreach ($k in $dataFieldKeys.Keys) { $keyFilledCounts[$k] = 0 }
 
@@ -61,7 +59,7 @@ function Get-ITGFieldPopulated {
         return $none
     }
 
-    # 3) Single pass over assets
+    # Single pass over assets for counts of each field
     foreach ($asset in $FlexAssets) {
         $traits = $asset.Attributes.traits
         foreach ($k in $dataFieldKeys.Keys) {
@@ -74,7 +72,7 @@ function Get-ITGFieldPopulated {
         }
     }
 
-    # 4) Build boolean map
+    # build map for later refrerence [required/not]
     $fullyPopulated = @{}
     foreach ($k in $dataFieldKeys.Keys) {
         $fullyPopulated[$k] = ($keyFilledCounts[$k] -eq $totalAssets)
