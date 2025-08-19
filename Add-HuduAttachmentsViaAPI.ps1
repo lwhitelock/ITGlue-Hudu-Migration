@@ -1,6 +1,6 @@
 # Check if this is a direct run, and load the logs if so the first time.
 if (-not (Get-Command -Name Get-EnsuredPath -ErrorAction SilentlyContinue)) { . $PSScriptRoot\Public\Init-OptionsAndLogs.ps1 }
-$ErroredItemsFolder = $(Get-EnsuredPath -path $(join-path $(Resolve-Path .).path "debug\attachments"))
+$ErroredItemsFolder = $(Get-EnsuredPath -path $(join-path $(Resolve-Path .).path "debug"))
 
 if (-not ($FirstTimeLoad -eq 1)) {
     # General Settings Load

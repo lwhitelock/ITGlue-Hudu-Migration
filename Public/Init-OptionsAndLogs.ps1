@@ -124,7 +124,10 @@ function Write-ErrorObjectsToFile {
 
         [Parameter()]
         [ValidateSet("Black","DarkBlue","DarkGreen","DarkCyan","DarkRed","DarkMagenta","DarkYellow","Gray","DarkGray","Blue","Green","Cyan","Red","Magenta","Yellow","White")]
-        [string]$Color
+        [string]$Color,
+
+        [Parameter()]
+        [string]$childDir = $null        
     )
 
     $stringOutput = try {
@@ -180,12 +183,10 @@ $propertyDump
 function Set-ExternalModulesInitialized {
     param (
             [string]$HAPImodulePath = "C:\Users\$env:USERNAME\Documents\GitHub\HuduAPI\HuduAPI\HuduAPI.psm1",
-            [bool]$use_hudu_fork = $true,
-            [bool]$force_fresh = $true
+            [bool]$use_hudu_fork = $true
         )
 
     if ($true -eq $use_hudu_fork) {
-        if ($true -eq $force_fresh){Remove-Item -LiteralPath "C:\Users\$env:USERNAME\Documents\GitHub\HuduAPI\" -Recurse -Force -ErrorAction SilentlyContinue}
 
         if (-not $(Test-Path $HAPImodulePath)) {
             $dst = Split-Path -Path (Split-Path -Path $HAPImodulePath -Parent) -Parent

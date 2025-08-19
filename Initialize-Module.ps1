@@ -20,8 +20,6 @@
 # Add/enhance the migration areas to use the new API features of Hudu
 
 
-
-
 param(
     [Parameter(Mandatory=$true)]
     [ValidateSet("Full", "Lite")]
