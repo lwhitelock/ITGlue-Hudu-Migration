@@ -54,7 +54,7 @@ $FontAwesomeUpgrade = Get-FontAwesomeMap
 # Add String/Filename Normalization Helper, image Normalization helper
 . $PSScriptRoot\Public\Normalize-String.ps1
 . $PSScriptRoot\Public\Normalize-And-ConvertImage.ps1
-
+. $PSScriptRoot\Public\Get-ITGFieldPopulated.ps1
 ############################### End of Functions ###############################
 
 
@@ -1246,15 +1246,17 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\AssetLayouts.json")) 
             Write-Host "Fetching Flexible Assets from IT Glue (This may take a while)"
             $FlexAssetsSelect = { (Get-ITGlueFlexibleAssets -page_size 1000 -page_number $i -filter_flexible_asset_type_id $UpdateLayout.ITGID -include related_items).data }
             $FlexAssets = Import-ITGlueItems -ItemSelect $FlexAssetsSelect
-		
-				
-		
+            $fullyPopulated = Get-FullyPopulatedFieldKeys -FlexLayoutFields $FlexLayoutFields -FlexAssets $FlexAssets
+
             $UpdateLayoutFields = foreach ($ITGField in $FlexLayoutFields) {
+                $ITGFieldRequired = [bool]$ITGField.Attributes.required
+                $requiredForHudu = $ITGFieldRequired -and ($fullyPopulated[$ITGField.Attributes.name] -eq $true)
+
                 $LayoutField = @{
                     label        = $ITGField.Attributes.name
                     show_in_list = $ITGField.Attributes."show-in-list"
                     position     = $ITGField.Attributes.order
-                    required     = $ITGField.Attributes.required
+                    required     = $requiredForHudu
                     hint         = $ITGField.Attributes.hint
                 }
 
@@ -1495,6 +1497,10 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Assets.json")) {
                             "Locations" {
                                 $LocationsLinked = foreach ($IDMatch in $ITGValues.values) {
                                     $($MatchedLocations | Where-Object { $_.ITGID -eq $IDMatch.id } | Select-Object @{N = 'id'; E = { $_.HuduID } }, @{N = 'name'; E = { $_.Name } })
+                                }
+                                if (-not $LocationsLinked -or $LocationsLinked.Count -eq 0) {
+                                    $fallback = Get-DefaultLocationLink -CompanyId $UpdateAsset.HuduObject.company_id -MatchedLocations $MatchedLocations -LocationLayoutId $LocationLayout.ID
+                                    if ($fallback) { $LocationsLinked = @($fallback) }
                                 }
                                 $ReturnData = $LocationsLinked | convertto-json -compress -AsArray | Out-String
                                 $null = $AssetFields.add("$($field.HuduParsedName)", ("$ReturnData"))
