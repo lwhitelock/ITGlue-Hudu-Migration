@@ -1,20 +1,3 @@
-function Get-TraitValue {
-    param($Traits, [string]$Key)
-    if (-not $Traits) { return $null }
-    $p = $Traits.PSObject.Properties[$Key]
-    if ($p) { return $p.Value } else { return $null }
-}
-
-function Test-ITGValuePresent {
-    param($Value)
-    if ($null -eq $Value) { return $false }
-    if ($Value -is [string]) { return -not [string]::IsNullOrWhiteSpace($Value) }
-    if ($Value -is [System.Collections.IEnumerable] -and -not ($Value -is [string])) {
-        return (@($Value).Count -gt 0)
-    }
-    return $true
-}
-
 function Get-ITGFieldPopulated {
     [CmdletBinding()]
     param(
@@ -23,13 +6,51 @@ function Get-ITGFieldPopulated {
         [string[]] $ExcludeKinds = @('Header')
     )
 
+    function Test-ValuePresent {
+        param([object]$Value)
+
+        if ($null -eq $Value) { return $false }
+
+        # Tag/Upload pattern: @{ type='...'; values=@(...) }
+        if ($Value -is [pscustomobject] -or $Value -is [hashtable]) {
+            $props = $Value.PSObject.Properties
+            $hasValuesProp = $props['values'] -ne $null
+            if ($hasValuesProp) {
+                $vals = $props['values'].Value
+                return @($vals).Count -gt 0
+            }
+            # If it's some other object (e.g., single linked object), treat as present if non-null
+            return $true
+        }
+
+        if ($Value -is [string]) {
+            return -not [string]::IsNullOrWhiteSpace($Value)
+        }
+
+        if ($Value -is [System.Collections.IEnumerable] -and -not ($Value -is [string])) {
+            return (@($Value).Count -gt 0)
+        }
+
+        # numbers, booleans, DateTime, etc.
+        return $true
+    }
+
+    # 1) Collect the data field keys we care about (by name-key)
     $dataFieldKeys = @{}
+    foreach ($f in $FlexLayoutFields) {
         $kind = $f.Attributes.kind
         if ($ExcludeKinds -notcontains $kind) {
-            $key = $f.Attributes.name
+            $key = $f.Attributes.'name-key'
             if ($key) { $dataFieldKeys[$key] = $true }
         }
-    
+    }
+
+    # Early out: nothing to check
+    if ($dataFieldKeys.Count -eq 0) {
+        return @{}
+    }
+
+    # 2) Init counts
     $keyFilledCounts = @{}
     foreach ($k in $dataFieldKeys.Keys) { $keyFilledCounts[$k] = 0 }
 
@@ -40,6 +61,7 @@ function Get-ITGFieldPopulated {
         return $none
     }
 
+    # 3) Single pass over assets
     foreach ($asset in $FlexAssets) {
         $traits = $asset.Attributes.traits
         foreach ($k in $dataFieldKeys.Keys) {
@@ -52,12 +74,11 @@ function Get-ITGFieldPopulated {
         }
     }
 
+    # 4) Build boolean map
     $fullyPopulated = @{}
     foreach ($k in $dataFieldKeys.Keys) {
         $fullyPopulated[$k] = ($keyFilledCounts[$k] -eq $totalAssets)
     }
-    write-host "$($($fullyPopulated | ConvertTo-Json -depth 66).ToString())"
-    read-host
 
     return $fullyPopulated
 }

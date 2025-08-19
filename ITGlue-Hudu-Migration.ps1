@@ -1227,9 +1227,6 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\AssetLayouts.json")) 
             $UnmatchedLayout.HuduObject = $MatchedNewLayout
             $UnmatchedLayout.HuduID = $NewLayout.asset_layout.id
             $UnmatchedLayout.Imported = "Created-By-Script"
-
-
-
         }
 
 
@@ -1246,12 +1243,17 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\AssetLayouts.json")) 
             Write-Host "Fetching Flexible Assets from IT Glue (This may take a while)"
             $FlexAssetsSelect = { (Get-ITGlueFlexibleAssets -page_size 1000 -page_number $i -filter_flexible_asset_type_id $UpdateLayout.ITGID -include related_items).data }
             $FlexAssets = Import-ITGlueItems -ItemSelect $FlexAssetsSelect
-            $fullyPopulated = Get-FullyPopulatedFieldKeys -FlexLayoutFields $FlexLayoutFields -FlexAssets $FlexAssets
+            $fullyPopulated = Get-ITGFieldPopulated -FlexLayoutFields $FlexLayoutFields -FlexAssets $FlexAssets
+
+            foreach ($obj in @(@{Name="fullyPopulated"; Value = $fullyPopulated})) {
+                $obj.Value | ConvertTo-Json -depth 15 | Out-File $(join-path $settings.MigrationLogs "$($UpdateLayout.Name)-$($obj.Name).json")
+            }
 
             $UpdateLayoutFields = foreach ($ITGField in $FlexLayoutFields) {
                 $ITGFieldRequired = [bool]$ITGField.Attributes.required
                 $requiredForHudu = $ITGFieldRequired -and ($fullyPopulated[$ITGField.Attributes.name] -eq $true)
-
+                if ($true -eq $requiredForHudu) {write-host "$($ITGField.Attributes.name) required Field in Hudu (required in ITGlue and Always Populated)" -ForegroundColor DarkGreen}
+            
                 $LayoutField = @{
                     label        = $ITGField.Attributes.name
                     show_in_list = $ITGField.Attributes."show-in-list"
@@ -1322,8 +1324,6 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\AssetLayouts.json")) 
                                 $LayoutField.add("field_type", "AssetTag")
                                 $LayoutField.add("linkable_id", $MatchedLayoutID)
                             }
-									
-
                         }
                     }
                     "Percent" {
@@ -1369,14 +1369,8 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\AssetLayouts.json")) 
             $UpdateLayout.HuduObject = $UpdatedLayout
             $UpdateLayout.ITGAssets = $FlexAssets
             $UpdateLayout.Matched = $true
-
         }
-
-
-
-
     }
-
 
     $AllFields | ConvertTo-Json -depth 100 | Out-File "$MigrationLogs\AssetLayoutsFields.json"
     $MatchedLayouts | ConvertTo-Json -depth 100 | Out-File "$MigrationLogs\AssetLayouts.json"
