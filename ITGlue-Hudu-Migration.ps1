@@ -111,11 +111,9 @@ Write-Host "It is unofficial and you run it entirely at your own risk" -Foregrou
 Write-Host "You accept full responsibility for any problems caused by running it" -ForegroundColor Red
 Write-Host "######################################################" -ForegroundColor Red
 
+# Prompt for backups, initialize modules, check versions
 $backups=$(if ($true -eq $NonInteractive) {"Y"} else {Read-Host "Y/n"})
-
 $ScriptStartTime = $(Get-Date -Format "o")
-
-#Get the Hudu API Module if not installed
 $CurrentVersion = $CurrentVersion = Set-ExternalModulesInitialized `
                 -RequiredHuduVersion ([version]"2.38.0") `
                 -DisallowedVersions @([version]"2.37.0")
@@ -1380,7 +1378,6 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Assets.json")) {
                                 }
                                 $ReturnData = $LocationsLinked | convertto-json -compress -AsArray | Out-String
                                 $null = $AssetFields.add("$($field.HuduParsedName)", ("$ReturnData"))
-											
                             }
                             "Organizations" { $RelationsToCreate += foreach ($IDMatch in $ITGValues.values) {@{hudu_from_id = $UpdateAsset.HuduID; relation_type = 'Company'; itg_to_id = $IDMatch.id}}; Write-Host "Tags to Companies $($field.FieldName) in $($UpdateAsset.Name) has been recorded later."; $supported = $true }
                             "SslCertificates" { Write-Host "Tags to SSL Certificates are not supported $($field.FieldName) in $($UpdateAsset.Name) will need to be manually migrated, Sorry!"; $supported = $false }
@@ -2411,8 +2408,8 @@ foreach ($layout in Get-HuduAssetLayouts) {write-host "setting $($(Set-HuduAsset
 
 write-host "wrapup... adding missing relations (this can take a long while). Some errors will appear here, they can be safely ignored."
 . .\Get-MissingRelations.ps1
-$ConfigurationRelationsToCreate + $AssetRelationsToCreate | ForEach-Object {try {New-HuduRelation -FromableType  $_.FromableType -FromableID    $_.FromableID -ToableType    $_.ToableType -ToableID      $_.ToableID} catch {Write-Host "Skipped or errored: $_" -ForegroundColor Yellow}}
-
+Unset-Vars -varname $ErroredItemsFolder
+@($AssetRelationsToCreate) + @($ConfigurationRelationsToCreate) | ForEach-Object {try {New-HuduRelation -FromableType  $_.FromableType -FromableID    $_.FromableID -ToableType    $_.ToableType -ToableID      $_.ToableID} catch {Write-Host "Skipped or errored: $_" -ForegroundColor Yellow}}
 write-host "wrapup... adding attachments (this can take a while)"
 . .\Add-HuduAttachmentsViaAPI.ps1
 

@@ -25,7 +25,10 @@ param(
     [ValidateSet("Full", "Lite")]
     [string] $InitType
 )
-
+if ((get-host).version.major -ne 7) {
+    Write-Host "Powershell 7 Required" -foregroundcolor Red
+    exit 1
+}
 ############################### Settings ###############################
 # Define the path to the settings.json file in the user's AppData folder
 

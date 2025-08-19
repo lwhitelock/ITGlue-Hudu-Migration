@@ -172,8 +172,8 @@ else {
 }
 
 ## Starting main script
-Write-Host "Starting script. Press CTRL+C to cancel" -ForegroundColor Yellow
-Pause
+Write-Host "Starting script in 10 seconds. Press CTRL+C to cancel" -ForegroundColor Yellow
+start-sleep 10
 
 Write-host "Loading Asset Log"
 $ITGlueAssets = Get-Content "$MigrationLogs\Assets.json" | ConvertFrom-json
@@ -203,7 +203,10 @@ if ($FoundLocationsToAttach) {Add-HuduAttachment -FoundAssetsToAttach $FoundLoca
 if ($FoundWebsitesToAttach) {Add-HuduAttachment -FoundAssetsToAttach $FoundWebsitesToAttach -UploadType "Website"}
 if ($FoundPasswordsToAttach) {Add-HuduAttachment -FoundAssetsToAttach $FoundPasswordsToAttach -UploadType "AssetPassword"}
 
-if (!($CSVMapping = Get-Content "$MigrationLogs\AttachmentFields-CSVMap.json"|ConvertFrom-Json -Depth 10)) {
+$CSVMapPath = "$MigrationLogs\AttachmentFields-CSVMap.json"
+if (-not (Test-Path $CSVMapPath)) {write-host "no optional CSV map found at $CSVMapPath. Attachments complete!"; exit}
+
+if (!($CSVMapping = Get-Content $CSVMapPath|ConvertFrom-Json -Depth 10)) {
     $CSVMapping = Build-CSVMapping
 }
 
@@ -243,7 +246,6 @@ if ($CSVMapping) {
     }
 }
 Write-Host "All attachments have been processed."
-Pause
     
 
 

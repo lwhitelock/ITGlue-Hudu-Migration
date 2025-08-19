@@ -86,7 +86,6 @@ $TemporaryFolderPath = try {New-Item -Path "$($ENV:APPDATA)\HuduFix" -ItemType D
 # Main script running from here, will validate parameters and process the above functions based on values.
 
 Write-Host 'Running Script'
-pause
 if ($ArticleIdsToProcess) {
 
     # Pulling specific document with base64 images from the database. This can take several minutes.
