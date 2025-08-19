@@ -37,6 +37,8 @@ if($IsWindows){
 } else {
     $settingsTop = Join-Path "$home" ".config"
 }
+if (-not (Get-Command -Name Get-EnsuredPath -ErrorAction SilentlyContinue)) { . $PSScriptRoot\Public\Init-OptionsAndLogs.ps1 }
+$debugfolder = $(Get-EnsuredPath -path $(join-path $(Resolve-Path .).path "debug"))
 
 # Define the path to the settings.json file in the detected platform's folder:
 # Running on Windows will save to the user's AppData
@@ -57,49 +59,8 @@ function ConvertSecureStringToPlainText {
     [System.Runtime.InteropServices.Marshal]::ZeroFreeBSTR($BSTR)
     return $plainText
 }
-function Select-ObjectFromList($objects, $message, $inspectObjects = $false, $allowNull = $false) {
-    $validated = $false
-    while (-not $validated) {
-        if ($allowNull) {
-            Write-Host "0: None/Custom"
-        }
 
-        for ($i = 0; $i -lt $objects.Count; $i++) {
-            $object = $objects[$i]
 
-            $displayLine = if ($inspectObjects) {
-                "$($i+1): $(Write-InspectObject -object $object)"
-            } elseif ($null -ne $object.OptionMessage) {
-                "$($i+1): $($object.OptionMessage)"
-            } elseif ($null -ne $object.name) {
-                "$($i+1): $($object.name)"
-            } else {
-                "$($i+1): $($object)"
-            }
-
-            Write-Host $displayLine -ForegroundColor $(if ($i % 2 -eq 0) { 'Cyan' } else { 'Yellow' })
-        }
-
-        $choice = Read-Host $message
-
-        if (-not ($choice -as [int])) {
-            Write-Host "Invalid input. Please enter a number." -ForegroundColor Red
-            continue
-        }
-
-        $choice = [int]$choice
-
-        if ($choice -eq 0 -and $allowNull) {
-            return $null
-        }
-
-        if ($choice -ge 1 -and $choice -le $objects.Count) {
-            return $objects[$choice - 1]
-        } else {
-            Write-Host "Invalid selection. Please enter a number from the list." -ForegroundColor Red
-        }
-    }
-}
 
 # Prompt the user for various settings and save the responses
 function CollectAndSaveSettings {

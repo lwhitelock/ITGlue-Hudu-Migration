@@ -4,6 +4,10 @@
 # Use this to set the context of the script runs
 $FirstTimeLoad = 1
 
+if ((get-host).version.major -ne 7) {
+    Write-Host "Powershell 7 Required" -foregroundcolor Red
+    exit 1
+}
 ############################### Functions ###############################
 # Import ImageMagick for Invoke-ImageTest Function (Disabled)
  . $PSScriptRoot\Private\Initialize-ImageMagik.ps1
@@ -54,7 +58,12 @@ $FontAwesomeUpgrade = Get-FontAwesomeMap
 # Add String/Filename Normalization Helper, image Normalization helper
 . $PSScriptRoot\Public\Normalize-String.ps1
 . $PSScriptRoot\Public\Normalize-And-ConvertImage.ps1
+# initialization helper and field requirement helper, logging, selection helper
 . $PSScriptRoot\Public\Get-ITGFieldPopulated.ps1
+if (-not (Get-Command -Name Get-EnsuredPath -ErrorAction SilentlyContinue)) { . $PSScriptRoot\Public\Init-OptionsAndLogs.ps1 }
+$ErroredItemsFolder = $(Get-EnsuredPath -path $(join-path $(Resolve-Path .).path "debug"))
+
+
 ############################### End of Functions ###############################
 
 
@@ -107,83 +116,15 @@ $backups=$(if ($true -eq $NonInteractive) {"Y"} else {Read-Host "Y/n"})
 
 $ScriptStartTime = $(Get-Date -Format "o")
 
+#Get the Hudu API Module if not installed
+Set-ExternalModulesInitialized
+# Check if we have a logs folder
+
 if ($backups -ne "Y" -or $backups -ne "y") {
     Write-Host "Please take a backup and run the script again"
     exit 1
 }
 
-if ((get-host).version.major -ne 7) {
-    Write-Host "Powershell 7 Required" -foregroundcolor Red
-    exit 1
-}
-
-
-#Get the Hudu API Module if not installed
-
-$HAPImodulePath = "C:\Users\$env:USERNAME\Documents\GitHub\HuduAPI\HuduAPI\HuduAPI.psm1"
-$use_hudu_fork = $true
-
-if ($true -eq $use_hudu_fork) {
-    if (-not $(Test-Path $HAPImodulePath)) {
-        $dst = Split-Path -Path (Split-Path -Path $HAPImodulePath -Parent) -Parent
-        Write-Host "Using Lastest Master Branch of Hudu Fork for HuduAPI"
-        $zip = "$env:TEMP\huduapi.zip"
-        Invoke-WebRequest -Uri "https://github.com/Hudu-Technologies-Inc/HuduAPI/archive/refs/heads/master.zip" -OutFile $zip
-        Expand-Archive -Path $zip -DestinationPath $env:TEMP -Force 
-        $extracted = Join-Path $env:TEMP "HuduAPI-master" 
-        if (Test-Path $dst) { Remove-Item $dst -Recurse -Force }
-        Move-Item -Path $extracted -Destination $dst 
-        Remove-Item $zip -Force
-    }
-} else {
-    Write-Host "Assuming PSGallery Module if not already locally cloned at $HAPImodulePath"
-}
-
-if (Test-Path $HAPImodulePath) {
-    Import-Module $HAPImodulePath -Force
-    Write-Host "Module imported from $HAPImodulePath"
-} elseif ((Get-Module -ListAvailable -Name HuduAPI).Version -ge [version]'2.4.4') {
-    Import-Module HuduAPI
-    Write-Host "Module 'HuduAPI' imported from global/module path"
-} else {
-    Install-Module HuduAPI -MinimumVersion 2.4.5 -Scope CurrentUser -Force
-    Import-Module HuduAPI
-    Write-Host "Installed and imported HuduAPI from PSGallery"
-}
-
-#Login to Hudu
-New-HuduAPIKey $HuduAPIKey
-New-HuduBaseUrl $HuduBaseDomain
-
-# Check we have the correct version
-$RequiredHuduVersion = "2.37.1"
-$DisallowedVersions = @([version]"2.37.0")
-$HuduAppInfo = Get-HuduAppInfo
-$CurrentVersion = [version]$HuduAppInfo.version
-
-if ($CurrentVersion -lt [version]$RequiredHuduVersion -or $DisallowedVersions -contains $CurrentVersion) {
-    Write-Host "This script requires at least version $RequiredHuduVersion and cannot run with version $CurrentVersion. Please update your version of Hudu."
-    exit 1
-}
-
-try {
-    remove-module ITGlueAPI -ErrorAction SilentlyContinue
-} catch {
-}
-#Grabbing ITGlue Module and installing.
-If (Get-Module -ListAvailable -Name "ITGlueAPIv2") { 
-    Import-module ITGlueAPIv2 
-} Else { 
-    Install-Module ITGlueAPIv2 -Force
-    Import-Module ITGlueAPIv2
-}
-
-
-#Settings IT-Glue logon information
-Add-ITGlueBaseURI -base_uri $ITGAPIEndpoint
-Add-ITGlueAPIKey $ITGKey
-
-# Check if we have a logs folder
 if (Test-Path -Path "$MigrationLogs") {
     if ($ResumePrevious -eq $true) {
         Write-Host "A previous attempt has been found job will be resumed from the last successful section" -ForegroundColor Green
@@ -201,80 +142,9 @@ if (Test-Path -Path "$MigrationLogs") {
 
 
 # Setup some variables
-
 $ManualActions = [System.Collections.ArrayList]@()
 
-
-# add image debug to file
-if (-not $ErroredItemsFolder) {
-    $ErroredItemsFolder = "$PSScriptRoot.\debug"
-}
-if (-not (Test-Path $ErroredItemsFolder)) {
-    Get-ChildItem -Path "$ErroredItemsFolder" -File -Recurse -Force | Remove-Item -Force
-    New-Item -ItemType Directory -Path $ErroredItemsFolder -Force -ErrorAction Stop | Out-Null
-} else {write-host "Errored items path: $ErroredItemsFolder"}
-function Write-ErrorObjectsToFile {
-    param (
-        [Parameter(Mandatory)]
-        [object]$ErrorObject,
-
-        [Parameter()]
-        [string]$Name = "unnamed",
-
-        [Parameter()]
-        [ValidateSet("Black","DarkBlue","DarkGreen","DarkCyan","DarkRed","DarkMagenta","DarkYellow","Gray","DarkGray","Blue","Green","Cyan","Red","Magenta","Yellow","White")]
-        [string]$Color
-    )
-
-    $stringOutput = try {
-        $ErrorObject | Format-List -Force | Out-String
-    } catch {
-        "Failed to stringify object: $_"
-    }
-
-    $propertyDump = try {
-        $props = $ErrorObject | Get-Member -MemberType Properties | Select-Object -ExpandProperty Name
-        $lines = foreach ($p in $props) {
-            try {
-                "$p = $($ErrorObject.$p)"
-            } catch {
-                "$p = <unreadable>"
-            }
-        }
-        $lines -join "`n"
-    } catch {
-        "Failed to enumerate properties: $_"
-    }
-
-    $logContent = @"
-==== OBJECT STRING ====
-$stringOutput
-
-==== PROPERTY DUMP ====
-$propertyDump
-"@
-
-    if ($ErroredItemsFolder -and (Test-Path $ErroredItemsFolder)) {
-        $SafeName = ($Name -replace '[\\/:*?"<>|]', '_') -replace '\s+', ''
-        if ($SafeName.Length -gt 60) {
-            $SafeName = $SafeName.Substring(0, 60)
-        }
-        $filename = "${SafeName}_error_$(Get-Date -Format 'yyyyMMdd_HHmmss').log"
-        $fullPath = Join-Path $ErroredItemsFolder $filename
-        Set-Content -Path $fullPath -Value $logContent -Encoding UTF8
-        if ($Color) {
-            Write-Host "Error written to $fullPath" -ForegroundColor $Color
-        } else {
-            Write-Host "Error written to $fullPath"
-        }
-    }
-
-    if ($Color) {
-        Write-Host "$logContent" -ForegroundColor $Color
-    } else {
-        Write-Host "$logContent"
-    }
-}
+$ErroredItemsFolder = if ($ErroredItemsFolder) {$ErroredItemsFolder} else {(Get-EnsuredPath -path $(join-path $(Resolve-Path .).path "debug"))}
 
 ############################### Companies ###############################
 
