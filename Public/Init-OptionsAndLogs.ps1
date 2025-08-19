@@ -183,11 +183,12 @@ $propertyDump
 function Set-ExternalModulesInitialized {
     param (
             [string]$HAPImodulePath = "C:\Users\$env:USERNAME\Documents\GitHub\HuduAPI\HuduAPI\HuduAPI.psm1",
-            [bool]$use_hudu_fork = $true
+            [bool]$use_hudu_fork = $true,
+            [version]$RequiredHuduVersion = [version]"2.38.0",
+            $DisallowedVersions = @([version]"2.37.0")
         )
 
     if ($true -eq $use_hudu_fork) {
-
         if (-not $(Test-Path $HAPImodulePath)) {
             $dst = Split-Path -Path (Split-Path -Path $HAPImodulePath -Parent) -Parent
             Write-Host "Using Lastest Master Branch of Hudu Fork for HuduAPI"
@@ -220,8 +221,6 @@ function Set-ExternalModulesInitialized {
     New-HuduBaseUrl $HuduBaseDomain
 
     # Check we have the correct version
-    $RequiredHuduVersion = "2.37.1"
-    $DisallowedVersions = @([version]"2.37.0")
     $HuduAppInfo = Get-HuduAppInfo
     $CurrentVersion = [version]$HuduAppInfo.version
 
@@ -246,4 +245,5 @@ function Set-ExternalModulesInitialized {
     #Settings IT-Glue logon information
     Add-ITGlueBaseURI -base_uri $ITGAPIEndpoint
     Add-ITGlueAPIKey $ITGKey
+    return $CurrentVersion
 }
