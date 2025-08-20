@@ -2409,14 +2409,15 @@ Write-TimedMessage -Message "Press any key to start wrap-up tasks or Ctrl+C to e
 write-host "wrapup 1/5... setting asset layouts as active"
 foreach ($layout in Get-HuduAssetLayouts) {write-host "setting $($(Set-HuduAssetLayout -id $layout.id -Active $true).asset_layout.name) as active" }
 
-write-host "wrapup 2/5... adding missing relations (this can take a long while). Some errors will appear here, they can be safely ignored."
+write-host "wrapup 2/5... adding attachments (this can take a while)"
+. .\Add-HuduAttachmentsViaAPI.ps1
+
+write-host "wrapup 3/5... adding missing relations (this can take a long while). Some errors will appear here, they can be safely ignored."
+# set retry to off/false in HuduAPI module, this will save time during adding potentially existent relations.
+$global:SKIP_HAPI_ERROR_RETRY=$true
 . .\Get-MissingRelations.ps1
 
-foreach ($varname in @($ErroredItemsFolder, $HAPI_ERRORS_DIRECTORY)) {Unset-Vars -name $varname}
 @($AssetRelationsToCreate) + @($ConfigurationRelationsToCreate) | ForEach-Object {try {New-HuduRelation -FromableType  $_.FromableType -FromableID    $_.FromableID -ToableType    $_.ToableType -ToableID      $_.ToableID} catch {Write-Host "Skipped or errored: $_" -ForegroundColor Yellow}}
-
-write-host "wrapup 3/5... adding attachments (this can take a while)"
-. .\Add-HuduAttachmentsViaAPI.ps1
 
 write-host "wrapup 4/5... archiving passwords, assets, configurations as they had been in ITGlue (this can take a while)"
 $DocsCsv = import-csv "$ITGLueExportPath\documents.csv"
@@ -2437,6 +2438,7 @@ foreach ($obj in @(
     @{Name = "docs";            Archived = $dtaresults})) {
     $obj.Archived | ConvertTo-Json -depth 75 | Out-File $(join-path $settings.MigrationLogs "archived-$($obj.Name).json")
 }
+$global:SKIP_HAPI_ERROR_RETRY=$false
 
 Start-Process ManualActions.html
 
