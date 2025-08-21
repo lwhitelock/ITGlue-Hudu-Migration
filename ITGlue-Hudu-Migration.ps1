@@ -1731,6 +1731,7 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Articles.json")) {
                                     ITG_URL       = "$ITGURL/$($Article.ITGLocator)"
                             }
                             $null = $ManualActions.add($ManualLog)
+                            continue
                     }
                     # Test the path to ensure that a file extension exists, if no file extension we get problems later on. We rename it if there's no ext.
                     if ($imagePath -and (Test-Path $imagePath -ErrorAction SilentlyContinue)) {
@@ -1817,29 +1818,6 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Articles.json")) {
                                 $null = $ManualActions.add($ManualLog)
 
                             }
-                        } else {
-                    # image not present
-                            Write-Warning "Image $tnImgUrl file is missing"
-                            $ManualLog = [PSCustomObject]@{
-                                Document_Name = $Article.Name
-                                Asset_Type    = "Article"
-                                Company_Name  = $Article.Company.CompanyName
-                                Field_Name = 'N/A'
-                                HuduID        = $Article.HuduID
-                                Notes       = 'Image File Missing'
-                                Action         = "$tnImgUrl is not present in export,validate the image exists in ITGlue and manually replace in Hudu"   
-                                Data = "$InFile"
-                                Hudu_URL = $Article.HuduObject.url
-                                ITG_URL = "$ITGURL/$($Article.ITGLocator)"
-                            }
-                            Write-ErrorObjectsToFile -ErrorObject @{
-                                LogEntry=$ManualLog
-                                ImageLink=$ImgLink
-                                ImageInfo=$imageInfo
-                                Article=$Article
-                                Problem="image not found at '$(Resolve-Path $imagePath)'"
-                            } -name "image-missing-$($imageInfo.basename)"
-                            $null = $ManualActions.add($ManualLog)
                         }
                     }
                 }
