@@ -20,14 +20,15 @@
 # Add/enhance the migration areas to use the new API features of Hudu
 
 
-
-
 param(
     [Parameter(Mandatory=$true)]
     [ValidateSet("Full", "Lite")]
     [string] $InitType
 )
-
+if ((get-host).version.major -ne 7) {
+    Write-Host "Powershell 7 Required" -foregroundcolor Red
+    exit 1
+}
 ############################### Settings ###############################
 # Define the path to the settings.json file in the user's AppData folder
 
@@ -37,6 +38,8 @@ if($IsWindows){
 } else {
     $settingsTop = Join-Path "$home" ".config"
 }
+if (-not (Get-Command -Name Get-EnsuredPath -ErrorAction SilentlyContinue)) { . $PSScriptRoot\Public\Init-OptionsAndLogs.ps1 }
+$debugfolder = $(Get-EnsuredPath -path $(join-path $(Resolve-Path .).path "debug"))
 
 # Define the path to the settings.json file in the detected platform's folder:
 # Running on Windows will save to the user's AppData
@@ -57,36 +60,8 @@ function ConvertSecureStringToPlainText {
     [System.Runtime.InteropServices.Marshal]::ZeroFreeBSTR($BSTR)
     return $plainText
 }
-function Select-ObjectFromList($objects,$message,$allowNull = $false) {
-    $validated=$false
-    while ($validated -eq $false){
 
-        for ($i = 0; $i -lt $objects.Count; $i++) {
-            $object = $objects[$i]
-            if ($null -ne $object.name) {
-                Write-Host "$($i+1): $($object.name)"
-            } elseif ($null -ne $object.attributes.name) {
-                Write-Host "$($i+1): $($object.attributes.name)"
-            } else {
-                Write-Host "$($i+1): $($object)"
-            }
-        }
-        if ($allowNull -eq $true) {
-            Write-Host "0: None/Custom"
-        }        
-        Write-Host $message
-        $choice = Read-Host
-        if ($null -eq $choice -or $choice -lt 0 -or $choice -gt $objects.Count +1) {
-            Write-Host -message "Invalid selection. Please enter a number from above"
-        }
-        if ($choice -eq 0 -and $true -eq $allowNull) {
-            return $null
-        }
-        if ($null -ne $objects[$choice - 1]){
-            return $objects[$choice - 1]
-        }
-    }
-}
+
 
 # Prompt the user for various settings and save the responses
 function CollectAndSaveSettings {

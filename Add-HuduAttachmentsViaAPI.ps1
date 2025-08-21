@@ -1,52 +1,6 @@
 # Check if this is a direct run, and load the logs if so the first time.
-
-function Write-ErrorObjectsToFile {
-    param (
-        [Parameter(Mandatory)]
-        [object]$ErrorObject,
-
-        [Parameter()]
-        [string]$Name = "Unnamed-Image"
-    )
-
-    $stringOutput = try {
-        $ErrorObject | Format-List -Force | Out-String
-    } catch {
-        "Failed to stringify object: $_"
-    }
-
-    $propertyDump = try {
-        $props = $ErrorObject | Get-Member -MemberType Properties | Select-Object -ExpandProperty Name
-        $lines = foreach ($p in $props) {
-            try {
-                "$p = $($ErrorObject.$p)"
-            } catch {
-                "$p = <unreadable>"
-            }
-        }
-        $lines -join "`n"
-    } catch {
-        "Failed to enumerate properties: $_"
-    }
-
-    $logContent = @"
-==== OBJECT STRING ====
-$stringOutput
-
-==== PROPERTY DUMP ====
-$propertyDump
-"@
-
-    if ($global:ITG_ERRORS_DIRECTORY -and (Test-Path $global:ITG_ERRORS_DIRECTORY)) {
-        $filename = "$($Name -replace '\s+', '')_error_$(Get-Date -Format 'yyyyMMdd_HHmmss').log"
-        $fullPath = Join-Path $global:ITG_ERRORS_DIRECTORY $filename
-        Set-Content -Path $fullPath -Value $logContent -Encoding UTF8
-        Write-Host "Error written to $fullPath" -ForegroundColor Yellow
-    }
-
-    Write-Host "$logContent" -ForegroundColor Yellow
-}
-
+if (-not (Get-Command -Name Get-EnsuredPath -ErrorAction SilentlyContinue)) { . $PSScriptRoot\Public\Init-OptionsAndLogs.ps1 }
+$ErroredItemsFolder = $(Get-EnsuredPath -path $(join-path $(Resolve-Path .).path "debug"))
 
 if (-not ($FirstTimeLoad -eq 1)) {
     # General Settings Load
@@ -218,8 +172,8 @@ else {
 }
 
 ## Starting main script
-Write-Host "Starting script. Press CTRL+C to cancel" -ForegroundColor Yellow
-Pause
+Write-Host "Starting script in 10 seconds. Press CTRL+C to cancel" -ForegroundColor Yellow
+start-sleep 10
 
 Write-host "Loading Asset Log"
 $ITGlueAssets = Get-Content "$MigrationLogs\Assets.json" | ConvertFrom-json
@@ -249,7 +203,10 @@ if ($FoundLocationsToAttach) {Add-HuduAttachment -FoundAssetsToAttach $FoundLoca
 if ($FoundWebsitesToAttach) {Add-HuduAttachment -FoundAssetsToAttach $FoundWebsitesToAttach -UploadType "Website"}
 if ($FoundPasswordsToAttach) {Add-HuduAttachment -FoundAssetsToAttach $FoundPasswordsToAttach -UploadType "AssetPassword"}
 
-if (!($CSVMapping = Get-Content "$MigrationLogs\AttachmentFields-CSVMap.json"|ConvertFrom-Json -Depth 10)) {
+$CSVMapPath = "$MigrationLogs\AttachmentFields-CSVMap.json"
+if (-not (Test-Path $CSVMapPath)) {write-host "no optional CSV map found at $CSVMapPath. Attachments complete!"; exit}
+
+if (!($CSVMapping = Get-Content $CSVMapPath|ConvertFrom-Json -Depth 10)) {
     $CSVMapping = Build-CSVMapping
 }
 
@@ -289,7 +246,6 @@ if ($CSVMapping) {
     }
 }
 Write-Host "All attachments have been processed."
-Pause
     
 
 
