@@ -2413,42 +2413,14 @@ $ManualActionsReport = foreach ($item in $UniqueItems) {
 
 }
 
-$FinalHtml = "$Head $MigrationReport $ManualActionsReport $footer"
-$FinalHtml | Out-File ManualActions.html
-
-
-
-############################### End ###############################
-
-
-Write-Host "#######################################################" -ForegroundColor Green
-Write-Host "#                                                     #" -ForegroundColor Green
-Write-Host "#        IT Glue to Hudu Migration Complete           #" -ForegroundColor Green
-Write-Host "#                                                     #" -ForegroundColor Green
-Write-Host "#######################################################" -ForegroundColor Green
-Write-Host "Started At: $ScriptStartTime"
-Write-Host "Completed At: $(Get-Date -Format "o")"
-Write-Host "$(($MatchedCompanies | Measure-Object).count) : Companies Migrated" -ForegroundColor Green
-Write-Host "$(($MatchedLocations | Measure-Object).count) : Locations Migrated" -ForegroundColor Green
-Write-Host "$(($MatchedWebsites | Measure-Object).count) : Websites Migrated" -ForegroundColor Green
-Write-Host "$(($MatchedConfigurations | Measure-Object).count) : Configurations Migrated" -ForegroundColor Green
-Write-Host "$(($MatchedContacts | Measure-Object).count) : Contacts Migrated" -ForegroundColor Green
-Write-Host "$(($MatchedLayouts | Measure-Object).count) : Layouts Migrated" -ForegroundColor Green
-Write-Host "$(($MatchedAssets | Measure-Object).count) : Assets Migrated" -ForegroundColor Green
-Write-Host "$(($MatchedArticles | Measure-Object).count) : Articles Migrated" -ForegroundColor Green
-Write-Host "$(($MatchedPasswords | Measure-Object).count) : Passwords Migrated" -ForegroundColor Green
-Write-Host "#######################################################" -ForegroundColor Green
-Write-Host "Manual Actions report can be found in ManualActions.html in the folder the script was run from"
-Write-Host "Logs of what was migrated can be found in the MigrationLogs folder"
-Write-TimedMessage -Message "Press any key to start wrap-up tasks or Ctrl+C to end" -Timeout 120  -DefaultResponse "continue, view generative Manual Actions webpage, please."
-
+############################### Wrap-Up ###############################
 write-host "wrapup 1/5... setting asset layouts as active"
 foreach ($layout in Get-HuduAssetLayouts) {write-host "setting $($(Set-HuduAssetLayout -id $layout.id -Active $true).asset_layout.name) as active" }
 
 write-host "wrapup 2/5... adding attachments (this can take a while)"
 . .\Add-HuduAttachmentsViaAPI.ps1
 
-write-host "wrapup 3/5... adding missing relations (this can take a long while). Some errors will appear here, they can be safely ignored."
+write-host "wrapup 3/5... adding missing relations (this can take a long while). Some errors may appear but can be safely ignored."
 # set retry to off/false in HuduAPI module, this will save time during adding potentially existent relations.
 $global:SKIP_HAPI_ERROR_RETRY=$true
 . .\Get-MissingRelations.ps1
@@ -2476,6 +2448,30 @@ foreach ($obj in @(
 }
 $global:SKIP_HAPI_ERROR_RETRY=$false
 
+############################### End ###############################
+
+$FinalHtml = "$Head $MigrationReport $ManualActionsReport $footer"
+$FinalHtml | Out-File ManualActions.html
+
+Write-Host "#######################################################" -ForegroundColor Green
+Write-Host "#                                                     #" -ForegroundColor Green
+Write-Host "#        IT Glue to Hudu Migration Complete           #" -ForegroundColor Green
+Write-Host "#                                                     #" -ForegroundColor Green
+Write-Host "#######################################################" -ForegroundColor Green
+Write-Host "Started At: $ScriptStartTime"
+Write-Host "Completed At: $(Get-Date -Format "o")"
+Write-Host "$(($MatchedCompanies | Measure-Object).count) : Companies Migrated" -ForegroundColor Green
+Write-Host "$(($MatchedLocations | Measure-Object).count) : Locations Migrated" -ForegroundColor Green
+Write-Host "$(($MatchedWebsites | Measure-Object).count) : Websites Migrated" -ForegroundColor Green
+Write-Host "$(($MatchedConfigurations | Measure-Object).count) : Configurations Migrated" -ForegroundColor Green
+Write-Host "$(($MatchedContacts | Measure-Object).count) : Contacts Migrated" -ForegroundColor Green
+Write-Host "$(($MatchedLayouts | Measure-Object).count) : Layouts Migrated" -ForegroundColor Green
+Write-Host "$(($MatchedAssets | Measure-Object).count) : Assets Migrated" -ForegroundColor Green
+Write-Host "$(($MatchedArticles | Measure-Object).count) : Articles Migrated" -ForegroundColor Green
+Write-Host "$(($MatchedPasswords | Measure-Object).count) : Passwords Migrated" -ForegroundColor Green
+Write-Host "#######################################################" -ForegroundColor Green
+Write-Host "Manual Actions report can be found in ManualActions.html in the folder the script was run from"
+Write-Host "Logs of what was migrated can be found in the MigrationLogs folder"
+
+Write-TimedMessage -Message "Press any key to view manual actions" -Timeout 120  -DefaultResponse "continue, view generative Manual Actions webpage, please."
 Start-Process ManualActions.html
-
-
