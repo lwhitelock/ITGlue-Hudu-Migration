@@ -1,51 +1,167 @@
-**Please Read this entire document before you begin**
+> [!CAUTION]
+> **Please Read this entire document before you begin**
 
 # Getting Started
 You'll want to make sure your Hudu instance is prepared for migration and that your machine designated to run this script is also properly prepared.
 
-## Prerequisites-  ***Hudu Instance***
+> [!NOTE]
+> This is the Hudu Technologies Fork of an amazing open-source project.
+>
+>The original project was started by Luke Whitelock and often being maintained by Mendy Green and community contributors. This fork is tested for and intended to be used with the very newest Hudu versions. It includes some features that may not (yet) be present in the main repo, [here](https://github.com/lwhitelock/ITGlue-Hudu-Migration). It also includes a more rigid minimum Hudu version requirement.
+>
+>At present, this fork works very well with 2.38.0 and is also being tested against some beta builds.
 
-### 1. Make sure you are on a known-compatible Hudu version--
+> [!CAUTION]
+> Depending on the size of your ITGlue instance, the migration script can take several hours to run. As such, it's highly recommended to run the migration script on a Windows Server or a machine that has ***Windows Update and Sleep disabled***
 
-At this point in time **(Jun 27, 2025)**, the ideal version to be on when using this fork is at least `2.37.1` image. `2.38.0` is being tested at this very moment and likely works just fine as well.
+> [!IMPORTANT]
+> You must be on the ITGlue **Enterprise Plan** (or a legacy plan with API Access) to be able to run the script.
 
-### 2. It's best to set ratelimit to be high. to do so, you can add this yo your .env file and perform a docker compose down/up
+## What the script can migrate currently:
+- Companies
+- Contacts
+- Locations
+- Configurations
+- Domains
+- Flexible Asset Layouts
+- Flexible Assets
+- Documents with folder structure
+- Passwords
+- Document Links
+
+## What the script cannot migrate:
+- Checklists - This is a limitation in the ITGlue API and export lacking functionality for checklists, so there currently is not a workaround.
+- SSL Certificates
+- Permissions (Folders, Companies, Passwords, KBs, etc.)
+
+
+## What you'll need
+- An ITGlue API Key with password access (API access is generally limited to the Enterprise plan)
+- Your IT Glue API URL
+- A full export of your IT Glue tenant
+- A Hudu instance (either self-hosted or cloud hosted)
+- A Hudu API Key
+- Your Hudu Domain
+
+
+# Prerequisites -  ***Hudu Instance***
+
+It's recommended to have a fresh Hudu install with no integrations setup. You'll want to sync things like companies and contacts from your PSA and configurations from your RMM **after** the migration is completed. Don’t setup any custom Asset Layouts and let the migration create the initial assets.
+
+**1. Make sure you are on a known-compatible Hudu version--**
+
+At this point in time **(August 27, 2025)**, the ideal version to be on when using this fork is at least `2.37.1` image. Up to `2.38.0` has been tested to be stable thus far.
+
+**2 (optional).** If you're self hosted, It's best to set ratelimit to be high. To do so, you can add this to your .env file and perform a docker compose down/up. If you're Cloud/Hudu hosted, the script will automatically wait if it hits the rate limit and will continue automatically.
 
 ***~$*** ```echo "RATE_LIMIT_REQUESTS=9999999" >> ~/hudu2/.env```
 
-### 3. Make sure you are on a newly-reset instance --
+**3 (optional).** If you're just starting out of Hudu and don't have any important data in Hudu, it's best to start with a fresh instance.
 
-To reset:
+  **Self-hosted reset:**
 
 ***~$*** ```cd ~/hudu2/ && docker compose down --volumes && docker compose up -d```
 
-## Prerequisites- ***Migration Setup***
+  **Cloud-hosted reset:** 
+Contact Hudu support [support@hudu.com](support@hudu.com) and we can reset your instance for you. 
 
-### 1. Ensure will need to be on powershell 7+, best ran from Windows Machine
+***Resetting your instance is completely optional and not necessary to complete the migration***
+
+# Prerequisites - ***ITGlue Instance***
+
+It's highly encouraged to perform a clean up of you IT Glue environment. Such as removing any duplicate records and deleting any old data you don’t want to migrate.
+
+Check that your Flexible Layouts don’t have any fields named the same thing on the same layout. For example, if you have two fields called Pre-Shared Key on the "Wireless" asset (One for primary one for guest), rename one of them to prevent script errors. 
+
+The ITGlue API doesn't support the use of commas "(,)". To prevent issues, rename any organizations with commas.
+
+ITGlue allows for more than one client to exist with the same Name but Hudu does not. This will cause issues during the migration as the first client will succeed and subsequent clients with the same name will fail with "Name Already Taken" error from Hudu's API. Make sure any client is at least named with a unique name so that the migration can complete successfully.
+
+Blank passwords in ITGlue will cause issues on import and cause the entire password to fail. 
+
+Make sure the API Key you're using has password access, and that all passwords have values if they're important.
+
+
+## Data Export
+
+1. **Initiate ITGlue Export.** You will need to log into ITGlue and perform a full export of your instance. To do so, you'll need to log in as a Super Admin and go to Admin>Export. You can choose to run an export with or without activity logs (activity logs are not needed for the migration and having them selected can make the export take longer). ITGlue will email you when the export is completed (normally takes ~30 minutes). 
+<img width="750"  alt="IT_Glue_Migration_Guide" src="https://github.com/user-attachments/assets/e5b2c49d-6ae5-4960-844e-5f28390de665" />
+
+2. **Download ITGlue Export.** Once the export is complete, navigate back to Admin>Export in ITGlue, download the .zip file, and save it to a safe and secure place (we generally recommend somewhere easy like C:\temp\export). ***Don't unzip the files yet***
+
+3. **Unzipping the files.** Once your data is saved to a good place, it's time to extract the files. It's highly recommended to use a ZIP tool such as 7-zip as the ITGlue export can sometimes name files in a way that Windows Explorer does not natively handle and can cause file names to have strange characters (thus causing some KB articles to not migrate over correctly).
+
+## API Keys
+
+### ITGlue API Key
+
+1. Log into ITGlue as a Super Admin, navigate to the Admin center, and click the "API keys" tab at the top.
+2. You want to create a new key (+) and be sure to check off "Password Access"
+3. Store the API key in a safe place as ITGlue will only show you the key once. 
+
+<img width="750" alt="IT_Glue_Migration_Guide" src="https://github.com/user-attachments/assets/f1f4868a-760f-46e2-ac94-cabf08146991" />
+
+### Hudu API Key
+
+1. Log into your Hudu tenant as a Super Admin
+2. Go to Admin>API Keys
+3. Click "+ New API Key"
+4. Check off "Full access" and "View Passwords"
+5. Click create
+6. Store the API key in a safe place as Hudu will only show you the key once.
+
+<img width="750" alt="IT_Glue_Migration_Guide" src="https://github.com/user-attachments/assets/bf81c7fc-0d0b-4555-b698-1e25fd7da7d3" />
+
+## Prerequisites - ***Migration Script Setup***
+
+1. **Ensure the machine you're running the migration from has PowerShell 7+**
 You can [download newest powershell release here](https://github.com/powershell/powershell/releases)
 
-### 2. Until ratelimiting fix is published for Hudu API module in PSgallery, it's reccomended to use our fork for this-- `https://github.com/Hudu-Technologies-Inc/HuduAPI` to this directory: `c:\users\$env:USERNAME\Documents\GitHub\HuduAPI`
-***See examples, below***
+>[!IMPORTANT]
+>*Currently, the script has only been tested on x86_64 Windows systems. Although Windows ARM, macOS, and Linux have PowerShell available to them, the script has not been tested on those Operating Systems and is not recommended as the script has a lot of dependencies*
 
-Option 1: Clone with Git to ***expected path***
+2. **HuduAPI PowerShell Module** Until ratelimiting fix is published for Hudu API module in the PSgallery, it's reccomended to manually use our fork for this-- `https://github.com/Hudu-Technologies-Inc/HuduAPI` to this directory: `c:\users\$env:USERNAME\Documents\GitHub\HuduAPI` ***See examples, below***
 
-***pwsh*** ```git clone https://github.com/Hudu-Technologies-Inc/HuduAPI "C:\Users\$env:USERNAME\Documents\GitHub\HuduAPI"```
+Option 1: Clone with Git to `c:\users\$env:USERNAME\Documents\GitHub\HuduAPI`
 
-Option 2: Download & Extract to ***expected path***
+ ```pwsh git clone https://github.com/Hudu-Technologies-Inc/HuduAPI "C:\Users\$env:USERNAME\Documents\GitHub\HuduAPI"```
 
-***pwsh*** ```
-$dst = "$HOME\Documents\GitHub\HuduAPI"
-$zip = "$env:TEMP\huduapi.zip"
-Invoke-WebRequest -Uri "https://github.com/Hudu-Technologies-Inc/HuduAPI/archive/refs/heads/master.zip" -OutFile $zip
-Expand-Archive -Path $zip -DestinationPath $env:TEMP -Force
-$extracted = Join-Path $env:TEMP "HuduAPI-master"
-if (Test-Path $dst) { Remove-Item $dst -Recurse -Force }
-Move-Item -Path $extracted -Destination $dst
-Remove-Item $zip -Force```
+Option 2: Download & Extract to `c:\users\$env:USERNAME\Documents\GitHub\HuduAPI`
 
-### 3. Invocation-
+ ```
+  pwsh 
+  $dst = "$HOME\Documents\GitHub\HuduAPI"
+  $zip = "$env:TEMP\huduapi.zip"
+  Invoke-WebRequest -Uri "https://github.com/Hudu-Technologies-Inc/HuduAPI/archive/refs/heads/master.zip" -OutFile $zip
+  Expand-Archive -Path $zip -DestinationPath $env:TEMP -Force
+  $extracted = Join-Path $env:TEMP "HuduAPI-master"
+  if (Test-Path $dst) { Remove-Item $dst -Recurse -Force }
+  Move-Item -Path $extracted -Destination $dst
+  Remove-Item $zip -Force
+  ```
 
-you can run via dot-sourcing a copy of environ.example that has been filled out or via dot-sourcing the main script. Here are some handy snippets that will already run if dot-sourcing from environ file, but you will want to run manually otherwise.
+# 3. Running the script
+
+> [!IMPORTANT]
+> Some important things to note about the migration:
+> - The script will, for the most part, mirror Flexible Assets in ITGlue. The script ***will not merge asset layouts from ITGlue into ones in Hudu***. Because of this, the script prompts you to create a prefix for asset layouts coming from ITGlue. It's highly recommended to set up a prefix in the script (such as ITG-) as if there is an existing asset layout in Hudu, it will cause a collision and those asset layouts will be skipped.
+> - The script will prompt you on what data types you would like to move (you don't have to migrate everything if you don't want to)
+> - The script will prompt you to run the script unattended--it can take several hours for the script to run start-to-finish, so unattended mode allows you to set it to run autonomously. If you choose not to run unattended, it _does not_ time out, so you can "continue" the script at any time
+
+Settings will get saved by default to %APPDATA%\HuduMigration. Settings that will be saved include API Keys, URLs, Prefixes, and so on. You can modify the settings.json file directly as long as you use expected values.
+
+
+1. Download/Clone the _entire_ repo into a folder on your computer.
+2. Use Dot Sourcing to run the main file ". .\ITGlue-Hudu-Migration.ps1" from the path of where you extracted the ZIP file of the repo.
+3. You'll be prompted for the initial setup and it will save the settings to a file.
+4. You can also resume a session and import the saved settings if you need to.
+
+Using Dot Sourcing to load the script will save your answers into variables and so interrupting and resuming the migration but keeping the PowerShell session active will allow you to bypass most of the initial questions. With Dot Sourcing you'll also get access to the variables at the end of the script run to examine the data or modify the parameters of the run. For example change the "$resumeQuestion" from "yes" to "no" or vice versa to resume an import or start over from scratch.
+
+
+It's best to run the script via dot-sourcing a copy of **environ.example** that has been filled out or via dot-sourcing the main script. It's best to store the script somewhere easy to run such as C:\temp
+
+For exmaple, the following snippets will automatically run if dot-sourcing from environ file, otherwise, you'll have to manually run them at the end:
 
 ***main invocation***
 
@@ -70,6 +186,9 @@ you can run via dot-sourcing a copy of environ.example that has been filled out 
 $ConfigurationRelationsToCreate + $AssetRelationsToCreate | ForEach-Object {try {New-HuduRelation -FromableType  $_.FromableType -FromableID    $_.FromableID -ToableType    $_.ToableType -ToableID      $_.ToableID} catch {Write-Host "Skipped or errored: $_" -ForegroundColor Yellow}}
 ```
 
+If you used dot-sourcing to invoke the main script, "Set layouts as active," "Populate Missing Relations" (Get-MissingRelations.ps1), "Add Attachments" (Add-HuduAttachmentsViaAPI.ps1), and "Add missing Relations" should have automatically run. 
+
+
 
 # Please Read!
 We use the Magick.NET libraries that you can find here https://github.com/dlemstra/Magick.NET/ for image type validation and metadata building.
@@ -80,11 +199,7 @@ These are used only when the image extension was not properly retained in the ex
 
 **The original blog post may still be relevant in some cases but is mostly outdated.** See [this link instead](https://mspbook.mspgeek.org/books/hudu-scripts-in-progress/page/itglue-to-hudu-migration) or [this other link here](https://demort.hosteddocs.io/shared_article/7BKhGktLGN1FEDSVEkh1bLpF)
 
-## Note- This is the Hudu Technologies Fork of an amazing open-source project
 
-The original project was started by Luke Whitelock and often being maintained by Mendy Green and community contributors. This fork is tested for and intended to be used with the very newest Hudu versions. It includes some features that may not (yet) be present in the main repo, [here](https://github.com/lwhitelock/ITGlue-Hudu-Migration). It also includes a more rigid minimum Hudu version requirement.
-
-At present, this fork works very well with 2.37.1 and is also being tested against some beta builds. 
 
 # Known Issues
  - Password Relations to Articles and SSL Certificates are not currently included
