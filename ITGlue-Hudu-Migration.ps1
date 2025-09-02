@@ -182,7 +182,7 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Companies.json")) {
     $uniqueOrgTypes = $($ITGCompanies.attributes.'organization-type-name' | Select-Object -unique)
     if ($true -eq $ScopeOrgTypes){
         $MergedCompanyTypes.Types+=$(select-objectfromlist -objects $uniqueOrgTypes -message "Select a type to include in type-scoping (from ITGlue). These company types will be attributed to $($MergedCompanyTypes.TargetCompany.name). if you are done with your selection, enter 0 to finish.")
-        $MergedCompanyTypes.TargetCompany = $(select-objectfromlist -objects $HuduCompanies -message "To which company will youu be scoping $($MergedCompanyTypes.types) to?")
+        $MergedCompanyTypes.TargetCompany = $(Get-HuduCompanies -id $(read-host "To which company will you be scoping $($MergedCompanyTypes.types) to? [enter company id]"))
         Write-Host "$($($MergedCompanyTypes.Types | ForEach-Object { $_ }) -join ', ') org types in ITGlue will be attributed to $($MergedCompanyTypes.TargetCompany.name) in Hudu."
         if ($null -ne $MergedCompanyTypes.TargetCompany){
             foreach ($kind in $uniqueOrgTypes){
