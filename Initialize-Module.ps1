@@ -328,11 +328,23 @@ if ($InitType -eq 'Full') {
     $HuduPrimaryLocationNames = @("Primary Address")
 
     ############################### Domain / Website Settings ###############################
+    while ($ImportChecklists -notin (1,2)) {$ImportChecklists = Read-Host "Domains require ITglue Web Access (can login via webpage).`n 1) Import Checklists`n 2) Skip Checklists`n(1/2)"}
+    switch ($ImportChecklists) {
+        "1" {$ImportChecklists = $true}
+        "2" {$ImportChecklists = $false}
+    }
+
     while ($ImportDomains -notin (1,2)) {$ImportDomains = Read-Host "Domains are used for Website, DNS and SSL Monitoring.`n 1) Import Domains`n 2) Skip Domains`n(1/2)"}
     switch ($ImportDomains) {
         "1" {$ImportDomains = $true}
         "2" {$ImportDomains = $false}
     }
+
+    while ($ScopeOrgTypes -notin (1,2)) {$ScopeOrgTypes = Read-Host "Would you like to scope certain organization types to a given existing hudu company?.`n 1) Scope ITGlue Org Type to a Company in Hudu`n 2) Operate as normal`n(1/2)"}
+    switch ($ScopeOrgTypes) {
+        "1" {$ScopeOrgTypes = $true}
+        "2" {$ScopeOrgTypes = $false}
+    }    
 
     # Choose if you would like to enable monitoring for the imported websites.
     while ($DisableWebsiteMonitoring -notin (1,2)) {$DisableWebsiteMonitoring = Read-Host "1) Leave Website Monitoring enabled `n2) Disable Website Monitoring`n(1/2)"}

@@ -50,6 +50,8 @@ $ImportArticles             = 1
 $ImportPasswords            = 1
 $NonInteractive             = 2
 $ScopedMigration            = 1
+$ScopeOrgTypes              = 1
+
 
 # prescoped-
 # $ScopedMigration            = 2

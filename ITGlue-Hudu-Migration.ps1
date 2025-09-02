@@ -149,14 +149,11 @@ $ErroredItemsFolder = if ($ErroredItemsFolder) {$ErroredItemsFolder} else {(Get-
 
 #Grab existing companies in Hudu
 $HuduCompanies = Get-HuduCompanies
-$MergedCompanyTypes = @{
-    Types        = @("vendor")
-    TargetCompanyID = 6
-    TargetCompany = $null
-    SourceCompanyIDs = @()
-}
-$MergedCompanyTypes.TargetCompany = Get-HuduCompanies -id $MergedCompanyTypes.TargetCompanyID
 
+$MergedCompanyTypes = @{
+    Types        = @()
+    TargetCompany = $null
+}
 
 #Check for Company Resume
 if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Companies.json")) {
@@ -169,9 +166,6 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Companies.json")) {
     $CompanySelect = { (Get-ITGlueOrganizations -page_size 1000 -page_number $i).data }
     $ITGCompanies = Import-ITGlueItems -ItemSelect $CompanySelect
     $ITGCompaniesFromCSV = Import-CSV (Join-Path -Path $ITGlueExportPath -ChildPath "organizations.csv")
-
-
-
     Write-Host "$($ITGCompanies.count) ITG Glue Companies Found" 
 
     if ($ScopedMigration) {
@@ -185,6 +179,21 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Companies.json")) {
         $ScopedCompanyIds = $ITGCompanies.id
         Write-Host "Companies scoped... $OriginalCompanyCount => $($Itgcompanies.count)"
     }
+    $uniqueOrgTypes = $($ITGCompanies.attributes.'organization-type-name' | Select-Object -unique)
+    if ($true -eq $ScopeOrgTypes){
+        $MergedCompanyTypes.Types+=@($(select-objectfromlist -objects $uniqueOrgTypes -message "Select a type to include in type-scoping (from ITGlue). These company types will be attributed to $($MergedCompanyTypes.TargetCompany.name). if you are done with your selection, enter 0 to finish."))
+        $MergedCompanyTypes.TargetCompany = $(select-objectfromlist -objects $HuduCompanies -message "To which company will youu be scoping $($MergedCompanyTypes.types) to?")
+        Write-Host "$($($MergedCompanyTypes.Types | ForEach-Object { $_ }) -join ', ') org types in ITGlue will be attributed to $($MergedCompanyTypes.TargetCompany.name) in Hudu."
+        if ($null -ne $MergedCompanyTypes.TargetCompany){
+            foreach ($kind in $uniqueOrgTypes){
+                if ($MergedCompanyTypes.Types -contains $kind){
+                    Write-Host "$($($ITGCompanies | where-object {"$($_.attributes.'organization-type-name')".ToLower() -eq $kind}).count) of $kind will be migrated to $($MergedCompanyTypes.TargetCompany.name)" -ForegroundColor Yellow 
+                } else {
+                    Write-Host "$($($ITGCompanies | where-object {"$($_.attributes.'organization-type-name')".ToLower() -eq $kind}).count) of $kind will be migrated in the typical fashion" -ForegroundColor Green
+                }
+            }
+    }}
+
     $ITGCompaniesHashTable = @{}
 
 
@@ -1631,10 +1640,6 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\ArticleBase.json")) {
             if (($company | Measure-Object).count -eq 1) {
 
                 $art_folder_id = $null
-
-                if ($company)
-
-
                 if ($company.InternalCompany -eq $false) {
                     if (($folders | Measure-Object).count -gt 2) {
                         # Make / Check Folders
