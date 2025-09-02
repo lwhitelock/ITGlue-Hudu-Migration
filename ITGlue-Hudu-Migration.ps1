@@ -245,6 +245,16 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Companies.json")) {
     Write-Host "Unmatched Companies"
     $MatchedCompanies | Sort-Object CompanyName | Where-Object { $_.Matched -eq $false } | Select-Object CompanyName | Format-Table
 
+    $MergedCompanyTypes = @{
+        Types        = @("vendor")
+        TargetCompanyID = 6
+        TargetCompany = $null
+    }
+    $MergedCompanyTypes.TargetCompany = Get-HuduCompanies -id $MergedCompanyTypes.TargetCompanyID
+    if ($MergedCompanyTypes.Types.Count -gt 0 -and -not $MergedCompanyTypes.TargetCompany){
+        Write-Host "Youve designated $($MergedCompanyTypes.Types.Count) company types to be merged into hudu, but don't have a valid company. Verify that a hudu company exists with the ID of $($MergedCompanyTypes.targetCompanyID)"
+    }
+
     #Import Locations
     Write-Host "Fetching Locations from IT Glue" -ForegroundColor Green
     $LocationsSelect = { (Get-ITGlueLocations -page_size 1000 -page_number $i -include related_items).data }
@@ -278,7 +288,15 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Companies.json")) {
                     $CompanyNotes = $unmatchedcompany.ITGCompanyObject.attributes."quick-notes"
                 }
 
-                if ($PrimaryLocation -and $PrimaryLocation.count -eq 1) {
+                if ($MergedCompanyTypes.Types -contains "$($unmatchedcompany.ITGCompanyObject.attributes.'organization-type-name')".ToLower()){
+                    Write-Host "$($unmatchedcompany.ITGCompanyObject.attributes.'organization-type-name') was in company type names to merge. company exists, no need to create it."
+
+                        
+                    
+                elseif ($PrimaryLocation -and $PrimaryLocation.count -eq 1) {
+
+
+
                     $CompanySplat = @{
                         "name"           = $($unmatchedcompany.CompanyName)
                         "nickname"       = $unmatchedcompany.ITGCompanyObject.attributes."short-name"
