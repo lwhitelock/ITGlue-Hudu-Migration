@@ -183,7 +183,9 @@ $propertyDump
 function Set-ExternalModulesInitialized {
     param (
             [string]$HAPImodulePath = "C:\Users\$env:USERNAME\Documents\GitHub\HuduAPI\HuduAPI\HuduAPI.psm1",
+            [string]$ITGmodulePath = "C:\Users\$env:USERNAME\Documents\GitHub\ITGlueAPIv2\ITGlueAPIv2\ITGlueAPIv2.psm1",
             [bool]$use_hudu_fork = $true,
+            [bool]$ITG_greenLT_fork=$true,
             [version]$RequiredHuduVersion = [version]"2.38.0",
             $DisallowedVersions = @([version]"2.37.0")
         )
@@ -233,14 +235,34 @@ function Set-ExternalModulesInitialized {
         remove-module ITGlueAPI -ErrorAction SilentlyContinue
     } catch {
     }
-    #Grabbing ITGlue Module and installing.
-    If (Get-Module -ListAvailable -Name "ITGlueAPIv2") { 
-        Import-module ITGlueAPIv2 
-    } Else { 
-        Install-Module ITGlueAPIv2 -Force
-        Import-Module ITGlueAPIv2
+    if ($true -eq $ITG_greenLT_fork) {
+        if (-not $(Test-Path $ITGmodulePath)) {
+            $dst = Split-Path -Path (Split-Path -Path $ITGmodulePath -Parent) -Parent
+            Write-Host "Using Lastest Master Branch of Greentek Fork for ITGAPI"
+            $zip = "$env:TEMP\itgapi.zip"
+            Invoke-WebRequest -Uri "https://github.com/greenlighttec/ITGlueAPIv2/archive/refs/heads/master.zip" -OutFile $zip
+            Expand-Archive -Path $zip -DestinationPath $env:TEMP -Force 
+            $extracted = Join-Path $env:TEMP "ITGlueAPIv2-master" 
+            if (Test-Path $dst) { Remove-Item $dst -Recurse -Force }
+            Move-Item -Path $extracted -Destination $dst 
+            Remove-Item $zip -Force
+        }
+    } else {
+        Write-Host "Assuming PSGallery Module for ITG if not already locally cloned at $ITGmodulePath"
     }
 
+    if (Test-Path $ITGmodulePath) {
+        Import-Module $ITGmodulePath -Force
+        Write-Host "ITG Module imported from $ITGmodulePath"
+        try {
+            $checklistsPath = "$(Split-Path $ITGmodulePath)\Resources\Checlists.ps1"
+            . $checklistsPath
+            Write-Host "Imported checklists features from $checklistsPath"
+        } catch {
+            Write-Host "error importing checklists feature from $checklistsPath $_"
+        }
+
+    } 
 
     #Settings IT-Glue logon information
     Add-ITGlueBaseURI -base_uri $ITGAPIEndpoint
