@@ -63,15 +63,47 @@ if ($true -eq $ImportChecklists) {
             foreach ($task in $checklist.ITGChecklistItems){
                 $TaskIDx=$TaskIDX+1
                 Write-Host "Adding checklist task, $($task.attributes.name), $($TaskIDX) of $($checklist.ChecklistItems.count) for checklist $ChecklistIDX of $($ITGLueChecklists.count), $($checklist.attributes.name)"
-                $NewChecklistItem=$null
+                $NewChecklistTask=$null
+                $DueDate = $null
+                $assignedUser = $null
+                $priority="unsure"
+
+                $NewTaskRequest = @{
+                    ProcedureId = $newProcedure.id 
+                    Name = $newProcedure.name 
+                    Description = $($task.attributes.description ?? "Imported from ITglue with no description") 
+                    AssignedUsers = @()                  
+                }
+                if ($null -ne $task.attributes.'assignee-name') {
+                    $firstName, $lastName = $task.attributes.'assignee-name' -split '\s+', 2
+                    $assignedUser = $huduusers | Where-Object {$_.first_name -like "*$firstName*" -and $_.last_name -like "*$lastName*"} | Select-Object -First 1
+                }
+                if ($null -ne $assignedUser) {
+                    $NewTaskRequest["AssignedUsers"]+=$assignedUser.id
+                }
+                if ($null -ne $task.attriburtes.'due-date'){
+                    $dueDate=([datetime]"$($task.attriburtes.'due-date')").ToString('yyyy-MM-dd')
+                }
+                if ($null -ne $dueDate) {
+                    $NewTaskRequest["DueDate"]+=$dueDate
+                    if ($([datetime]$DueDate -gt $(Get-Date))){
+                        $priority = "urgent"
+                    } elseif ($([datetime]$DueDate -gt $(Get-Date).AddDays(-14))){
+                        $priority = "high"
+                    } else {
+                        $priority = "normal"
+                    }
+                }
+
                 try {
+                    
 
-
+                    $NewChecklistTask=New-HuduProcedureTask 
                 }catch {
                     Write-Host "Error adding checklist task $($task.attributes.name), $($TaskIDX) of $($checklist.ChecklistItems.count) for checklist $ChecklistIDX of $($ITGLueChecklists.count), $($checklist.attributes.name); $_"
                 }
 
-                $huduChecklistItems+=
+                # $huduChecklistItems+=
 
             }
             $checklist | Add-Member -MemberType 'NoteProperty' -Name 'HuduChecklistItems' -Value $checklistItems -Force
