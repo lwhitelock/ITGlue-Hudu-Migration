@@ -150,7 +150,7 @@ $ErroredItemsFolder = if ($ErroredItemsFolder) {$ErroredItemsFolder} else {(Get-
 #Grab existing companies in Hudu
 $HuduCompanies = Get-HuduCompanies
 
-$MergedCompanyTypes = @{
+$MergedOrganizationSettings = @{
     Types        = @()
     TargetCompany = $null
 }
@@ -180,14 +180,14 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Companies.json")) {
         Write-Host "Companies scoped... $OriginalCompanyCount => $($Itgcompanies.count)"
     }
     $uniqueOrgTypes = $($ITGCompanies.attributes.'organization-type-name' | Select-Object -unique)
-    if ($true -eq $ScopeOrgTypes){
-        $MergedCompanyTypes.Types+=$(select-objectfromlist -objects $uniqueOrgTypes -message "Select a type to include in type-scoping (from ITGlue). These company types will be attributed to $($MergedCompanyTypes.TargetCompany.name). if you are done with your selection, enter 0 to finish.")
-        $MergedCompanyTypes.TargetCompany = $(Get-HuduCompanies -id $(read-host "To which company will you be scoping $($MergedCompanyTypes.types) to? [enter company id]"))
-        Write-Host "$($($MergedCompanyTypes.Types | ForEach-Object { $_ }) -join ', ') org types in ITGlue will be attributed to $($MergedCompanyTypes.TargetCompany.name) in Hudu."
-        if ($null -ne $MergedCompanyTypes.TargetCompany){
+    if ($true -eq $MergedOrganizationTypes){
+        $MergedOrganizationSettings.Types+=$(select-objectfromlist -objects $uniqueOrgTypes -message "Select a type to include in type-scoping (from ITGlue). These company types will be attributed to a single company.")
+        $MergedOrganizationSettings.TargetCompany = $(Get-HuduCompanies -id $(read-host "To which company will you be scoping $($MergedOrganizationSettings.types) to? [enter company id]"))
+        Write-Host "$($($MergedOrganizationSettings.Types | ForEach-Object { $_ }) -join ', ') org types in ITGlue will be attributed to $($MergedOrganizationSettings.TargetCompany.name) in Hudu."
+        if ($null -ne $MergedOrganizationSettings.TargetCompany){
             foreach ($kind in $uniqueOrgTypes){
-                if ($MergedCompanyTypes.Types -contains $kind){
-                    Write-Host "$($($ITGCompanies | where-object {"$($_.attributes.'organization-type-name')".ToLower() -eq $kind}).count) of $kind will be migrated to $($MergedCompanyTypes.TargetCompany.name)" -ForegroundColor Yellow 
+                if ($MergedOrganizationSettings.Types -contains $kind){
+                    Write-Host "$($($ITGCompanies | where-object {"$($_.attributes.'organization-type-name')".ToLower() -eq $kind}).count) of $kind will be migrated to $($MergedOrganizationSettings.TargetCompany.name)" -ForegroundColor Yellow 
                 } else {
                     Write-Host "$($($ITGCompanies | where-object {"$($_.attributes.'organization-type-name')".ToLower() -eq $kind}).count) of $kind will be migrated in the typical fashion" -ForegroundColor Green
                 }
@@ -212,8 +212,8 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Companies.json")) {
 
         $HuduCompany = $HuduCompanies | where-object { $_.name -eq $itgcompany.attributes.name }
 
-        if ($MergedCompanyTypes.Types -contains "$($itgcompany.attributes.'organization-type-name')".ToLower()){
-            $HuduCompany = $MergedCompanyTypes.TargetCompany
+        if ($MergedOrganizationSettings.Types -contains "$($itgcompany.attributes.'organization-type-name')"){
+            $HuduCompany = $MergedOrganizationSettings.TargetCompany
         }
 
         $intCompany = $InternalCompany -eq $originalName
@@ -266,8 +266,8 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Companies.json")) {
     Write-Host "Unmatched Companies"
     $MatchedCompanies | Sort-Object CompanyName | Where-Object { $_.Matched -eq $false } | Select-Object CompanyName | Format-Table
 
-    if ($MergedCompanyTypes.Types.Count -gt 0 -and -not $MergedCompanyTypes.TargetCompany){
-        Write-Host "Youve designated $($MergedCompanyTypes.Types.Count) company types to be merged into hudu, but don't have a valid company. Verify that a hudu company exists with the ID of $($MergedCompanyTypes.targetCompanyID)"
+    if ($MergedOrganizationSettings.Types.Count -gt 0 -and -not $MergedOrganizationSettings.TargetCompany){
+        Write-Host "Youve designated $($MergedOrganizationSettings.Types.Count) company types to be merged into hudu, but don't have a valid company. Verify that a hudu company exists with the ID of $($MergedOrganizationSettings.targetCompanyID)"
     }
 
     #Import Locations
