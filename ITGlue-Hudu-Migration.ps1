@@ -187,13 +187,16 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Companies.json")) {
         if ($null -ne $MergedOrganizationSettings.TargetCompany){
             foreach ($kind in $uniqueOrgTypes){
                 if ($MergedOrganizationSettings.Types -contains $kind){
-                    Write-Host "$($($ITGCompanies | where-object {"$($_.attributes.'organization-type-name')".ToLower() -eq $kind}).count) of $kind will be migrated to $($MergedOrganizationSettings.TargetCompany.name)" -ForegroundColor Yellow 
+                    Write-Host "$($($ITGCompanies | where-object {"$($_.attributes.'organization-type-name')" -eq $kind}).count) of $kind will be migrated to $($MergedOrganizationSettings.TargetCompany.name)" -ForegroundColor Yellow 
                 } else {
-                    Write-Host "$($($ITGCompanies | where-object {"$($_.attributes.'organization-type-name')".ToLower() -eq $kind}).count) of $kind will be migrated in the typical fashion" -ForegroundColor Green
+                    Write-Host "$($($ITGCompanies | where-object {"$($_.attributes.'organization-type-name')" -eq $kind}).count) of $kind will be migrated in the typical fashion" -ForegroundColor Green
                 }
             }
     }}
-
+    if ($MergedOrganizationSettings.Types.Count -gt 0 -and -not $MergedOrganizationSettings.TargetCompany){
+        Write-Host "Youve designated $($MergedOrganizationSettings.Types.Count) company types to be merged into hudu, but don't have a valid company. Verify that a hudu company exists with the ID that you elected to merge into"
+        exit 1
+    }
     $ITGCompaniesHashTable = @{}
 
 
@@ -266,10 +269,7 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Companies.json")) {
     Write-Host "Unmatched Companies"
     $MatchedCompanies | Sort-Object CompanyName | Where-Object { $_.Matched -eq $false } | Select-Object CompanyName | Format-Table
 
-    if ($MergedOrganizationSettings.Types.Count -gt 0 -and -not $MergedOrganizationSettings.TargetCompany){
-        Write-Host "Youve designated $($MergedOrganizationSettings.Types.Count) company types to be merged into hudu, but don't have a valid company. Verify that a hudu company exists with the ID of $($MergedOrganizationSettings.targetCompanyID)"
-        exit 1
-    }
+
 
     #Import Locations
     Write-Host "Fetching Locations from IT Glue" -ForegroundColor Green
