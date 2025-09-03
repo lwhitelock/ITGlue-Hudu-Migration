@@ -328,12 +328,6 @@ if ($InitType -eq 'Full') {
     $HuduPrimaryLocationNames = @("Primary Address")
 
     ############################### Domain / Website Settings ###############################
-    while ($ImportChecklists -notin (1,2)) {$ImportChecklists = Read-Host "Domains require ITglue Web Access (can login via webpage).`n 1) Import Checklists`n 2) Skip Checklists`n(1/2)"}
-    switch ($ImportChecklists) {
-        "1" {$ImportChecklists = $true}
-        "2" {$ImportChecklists = $false}
-    }
-
     while ($ImportDomains -notin (1,2)) {$ImportDomains = Read-Host "Domains are used for Website, DNS and SSL Monitoring.`n 1) Import Domains`n 2) Skip Domains`n(1/2)"}
     switch ($ImportDomains) {
         "1" {$ImportDomains = $true}
