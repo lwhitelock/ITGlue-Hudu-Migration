@@ -110,6 +110,7 @@ function Import-Items {
 	
                     $HuduAssetName = $($unmatchedImport.Name)
 					
+                    
                     $HuduNewImport = (New-HuduAsset -name $HuduAssetName -company_id $company.HuduCompanyObject.ID -asset_layout_id $ImportLayout.id -fields $AssetFields).asset
 		    if ($itgimport.attributes.archived) {
       			Write-Host "WARNING: $($HuduAssetName) is archived in ITGlue and is being archived in Hudu" -ForegroundColor Magenta

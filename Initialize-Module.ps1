@@ -334,6 +334,12 @@ if ($InitType -eq 'Full') {
         "2" {$ImportDomains = $false}
     }
 
+    while ($MergedOrganizationTypes -notin (1,2)) {$MergedOrganizationTypes = Read-Host "Would you like to merge certain organization types in ITGlue to a given existing hudu company?.`n 1) Operate as normal`n 2) Scope ITGlue Org Type to a Company in Hudu`n(1/2)"}
+    switch ($MergedOrganizationTypes) {
+        "1" {$MergedOrganizationTypes = $false}
+        "2" {$MergedOrganizationTypes = $true}
+    }    
+
     # Choose if you would like to enable monitoring for the imported websites.
     while ($DisableWebsiteMonitoring -notin (1,2)) {$DisableWebsiteMonitoring = Read-Host "1) Leave Website Monitoring enabled `n2) Disable Website Monitoring`n(1/2)"}
     switch ($DisableWebsiteMonitoring) {
