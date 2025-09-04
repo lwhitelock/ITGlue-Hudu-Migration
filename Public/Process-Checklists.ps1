@@ -60,10 +60,8 @@ foreach ($checklist in $ITGLueChecklists) {
     } else {
         Write-InspectObject -object $matchedCompany; continue
     }
-    if ($checklist.description){
-        $procedureRequest["Description"] = $($checklist.description ?? "No description found for procedure.") + "`n" + 
-        "Imported from ITGlue. <a href='$($checklist.attributes.'resource-url')'>itglue checklist url</a>"
-    }
+    $procedureRequest["Description"] = $($checklist.attributes.description ?? "No description found for procedure.") + "`n" + 
+    "Imported from ITGlue. <a href='$($checklist.attributes.'resource-url')'>itglue checklist url</a>"
 
     try {
         $newProcedure = $(New-HuduProcedure @procedureRequest).procedure
@@ -77,7 +75,6 @@ foreach ($checklist in $ITGLueChecklists) {
         foreach ($task in $checklist.ITGChecklistItems){
             $assigneeCandidates = @($checklist.attributes.'assignee-name',$task.attributes.'assignee-name') | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }            
             $TaskIDX=$TaskIDX+1
-            Write-Host "Adding checklist task named $($task.attributes.name), $($TaskIDX) of $($checklist.ITGChecklistItems.count) for checklist $ChecklistIDX of $($ITGLueChecklists.count)"
             $NewChecklistTask=$null
             $DueDate = $null
             $assignedUser = $null
@@ -114,6 +111,7 @@ foreach ($checklist in $ITGLueChecklists) {
             $NewTaskRequest['Priority'] = $priority
             
             $NewTaskRequest["Priority"]=$priority
+            Write-Host "Adding checklist task named $($NewTaskRequest.name) for checklist $ChecklistIDX of $($ITGLueChecklists.count)"
 
             try {
                 $NewChecklistTask=New-HuduProcedureTask @NewTaskRequest
