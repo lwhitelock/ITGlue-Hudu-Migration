@@ -1,83 +1,89 @@
-$ITGLueChecklists = [System.Collections.ArrayList]@()
 
-$HuduCompanies = $HuduCompanies ?? $(Get-HuduCompanies)
-
-# Get Checklists/Items
-$huduProcedures = Get-HuduProcedureTasks
+$HuduCompanies  = $HuduCompanies ?? $(Get-HuduCompanies)
 $huduUsers      = Get-HuduUsers    
 $userIndex = @{}
-foreach ($u in $huduUsers) {
-    $key = "$($u.first_name) $($u.last_name)".ToLower()
-    $userIndex[$key] = $u
-}
+foreach ($u in $huduUsers) {$key = "$($u.first_name) $($u.last_name)".ToLower(); $userIndex[$key] = $u;}
+$PageSize = 1000
 
 $ITGlueJWT = $ITGlueJWT ?? $(read-host "Please enter your ITGlue JWT as retrieved from browser.")
 Clear-Host
-Write-Host "Retrieving all checklists from ITGlue while we have JWT present."
-$PageSize = 1000
 $PageNum = 0
-$results = @()
+Write-Host "Retrieving all checklists from ITGlue"
 while ($true) {
     $checkListsResult = $(Get-ITGlueCheckLists -JWTAuthToken $ITGlueJWT -page_size $PageSize -page_number $PageNum).data
-    Write-InspectObject -object $checkListsResult
-    foreach ($r in $checkListsResult) {
-        $checklistItems=$null
+    foreach ($checklistEntry in $checkListsResult) {
+        $ITGChecklistItems=$null
+        $checklistEntry | Add-Member -MemberType 'NoteProperty' -Name 'IsTemplate' -Value $false -Force
         try {
-            $checklistItems=$(Get-ITGlueChecklistItems -JWTAuthToken $ITGlueJWT -filter_checklist_id $r.id)
-            $r | Add-Member -MemberType 'NoteProperty' -Name 'ITGChecklistItems' -Value $checklistItems -Force
+            $ITGChecklistItems=$(Get-ITGlueChecklistItems -JWTAuthToken $ITGlueJWT -filter_checklist_id $checklistEntry.id)
+            $checklistEntry | Add-Member -MemberType 'NoteProperty' -Name 'ITGChecklistItems' -Value $ITGChecklistItems -Force
         }catch{
             Write-host "Error getting checklist items $_"
         }
-        write-host "$($r)"
-        $ITGLueChecklists.Add($r)
+        $ITGLueChecklists.Add($checklistEntry)
     }
-    $checkListsResult | ConvertTo-Json -depth 90 | Out-File "checklists.json"
     $PageNum = $PageNum +1
     if (-not $checkListsResult -or $checkListsResult.count -lt $PageSize) {break}
 }
-Write-Host "Got $($ITGLueChecklists.count) checklists with $($checklistsResult.ITGChecklistItems.count) Checklist Items."
+$PageNum = 0
+Write-Host "Retrieving all checklist templates from ITGlue"
+while ($true) {
+    $checkListsResult = $(Get-ITGlueChecklistTemplates -JWTAuthToken $ITGlueJWT -page_size $PageSize -page_number $PageNum).data
+    foreach ($checklistTemplate in $checkListsResult) {
+        $ITGChecklistItems=$null
+        $checklistTemplate | Add-Member -MemberType 'NoteProperty' -Name 'IsTemplate' -Value $true -Force
+        try {
+            $ITGChecklistItems=$(Get-ITGlueChecklistItems -JWTAuthToken $ITGlueJWT -filter_checklist_id $checklistTemplate.id)
+            $checklistTemplate | Add-Member -MemberType 'NoteProperty' -Name 'ITGChecklistItems' -Value $ITGChecklistItems -Force
+        }catch{
+            Write-host "Error getting checklist template items $_"
+        }
+        $ITGLueChecklists.Add($checklistTemplate)
+    }
+    $PageNum = $PageNum +1
+    if (-not $checkListsResult -or $checkListsResult.count -lt $PageSize) {break}
+}
+Write-Host "Got $($($ITGLueChecklists | where-object {$_.IsTemplate -eq $false}).count) and $($($ITGLueChecklists | where-object {$_.IsTemplate -eq $true}).count) checklist templates with $($checklistsResult.ITGChecklistItems.count) Checklist Items."
 
 
 # Match/Add Checklists/Items
 $ChecklistIDX=0
 foreach ($checklist in $ITGLueChecklists) {
     $ChecklistIDX=$ChecklistIDX+1
-    $HuduTasks = @()
-    Write-Host "Matching/Adding checklist $ChecklistIDX of $($ITGLueChecklists.count)"
-    $matchedCompany = $MatchedCompanies | Where-Object {[int]$checklist.attributes.'organization-id' -eq [int]$_.ITGID} | Select-Object -First 1
 
-    if (-not $matchedCompany){
-        $matchedCompany = $(Select-ObjectFromList -objects $HuduCompanies -message "Which company to attribute checklist, named $($checklist.attributes.name), was for org $($checklist.attributes.'organization-name') to? $($($checklist | ConvertTo-Json).ToString())" -allowNull $true)
-    }
-    if (-not $matchedCompany){
-        write-host "you hadnt selected a company for this checklist / procedure, so it will be imported as global."
-    }
+    $HuduProcedureTasks = @()
     $procedureRequest = @{
         Name = ($checklist.attributes.name ?? 'Unnamed Procedure') 
+        CompanyTemplate = $checklist.IsTemplate
+        Description =  $($($checklist.attributes.description ?? "No description found for procedure.") + "`n" + 
+            "Imported from ITGlue. <a href='$($checklist.attributes.'resource-url')'>itglue checklist url</a>")
     }
+    
+    $matchedCompany = $($($MatchedCompanies | Where-Object {[int]$checklist.attributes.'organization-id' -eq [int]$_.ITGID} | Select-Object -First 1) ??
+                        $(Select-ObjectFromList -objects $HuduCompanies -message "Which company to attribute checklist, named $($checklist.attributes.name), was for org $($checklist.attributes.'organization-name') to? $($($checklist | ConvertTo-Json).ToString())" -allowNull $true))
+
     if ($matchedCompany -and $matchedCompany.HuduID -and $matchedCompany.HuduID -gt 0){
         $procedureRequest["CompanyID"] = $matchedCompany.HuduID
-    } else {
-        Write-InspectObject -object $matchedCompany; continue
     }
-    $procedureRequest["Description"] = $($checklist.attributes.description ?? "No description found for procedure.") + "`n" + 
-    "Imported from ITGlue. <a href='$($checklist.attributes.'resource-url')'>itglue checklist url</a>"
 
     try {
         $newProcedure = $(New-HuduProcedure @procedureRequest).procedure
     } catch {
         Write-Host "Error creating procedure in Hudu $_"
+        continue
     }
-    if ($newProcedure -and $newProcedure.Id) {
-        $TaskIDX=0
-        $checklist | Add-Member -MemberType 'NoteProperty' -Name 'HuduProcedure' -Value $newProcedure -Force
 
+    if ($newProcedure -and $newProcedure.Id) {
+        $checklist | Add-Member -MemberType 'NoteProperty' -Name 'HuduProcedure' -Value $newProcedure -Force
+        Write-Host "Created $(if (-not $newProcedure.company_id) {'Global'} else {'Company'}) Procedure $(if ($true -eq $checklist.IsTemplate) {'Template'}) $($ChecklistIDX) of $($ITGLueChecklists.count)"
+
+        $TaskIDX=0
         foreach ($task in $checklist.ITGChecklistItems){
-            $assigneeCandidates = @($checklist.attributes.'assignee-name',$task.attributes.'assignee-name') | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }            
             $TaskIDX=$TaskIDX+1
-            $NewChecklistTask=$null
+
+            $NewProcedureTask=$null
             $DueDate = $null
-            $assignedUser = $null
+            $assigneeCandidates = @($checklist.attributes.'assignee-name',$task.attributes.'assignee-name') | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }            
             $priority="unsure"
 
             $NewTaskRequest = @{
@@ -104,29 +110,24 @@ foreach ($checklist in $ITGLueChecklists) {
                 $dueDate = [datetime]$task.attributes.'due-date'
                 $NewTaskRequest['DueDate'] = $dueDate.ToString('yyyy-MM-dd')
                 $age = (Get-Date) - $dueDate
-                $priority = if ($age.TotalDays -lt 0) { 'urgent' }
+                $priority = if ($age.TotalDays -lt 0)      { 'urgent' }
                             elseif ($age.TotalDays -le 14) { 'high' }
-                            else { 'normal' }
+                            else                           { 'normal' }
             } else { $priority = 'unsure' }
             $NewTaskRequest['Priority'] = $priority
-            
-            $NewTaskRequest["Priority"]=$priority
-            Write-Host "Adding checklist task named $($NewTaskRequest.name) for checklist $ChecklistIDX of $($ITGLueChecklists.count)"
 
             try {
-                $NewChecklistTask=New-HuduProcedureTask @NewTaskRequest
+                $NewProcedureTask=New-HuduProcedureTask @NewTaskRequest
             }catch {
                 Write-Host "Error adding checklist $_"
             }
-            if ($NewChecklistTask) {
-                $HuduTasks+=$NewChecklistTask
+            if ($NewProcedureTask) {
+                Write-Host "Added $(if ($NewTaskRequest.AssignedUsers.count -gt 0) {'User-Assigned'} else {'Unassigned'}) procedure task $($TaskIDX) of $($checklist.ITGChecklistItems.count)"
+                $HuduProcedureTasks+=$NewProcedureTask
             }
-
         }
-        $checklist.HuduProcedure | Add-Member -MemberType 'NoteProperty' -Name 'procedure_tasks_attributes' -Value $HuduTasks -Force
-
-    } else {
-        Write-host "Unable to create procedure $ChecklistIDX of $($ITGLueChecklists.count)"
+        $checklist.HuduProcedure | Add-Member -MemberType 'NoteProperty' -Name 'HuduProcedureTasks' -Value $HuduProcedureTasks -Force
     }
 }
+
 Write-Host "Proceduires and tasks migrated"

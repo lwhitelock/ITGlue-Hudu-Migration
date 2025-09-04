@@ -491,6 +491,8 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Locations.json")) {
 
 
 ############################# Checklists ##############################
+
+$ITGLueChecklists = [System.Collections.ArrayList]@()
 if ($ResumeFound -eq $true -and $true -eq $importChecklists -and (Test-Path "$MigrationLogs\Checklists.json")) {
     Write-Host "Loading Previous Checklists Migration"
     $ITGLueChecklists = Get-Content "$MigrationLogs\Checklists.json" -raw | Out-String | ConvertFrom-Json
@@ -1276,7 +1278,12 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\AssetLayouts.json")) 
                     "Tag" {
                         switch (($ITGField.Attributes."tag-type").split(":")[0]) {
                             "AccountsUsers" { Write-Host "Tags to Account Users are not supported $($ITGField.Attributes.name) in $($UpdateLayout.name) will need to be manually migrated, Sorry!" ; $supported = $false }
-                            "Checklists" { Write-Host "Tags to Checklists are not supported $($ITGField.Attributes.name) in $($UpdateLayout.name) will need to be manually migrated, Sorry!"; $supported = $false }
+                            "Checklists" { 
+                                if ($true -eq $importChecklists -and $ITGLueChecklists.count -gt 0){
+
+                                }
+                                Write-Host "Tags to Checklists are not supported $($ITGField.Attributes.name) in $($UpdateLayout.name) will need to be manually migrated, Sorry!"; $supported = $false 
+                            }
                             "ChecklistTemplates" { Write-Host "Tags to Checklists Templates are not supported $($ITGField.Attributes.name) in $($UpdateLayout.name) will need to be manually migrated, Sorry!"; $supported = $false }
                             "Contacts" {
                                 $ContactLayout = Get-HuduAssetLayouts -name $ConImportAssetLayoutName
