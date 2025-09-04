@@ -5,11 +5,17 @@ $HuduCompanies = $HuduCompanies ?? $(Get-HuduCompanies)
 # Get Checklists/Items
 $huduProcedures = Get-HuduProcedureTasks
 $huduUsers      = Get-HuduUsers    
+$userIndex = @{}
+foreach ($u in $huduUsers) {
+    $key = "$($u.first_name) $($u.last_name)".ToLower()
+    $userIndex[$key] = $u
+}
+
 $ITGlueJWT = $ITGlueJWT ?? $(read-host "Please enter your ITGlue JWT as retrieved from browser.")
 Clear-Host
 Write-Host "Retrieving all checklists from ITGlue while we have JWT present."
 $PageSize = 1000
-$pageNum = 0
+$PageNum = 0
 $results = @()
 while ($true) {
     $checkListsResult = $(Get-ITGlueCheckLists -JWTAuthToken $ITGlueJWT -page_size $PageSize -page_number $PageNum).data
@@ -26,7 +32,7 @@ while ($true) {
         $ITGLueChecklists.Add($r)
     }
     $checkListsResult | ConvertTo-Json -depth 90 | Out-File "checklists.json"
-    $PageNum = $pageNum +1
+    $PageNum = $PageNum +1
     if (-not $checkListsResult -or $checkListsResult.count -lt $PageSize) {break}
 }
 Write-Host "Got $($ITGLueChecklists.count) checklists with $($checklistsResult.ITGChecklistItems.count) Checklist Items."
@@ -47,7 +53,7 @@ foreach ($checklist in $ITGLueChecklists) {
         write-host "you hadnt selected a company for this checklist / procedure, so it will be imported as global."
     }
     $procedureRequest = @{
-        Name = $($checklist.attributes.name ?? "Unnamed Procedure")
+        Name = ($checklist.attributes.name ?? 'Unnamed Procedure') 
     }
     if ($matchedCompany -and $matchedCompany.HuduID -and $matchedCompany.HuduID -gt 0){
         $procedureRequest["CompanyID"] = $matchedCompany.HuduID
@@ -55,9 +61,10 @@ foreach ($checklist in $ITGLueChecklists) {
         Write-InspectObject -object $matchedCompany; continue
     }
     if ($checklist.description){
-        $procedureRequest["Description"] = $($checklist.description ?? "No description found for procedure at <a href='$($checklist.attribures.'resource-url')'>itglue checklist url</a>")
+        $procedureRequest["Description"] = $($checklist.description ?? "No description found for procedure.") + "`n" + 
+        "Imported from ITGlue. <a href='$($checklist.attributes.'resource-url')'>itglue checklist url</a>"
     }
-    Write-InspectObject -object $procedureRequest
+
     try {
         $newProcedure = $(New-HuduProcedure @procedureRequest).procedure
     } catch {
@@ -68,7 +75,8 @@ foreach ($checklist in $ITGLueChecklists) {
         $checklist | Add-Member -MemberType 'NoteProperty' -Name 'HuduProcedure' -Value $newProcedure -Force
 
         foreach ($task in $checklist.ITGChecklistItems){
-            $TaskIDx=$TaskIDX+1
+            $assigneeCandidates = @($checklist.attributes.'assignee-name',$task.attributes.'assignee-name') | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }            
+            $TaskIDX=$TaskIDX+1
             Write-Host "Adding checklist task named $($task.attributes.name), $($TaskIDX) of $($checklist.ITGChecklistItems.count) for checklist $ChecklistIDX of $($ITGLueChecklists.count)"
             $NewChecklistTask=$null
             $DueDate = $null
@@ -77,39 +85,33 @@ foreach ($checklist in $ITGLueChecklists) {
 
             $NewTaskRequest = @{
                 ProcedureId = $newProcedure.id 
-                Name = $(
-                    $newProcedure.name ??
-                    ("Task #$($task.attributes.order)" ?? "Unnamed Task")
-                )
+                Name = ($task.attributes.name ??
+                    ("Task #$($task.attributes.order)" ?? "Unnamed Task"))
                 Description = $($task.attributes.description ?? "Imported from ITglue with no description") 
                 AssignedUsers = @()                  
             }
             if ($task.attributes.order) {
                 $NewTaskRequest["Position"]=$task.attributes.order
             }
-            if ($task.attributes.'assignee-name') {
-                $firstName, $lastName = $task.attributes.'assignee-name' -split '\s+', 2
-                $assignedUser = $huduusers | Where-Object {$_.first_name -like "*$firstName*" -and $_.last_name -like "*$lastName*"} | Select-Object -First 1
-            }
-            if ($assignedUser) {
-                $NewTaskRequest["AssignedUsers"]+=$assignedUser.id
-            }
-            if ($task.attriburtes.'due-date'){
-                $dueDate=([datetime]"$($task.attriburtes.'due-date')").ToString('yyyy-MM-dd')
-            }
-            if ($dueDate) {
-                $NewTaskRequest["DueDate"]+=$dueDate
-                if ($([datetime]$DueDate -gt $(Get-Date))){
-                    $priority = "urgent"
-                } elseif ($([datetime]$DueDate -gt $(Get-Date).AddDays(-14))){
-                    $priority = "high"
-                } else {
-                    $priority = "normal"
+            
+            foreach ($a in $assigneeCandidates) {
+                $first,$last = ($a -replace '\s+', ' ').Trim() -split '\s+', 2
+                if ($last) {
+                    $key = "$first $last".ToLower()
+                    if ($userIndex.ContainsKey($key)) {
+                        $NewTaskRequest['AssignedUsers'] += $userIndex[$key].id
+                    }
                 }
-                Write-Host "Due date is $dueDate, and urgency is $priority"
-            } else {
-                Write-Host "no Due Date, assuming priority of $priority"
             }
+            if ($task.attributes.'due-date') {
+                $dueDate = [datetime]$task.attributes.'due-date'
+                $NewTaskRequest['DueDate'] = $dueDate.ToString('yyyy-MM-dd')
+                $age = (Get-Date) - $dueDate
+                $priority = if ($age.TotalDays -lt 0) { 'urgent' }
+                            elseif ($age.TotalDays -le 14) { 'high' }
+                            else { 'normal' }
+            } else { $priority = 'unsure' }
+            $NewTaskRequest['Priority'] = $priority
             
             $NewTaskRequest["Priority"]=$priority
 
@@ -130,4 +132,3 @@ foreach ($checklist in $ITGLueChecklists) {
     }
 }
 Write-Host "Proceduires and tasks migrated"
-$ITGLueChecklists | ConvertTo-Json -depth 90 | Out-File "completed-checklists.json"

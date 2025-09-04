@@ -51,7 +51,7 @@ $ImportPasswords            = 1
 $NonInteractive             = 2
 $ScopedMigration            = 1
 $MergedOrganizationTypes    = 1
-
+$importChecklists           = 1
 
 # prescoped-
 # $ScopedMigration            = 2
