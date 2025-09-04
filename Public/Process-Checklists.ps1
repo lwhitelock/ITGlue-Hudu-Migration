@@ -30,12 +30,12 @@ if ($true -eq $ImportChecklists) {
         $PageNum = $pageNum +1
         if (-not $checkListsResult -or $checkListsResult.count -lt $PageSize) {break}
     }
-    Write-Host "Got $($ITGLueChecklists.count) checklists with $($checklistsResult.ChecklistItems.count) Checklist Items."
+    Write-Host "Got $($ITGLueChecklists.count) checklists with $($checklistsResult.ITGChecklistItems.count) Checklist Items."
     # Match/Add Checklists/Items
     $ChecklistIDX=0
     foreach ($checklist in $ITGLueChecklists) {
         $ChecklistIDX=$ChecklistIDX+1
-        $huduChecklistItems = @()
+        $HuduTasks = @()
         Write-Host "Matching/Adding checklist $ChecklistIDX of $($ITGLueChecklists.count)"
         $matchedCompany = $MatchedCompanies | Where-Object {[int]$checklist.attributes.'organization-id' -eq [int]$_.ITGID} | Select-Object -First 1
 
@@ -53,16 +53,21 @@ if ($true -eq $ImportChecklists) {
             Write-InspectObject -object $matchedCompany; continue
         }
         if ($checklist.description){
-            $procedureRequest["Description"] = $checklist.description
+            $procedureRequest["Description"] = $($checklist.description ?? "No description found for procedure at <a href='$($checklist.attribures.'resource-url')'>itglue checklist url</a>")
         }
         Write-InspectObject -object $procedureRequest
-        read-host
-        $newProcedure = New-HuduProcedure @procedureRequest
+        try {
+            $newProcedure = New-HuduProcedure @procedureRequest
+        } catch {
+            Write-Host "Error creating procedure in Hudu $_"
+        }
         if ($newProcedure -and $newProcedure.Id) {
             $TaskIDX=0
+            $checklist | Add-Member -MemberType 'NoteProperty' -Name 'HuduProcedure' -Value $newProcedure -Force
+
             foreach ($task in $checklist.ITGChecklistItems){
                 $TaskIDx=$TaskIDX+1
-                Write-Host "Adding checklist task, $($task.attributes.name), $($TaskIDX) of $($checklist.ChecklistItems.count) for checklist $ChecklistIDX of $($ITGLueChecklists.count), $($checklist.attributes.name)"
+                Write-Host "Adding checklist task, $($task.attributes.name), $($TaskIDX) of $($checklist.ITGChecklistItems.count) for checklist $ChecklistIDX of $($ITGLueChecklists.count), $($checklist.attributes.name)"
                 $NewChecklistTask=$null
                 $DueDate = $null
                 $assignedUser = $null
@@ -94,24 +99,26 @@ if ($true -eq $ImportChecklists) {
                         $priority = "normal"
                     }
                 }
+                $NewTaskRequest["Priority"]=$priority
 
                 try {
-                    
-
-                    $NewChecklistTask=New-HuduProcedureTask 
+                    $NewChecklistTask=New-HuduProcedureTask @NewTaskRequest
                 }catch {
-                    Write-Host "Error adding checklist task $($task.attributes.name), $($TaskIDX) of $($checklist.ChecklistItems.count) for checklist $ChecklistIDX of $($ITGLueChecklists.count), $($checklist.attributes.name); $_"
+                    Write-Host "Error adding checklist task $($task.attributes.name), $($TaskIDX) of $($checklist.ITGChecklistItems.count) for checklist $ChecklistIDX of $($ITGLueChecklists.count), $($checklist.attributes.name); $_"
+                }
+                if ($NewChecklistTask) {
+                    $HuduTasks+=$NewChecklistTask
                 }
 
-                # $huduChecklistItems+=
-
             }
-            $checklist | Add-Member -MemberType 'NoteProperty' -Name 'HuduChecklistItems' -Value $checklistItems -Force
+            $checklist | Add-Member -MemberType 'NoteProperty' -Name 'HuduChecklistTasks' -Value $HuduTasks -Force
 
+        } else {
 
+            Write-host "Unable to create procedure $ChecklistIDX of $($ITGLueChecklists.count)"
         }
-
-
-
     }
+    Write-Host "Proceduires and tasks migrated"
+    $ITGLueChecklists | ConvertTo-Json -depth 90 | Out-File "completed-checklists.json"
+
 }

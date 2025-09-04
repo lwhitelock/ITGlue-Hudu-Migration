@@ -487,8 +487,8 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Locations.json")) {
     Write-TimedMessage -Timeout 3 -Message "Snapshot Point: Locations Migrated Continue?"  -DefaultResponse "continue to Websites, please."
 
 }
-
-. .\Public\Process-Checklists.ps1
+# . ..\..\ITGlueAPIv2\ITGlueAPIv2\Resources\Checlists.ps1
+# . .\Public\Process-Checklists.ps1
 
 # ############################### Websites ###############################
 
