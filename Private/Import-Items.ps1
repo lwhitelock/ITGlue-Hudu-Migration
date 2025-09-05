@@ -84,7 +84,7 @@ function Import-Items {
 		
         if (!$ImportLayout) { 
             Write-Host "Creating New Asset Layout $ImportAssetLayoutName"
-            $Null = New-HuduAssetLayout -name $ImportAssetLayoutName -icon $ImportIcon -color "#6e00d5" -icon_color "#ffffff" -include_passwords $true -include_photos $true -include_comments $true -include_files $true -fields $AssetLayoutFields
+            $Null = New-HuduAssetLayout -name $ImportAssetLayoutName -icon $ImportIcon -color "#6136ff" -icon_color "#ffffff" -include_passwords $true -include_photos $true -include_comments $true -include_files $true -fields $AssetLayoutFields
             $ImportLayout = Get-HuduAssetLayouts -name $ImportAssetLayoutName
 	    # Activate Asset Layouts once Created
 	    $Null = Set-HuduAssetLayout -id $ImportLayout.id -Active $true
