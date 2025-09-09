@@ -120,27 +120,7 @@ You can [download newest powershell release here](https://github.com/powershell/
 >[!IMPORTANT]
 >*Currently, the script has only been tested on x86_64 Windows systems. Although Windows ARM, macOS, and Linux have PowerShell available to them, the script has not been tested on those Operating Systems and is not recommended as the script has a lot of dependencies*
 
-2. **HuduAPI PowerShell Module** Until ratelimiting fix is published for Hudu API module in the PSgallery, it's reccomended to manually use our fork for this-- `https://github.com/Hudu-Technologies-Inc/HuduAPI` to this directory: `c:\users\$env:USERNAME\Documents\GitHub\HuduAPI` ***See examples, below***
-
-Option 1: Clone with Git to `c:\users\$env:USERNAME\Documents\GitHub\HuduAPI`
-
- ```pwsh git clone https://github.com/Hudu-Technologies-Inc/HuduAPI "C:\Users\$env:USERNAME\Documents\GitHub\HuduAPI"```
-
-Option 2: Download & Extract to `c:\users\$env:USERNAME\Documents\GitHub\HuduAPI`
-
- ```
-  pwsh 
-  $dst = "$HOME\Documents\GitHub\HuduAPI"
-  $zip = "$env:TEMP\huduapi.zip"
-  Invoke-WebRequest -Uri "https://github.com/Hudu-Technologies-Inc/HuduAPI/archive/refs/heads/master.zip" -OutFile $zip
-  Expand-Archive -Path $zip -DestinationPath $env:TEMP -Force
-  $extracted = Join-Path $env:TEMP "HuduAPI-master"
-  if (Test-Path $dst) { Remove-Item $dst -Recurse -Force }
-  Move-Item -Path $extracted -Destination $dst
-  Remove-Item $zip -Force
-  ```
-
-# 3. Running the script
+2. Running the script
 
 > [!IMPORTANT]
 > Some important things to note about the migration:
@@ -181,7 +161,10 @@ If you have designated an organization type (like vendor, partner, non-profit, m
 
 Any other org types will migrate as usual, but this one org type will be centralized to one hudu company.
 
-## 3. Custom-Mapping for Target Layouts (ADVANCED)
+## 2. Checklists [coming soon]
+
+
+## 4. Custom-Mapping for Target Layouts (ADVANCED)
 
 If you have an existing Hudu instance and you like the layouts that you have created there, you can accomplish this task in a few ways. You can either:
 
@@ -206,7 +189,7 @@ Once you fill out your form and hit enter in your active powershell session, the
 
 <img width="161" height="636" alt="image" src="https://github.com/user-attachments/assets/928139f5-13ca-4d3f-aabb-dbc07cb7a9a8" />
 
-For more information on the rest of the process, please see MovingLayouts.md
+For more information on the rest of the process, please see [Switching layouts guide](./SwitchingLayouts.MD)
 
 <img width="1266" height="466" alt="image" src="https://github.com/user-attachments/assets/d49d4ab8-11ee-4df1-b89e-15713a17b026" />
 
@@ -215,6 +198,7 @@ For more information on the rest of the process, please see MovingLayouts.md
 To migrate assets to a different layout after your ITGlue migration completes, you can simply run this post-run script,
 
 . .\Move-AssetsToNewLayout
+
 You'll be prompted for a source layout to get assets from and a target/destination layout.
 For the standalone script, above, a template, named mapping.ps1 will be generated. You'll also see a 'sourcefields.json' file which is for reference.
 
@@ -225,6 +209,7 @@ Just about any source field_type can be mapped to a richtext field or a text fie
 You can also add multiple source field labls to the SMOOSHLABELS array, which will combine data from said fields into a richtext field or a text field.
 
 For filling out locationdata fields, just be sure to fill those out as if they were their own fields, even though they are themselves a singular field. 
+For more information on this specific tool, please see [Switching layouts guide](./SwitchingLayouts.MD)
 
 # Please Read!
 We use the Magick.NET libraries that you can find here https://github.com/dlemstra/Magick.NET/ for image type validation and metadata building.
@@ -274,8 +259,6 @@ Settings that will be saved include API Keys, URLs, Prefixes, and so on. You can
 
 
 ___
-**COMING SOON:** 
-- Archived Articles will be archived even after migration
 - `Replace-HuduBase64images.ps1` has been updated to use the API and will be fully adapted for fixing completed imports that placed base64 images in articles.
 ___
 ## Version 1.2
