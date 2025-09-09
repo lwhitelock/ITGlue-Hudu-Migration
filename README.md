@@ -8,8 +8,6 @@ You'll want to make sure your Hudu instance is prepared for migration and that y
 > This is the Hudu Technologies Fork of an amazing open-source project.
 >
 >The original project was started by Luke Whitelock and often being maintained by Mendy Green and community contributors. This fork is tested for and intended to be used with the very newest Hudu versions. It includes some features that may not (yet) be present in the main repo, [here](https://github.com/lwhitelock/ITGlue-Hudu-Migration). It also includes a more rigid minimum Hudu version requirement.
->
->At present, this fork works very well with 2.38.0 and is also being tested against some beta builds.
 
 > [!CAUTION]
 > Depending on the size of your ITGlue instance, the migration script can take several hours to run. As such, it's highly recommended to run the migration script on a Windows Server or a machine that has ***Windows Update and Sleep disabled***
@@ -50,7 +48,7 @@ It's recommended to have a fresh Hudu install with no integrations setup. You'll
 
 **1. Make sure you are on a known-compatible Hudu version--**
 
-At this point in time **(August 27, 2025)**, the ideal version to be on when using this fork is at least `2.37.1` image. Up to `2.38.0` has been tested to be stable thus far.
+At this point in time **(August 27, 2025)**, the ideal version to be on when using this fork is at least `2.37.1` image. Up to `2.39.0` has been tested to be stable thus far.
 
 **2 (optional).** If you're self hosted, It's best to set ratelimit to be high. To do so, you can add this to your .env file and perform a docker compose down/up. If you're Cloud/Hudu hosted, the script will automatically wait if it hits the rate limit and will continue automatically.
 
@@ -120,27 +118,7 @@ You can [download newest powershell release here](https://github.com/powershell/
 >[!IMPORTANT]
 >*Currently, the script has only been tested on x86_64 Windows systems. Although Windows ARM, macOS, and Linux have PowerShell available to them, the script has not been tested on those Operating Systems and is not recommended as the script has a lot of dependencies*
 
-2. **HuduAPI PowerShell Module** Until ratelimiting fix is published for Hudu API module in the PSgallery, it's reccomended to manually use our fork for this-- `https://github.com/Hudu-Technologies-Inc/HuduAPI` to this directory: `c:\users\$env:USERNAME\Documents\GitHub\HuduAPI` ***See examples, below***
-
-Option 1: Clone with Git to `c:\users\$env:USERNAME\Documents\GitHub\HuduAPI`
-
- ```pwsh git clone https://github.com/Hudu-Technologies-Inc/HuduAPI "C:\Users\$env:USERNAME\Documents\GitHub\HuduAPI"```
-
-Option 2: Download & Extract to `c:\users\$env:USERNAME\Documents\GitHub\HuduAPI`
-
- ```
-  pwsh 
-  $dst = "$HOME\Documents\GitHub\HuduAPI"
-  $zip = "$env:TEMP\huduapi.zip"
-  Invoke-WebRequest -Uri "https://github.com/Hudu-Technologies-Inc/HuduAPI/archive/refs/heads/master.zip" -OutFile $zip
-  Expand-Archive -Path $zip -DestinationPath $env:TEMP -Force
-  $extracted = Join-Path $env:TEMP "HuduAPI-master"
-  if (Test-Path $dst) { Remove-Item $dst -Recurse -Force }
-  Move-Item -Path $extracted -Destination $dst
-  Remove-Item $zip -Force
-  ```
-
-# 3. Running the script
+2. Running the script
 
 > [!IMPORTANT]
 > Some important things to note about the migration:
@@ -167,28 +145,69 @@ For exmaple, the following snippets will automatically run if dot-sourcing from 
 
 ```. .\ITGlue-Hudu-Migration.ps1```
 
+# Advanced / Other Use Cases
 
-***set layouts as active post-run***
+## 1. Scoped Migrations - 
 
-```foreach ($layout in Get-HuduAssetLayouts) {write-host "setting $($(Set-HuduAssetLayout -id $layout.id -Active $true).asset_layout.name) as active" }```
+For scoped migrations, you can either set $ScopedMigration=2 in your environment file or elect for a scoped migration in the initialization questions. It's the final question before things kick off. 
 
-***populate remaining relations variables***
+Just before companies are migrated, you'll be able to select which ITGlue companies you'd like to include in transferring to Hudu. Only the companies you choose and assets/configurations/websites/contacts/locations belonging to those companies will transfer.
 
-```. .\Get-MissingRelations.ps1```
+## 2. Merging ITGlue Organization Types
 
-***adding attachments***
+If you have designated an organization type (like vendor, partner, non-profit, manufacturer, client, etc), you can elect to merge one of these ITGLue organization types to a single Hudu company. If you choose this option during startup questions (or if you include $ScopeOrgTypes = 1 in your env file), you'll first select which org type will be merged into a single company in Hudu. Then you'll enter the company ID for the target company. 
 
-```. .\Add-HuduAttachmentsViaAPI.ps1```
+Any other org types will migrate as usual, but this one org type will be centralized to one hudu company.
 
-***add any remaining relations***
-
-```
-$ConfigurationRelationsToCreate + $AssetRelationsToCreate | ForEach-Object {try {New-HuduRelation -FromableType  $_.FromableType -FromableID    $_.FromableID -ToableType    $_.ToableType -ToableID      $_.ToableID} catch {Write-Host "Skipped or errored: $_" -ForegroundColor Yellow}}
-```
-
-If you used dot-sourcing to invoke the main script, "Set layouts as active," "Populate Missing Relations" (Get-MissingRelations.ps1), "Add Attachments" (Add-HuduAttachmentsViaAPI.ps1), and "Add missing Relations" should have automatically run. 
+## 2. Checklists [coming soon]
 
 
+## 4. Custom-Mapping for Target Layouts (ADVANCED)
+
+If you have an existing Hudu instance and you like the layouts that you have created there, you can accomplish this task in a few ways. You can either:
+
+### A. Migrate a certain type of object directly to your desired Hudu Asset Layout [coming soon]
+
+This allows you to go from any flexible asset layout, configuration type, location/contact to whichever asset layout(s) you want. To do this directly, you can answer the startup question to allow for custom mapping (or set $settings.AllowForCustomMapping = $true in your environment file). 
+
+for each would-be-created asset layout in Hudu, you are instead prompted:
+1. do you want to allow script to create layout ($true)
+2. do you wish to instead map this to an existing Hudu layout ($false).
+
+If you choose to map directly, you will then be prompted for a target asset layout.
+
+you'll select the number corresponding to where you want this asset type to go.
+
+<img width="555" height="656" alt="image" src="https://github.com/user-attachments/assets/005e4cf3-f746-4e0b-84d6-4eb58019a8fe" />
+
+After selecting, a few files will be generated. One of them is a reference and one of them is a form that you'll fill out.
+Much like the after-the-fact transfer of assets to new layout, you'll have a source-fields.json file that is a reference for which fields we can grab information from. The other, named after your desired target layout will be in the same folder. These both will be in the project directory if you don't use an environment file, otherwise it will be in your chosen 'debug' folder. 
+
+Once you fill out your form and hit enter in your active powershell session, the form will be loaded and the process will begin. SMOOSH fields are merged, constants are populated, addressdata is filled, fields are stripped of HTML per your choosing. 
+
+<img width="161" height="636" alt="image" src="https://github.com/user-attachments/assets/928139f5-13ca-4d3f-aabb-dbc07cb7a9a8" />
+
+For more information on the rest of the process, please see [Switching layouts guide](./SwitchingLayouts.md)
+
+<img width="1266" height="466" alt="image" src="https://github.com/user-attachments/assets/d49d4ab8-11ee-4df1-b89e-15713a17b026" />
+
+### B. Migrate as normal, then after completed, migrate assets from one layout to another
+
+To migrate assets to a different layout after your ITGlue migration completes, you can simply run this post-run script,
+
+. .\Move-AssetsToNewLayout
+
+You'll be prompted for a source layout to get assets from and a target/destination layout.
+For the standalone script, above, a template, named mapping.ps1 will be generated. You'll also see a 'sourcefields.json' file which is for reference.
+
+Using the labels in the 'sourcefields.json', you'll fill out the from='label' fields in mapping.ps1
+
+Just about any source field_type can be mapped to a richtext field or a text field. Just be sure to enable HTML-stripping when targeting a text field with richtext data.
+
+You can also add multiple source field labls to the SMOOSHLABELS array, which will combine data from said fields into a richtext field or a text field.
+
+For filling out locationdata fields, just be sure to fill those out as if they were their own fields, even though they are themselves a singular field. 
+For more information on this specific tool, please see [Switching layouts guide](./SwitchingLayouts.md)
 
 # Please Read!
 We use the Magick.NET libraries that you can find here https://github.com/dlemstra/Magick.NET/ for image type validation and metadata building.
@@ -238,8 +257,6 @@ Settings that will be saved include API Keys, URLs, Prefixes, and so on. You can
 
 
 ___
-**COMING SOON:** 
-- Archived Articles will be archived even after migration
 - `Replace-HuduBase64images.ps1` has been updated to use the API and will be fully adapted for fixing completed imports that placed base64 images in articles.
 ___
 ## Version 1.2
