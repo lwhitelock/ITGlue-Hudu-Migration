@@ -3,7 +3,7 @@
 Migrate assets between **Hudu** layouts while flexibly mapping fields, concatenating (“SMOOSH”) values, translating data types, and optionally relinking related objects.
 
 > **TL;DR**  
-> 1) Dot-source `transfer-assets.ps1`  
+> 1) Dot-source `. .\Move-AssetsToNewLayout.ps1`  
 > 2) Pick **Source** + **Destination** layouts  
 > 3) Edit the generated `mapping.ps1` (and optionally use `SMOOSH`)  
 > 4) Run the transfer and review the summary counts
@@ -27,9 +27,7 @@ Migrate assets between **Hudu** layouts while flexibly mapping fields, concatena
 ## Requirements
 - **PowerShell** ≥ `7.5.1`
 - Hudu **API Key** and **Base URL**
-- **HuduAPI** module (local fork or PSGallery ≥ `2.4.5` recommended)
-
-The script checks your PS version and can import **HuduAPI** either from a local fork or PSGallery.
+- source asset layout with assets you hope to move to another existing layout
 
 ---
 
