@@ -38,7 +38,7 @@ The script checks your PS version and can import **HuduAPI** either from a local
 ```powershell
 # 1) Launch PowerShell 7+
 # 2) Dot-source the script
-. .	ransfer-assets.ps1
+. .\Move-AssetsToNewLayout.ps1
 
 # 3) Follow the prompts to select Source and Destination layouts
 #    The script generates:
