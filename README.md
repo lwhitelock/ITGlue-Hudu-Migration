@@ -8,8 +8,6 @@ You'll want to make sure your Hudu instance is prepared for migration and that y
 > This is the Hudu Technologies Fork of an amazing open-source project.
 >
 >The original project was started by Luke Whitelock and often being maintained by Mendy Green and community contributors. This fork is tested for and intended to be used with the very newest Hudu versions. It includes some features that may not (yet) be present in the main repo, [here](https://github.com/lwhitelock/ITGlue-Hudu-Migration). It also includes a more rigid minimum Hudu version requirement.
->
->At present, this fork works very well with 2.38.0 and is also being tested against some beta builds.
 
 > [!CAUTION]
 > Depending on the size of your ITGlue instance, the migration script can take several hours to run. As such, it's highly recommended to run the migration script on a Windows Server or a machine that has ***Windows Update and Sleep disabled***
@@ -50,7 +48,7 @@ It's recommended to have a fresh Hudu install with no integrations setup. You'll
 
 **1. Make sure you are on a known-compatible Hudu version--**
 
-At this point in time **(August 27, 2025)**, the ideal version to be on when using this fork is at least `2.37.1` image. Up to `2.38.0` has been tested to be stable thus far.
+At this point in time **(August 27, 2025)**, the ideal version to be on when using this fork is at least `2.37.1` image. Up to `2.39.0` has been tested to be stable thus far.
 
 **2 (optional).** If you're self hosted, It's best to set ratelimit to be high. To do so, you can add this to your .env file and perform a docker compose down/up. If you're Cloud/Hudu hosted, the script will automatically wait if it hits the rate limit and will continue automatically.
 
