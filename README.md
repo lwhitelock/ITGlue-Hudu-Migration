@@ -189,7 +189,7 @@ Once you fill out your form and hit enter in your active powershell session, the
 
 <img width="161" height="636" alt="image" src="https://github.com/user-attachments/assets/928139f5-13ca-4d3f-aabb-dbc07cb7a9a8" />
 
-For more information on the rest of the process, please see [Switching layouts guide](./SwitchingLayouts.MD)
+For more information on the rest of the process, please see [Switching layouts guide](./SwitchingLayouts.md)
 
 <img width="1266" height="466" alt="image" src="https://github.com/user-attachments/assets/d49d4ab8-11ee-4df1-b89e-15713a17b026" />
 
@@ -209,7 +209,7 @@ Just about any source field_type can be mapped to a richtext field or a text fie
 You can also add multiple source field labls to the SMOOSHLABELS array, which will combine data from said fields into a richtext field or a text field.
 
 For filling out locationdata fields, just be sure to fill those out as if they were their own fields, even though they are themselves a singular field. 
-For more information on this specific tool, please see [Switching layouts guide](./SwitchingLayouts.MD)
+For more information on this specific tool, please see [Switching layouts guide](./SwitchingLayouts.md)
 
 # Please Read!
 We use the Magick.NET libraries that you can find here https://github.com/dlemstra/Magick.NET/ for image type validation and metadata building.
