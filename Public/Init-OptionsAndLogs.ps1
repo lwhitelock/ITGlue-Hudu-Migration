@@ -62,13 +62,10 @@ function Write-InspectObject {
 function Select-ObjectFromList($objects, $message, $inspectObjects = $false, $allowNull = $false) {
     $validated = $false
     while (-not $validated) {
-        if ($allowNull) {
-            Write-Host "0: None/Custom"
-        }
+        if ($allowNull) { Write-Host "0: None/Custom" }
 
         for ($i = 0; $i -lt $objects.Count; $i++) {
             $object = $objects[$i]
-
             $displayLine = if ($inspectObjects) {
                 "$($i+1): $(Write-InspectObject -object $object)"
             } elseif ($null -ne $object.OptionMessage) {
@@ -78,31 +75,29 @@ function Select-ObjectFromList($objects, $message, $inspectObjects = $false, $al
             } else {
                 "$($i+1): $($object)"
             }
-
             Write-Host $displayLine -ForegroundColor $(if ($i % 2 -eq 0) { 'Cyan' } else { 'Yellow' })
         }
 
-        $choice = Read-Host $message
+        $raw = Read-Host $message
 
-        if (-not ($choice -as [int])) {
+        # Optional: allow empty to mean null when allowed
+        if ($allowNull -and [string]::IsNullOrWhiteSpace($raw)) { return $null }
+
+        $parsed = 0
+        if (-not [int]::TryParse($raw, [ref]$parsed)) {
             Write-Host "Invalid input. Please enter a number." -ForegroundColor Red
             continue
         }
 
-        $choice = [int]$choice
+        if ($parsed -eq 0 -and $allowNull) { return $null }
 
-        if ($choice -eq 0 -and $allowNull) {
-            return $null
-        }
-
-        if ($choice -ge 1 -and $choice -le $objects.Count) {
-            return $objects[$choice - 1]
+        if ($parsed -ge 1 -and $parsed -le $objects.Count) {
+            return $objects[$parsed - 1]
         } else {
             Write-Host "Invalid selection. Please enter a number from the list." -ForegroundColor Red
         }
     }
 }
-
 function Get-EnsuredPath {
     param([string]$path)
     $outpath = if (-not $path -or [string]::IsNullOrWhiteSpace($path)) { $(join-path $(Resolve-Path .).path "debug") } else {$path}
