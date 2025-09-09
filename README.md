@@ -167,27 +167,50 @@ For exmaple, the following snippets will automatically run if dot-sourcing from 
 
 ```. .\ITGlue-Hudu-Migration.ps1```
 
+# Advanced / Other Use Cases
 
-***set layouts as active post-run***
+## 1. Scoped Migrations - 
 
-```foreach ($layout in Get-HuduAssetLayouts) {write-host "setting $($(Set-HuduAssetLayout -id $layout.id -Active $true).asset_layout.name) as active" }```
+For scoped migrations, you can either set $ScopedMigration=2 in your environment file or elect for a scoped migration in the initialization questions. It's the final question before things kick off. 
 
-***populate remaining relations variables***
+Just before companies are migrated, you'll be able to select which ITGlue companies you'd like to include in transferring to Hudu. Only the companies you choose and assets/configurations/websites/contacts/locations belonging to those companies will transfer.
 
-```. .\Get-MissingRelations.ps1```
+## 2. Merging ITGlue Organization Types
 
-***adding attachments***
+If you have designated an organization type (like vendor, partner, non-profit, manufacturer, client, etc), you can elect to merge one of these ITGLue organization types to a single Hudu company. If you choose this option during startup questions (or if you include $ScopeOrgTypes = 1 in your env file), you'll first select which org type will be merged into a single company in Hudu. Then you'll enter the company ID for the target company. 
 
-```. .\Add-HuduAttachmentsViaAPI.ps1```
+Any other org types will migrate as usual, but this one org type will be centralized to one hudu company.
 
-***add any remaining relations***
+## 3. Custom-Mapping for Target Layouts (ADVANCED)
 
-```
-$ConfigurationRelationsToCreate + $AssetRelationsToCreate | ForEach-Object {try {New-HuduRelation -FromableType  $_.FromableType -FromableID    $_.FromableID -ToableType    $_.ToableType -ToableID      $_.ToableID} catch {Write-Host "Skipped or errored: $_" -ForegroundColor Yellow}}
-```
+If you have an existing Hudu instance and you like the layouts that you have created there, you can accomplish this task in a few ways. You can either:
 
-If you used dot-sourcing to invoke the main script, "Set layouts as active," "Populate Missing Relations" (Get-MissingRelations.ps1), "Add Attachments" (Add-HuduAttachmentsViaAPI.ps1), and "Add missing Relations" should have automatically run. 
+### A. Migrate a certain type of object directly to your desired Hudu Asset Layout
 
+This allows you to go from any flexible asset layout, configuration type, location/contact to whichever asset layout(s) you want. To do this directly, you can answer the startup question to allow for custom mapping (or set $settings.AllowForCustomMapping = $true in your environment file). 
+
+for each would-be-created asset layout in Hudu, you are instead prompted:
+1. do you want to allow script to create layout ($true)
+2. do you wish to instead map this to an existing Hudu layout ($false).
+
+If you choose to map directly, you will then be prompted for a target asset layout.
+
+you'll select the number corresponding to where you want this asset type to go.
+
+<img width="555" height="656" alt="image" src="https://github.com/user-attachments/assets/005e4cf3-f746-4e0b-84d6-4eb58019a8fe" />
+
+After selecting, a few files will be generated. One of them is a reference and one of them is a form that you'll fill out.
+Much like the after-the-fact transfer of assets to new layout, you'll have a source-fields.json file that is a reference for which fields we can grab information from. The other, named after your desired target layout will be in the same folder. These both will be in the project directory if you don't use an environment file, otherwise it will be in your chosen 'debug' folder. 
+
+Once you fill out your form and hit enter in your active powershell session, the form will be loaded and the process will begin. SMOOSH fields are merged, constants are populated, addressdata is filled, fields are stripped of HTML per your choosing. 
+
+<img width="161" height="636" alt="image" src="https://github.com/user-attachments/assets/928139f5-13ca-4d3f-aabb-dbc07cb7a9a8" />
+
+For more information on the rest of the process, please see MovingLayouts.md
+
+<img width="1266" height="466" alt="image" src="https://github.com/user-attachments/assets/d49d4ab8-11ee-4df1-b89e-15713a17b026" />
+
+### B. Migrate as normal, then after completed, migrate assets from one layout to another
 
 
 # Please Read!
