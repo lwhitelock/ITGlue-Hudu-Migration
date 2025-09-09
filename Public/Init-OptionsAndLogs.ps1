@@ -80,9 +80,6 @@ function Select-ObjectFromList($objects, $message, $inspectObjects = $false, $al
 
         $raw = Read-Host $message
 
-        # Optional: allow empty to mean null when allowed
-        if ($allowNull -and [string]::IsNullOrWhiteSpace($raw)) { return $null }
-
         $parsed = 0
         if (-not [int]::TryParse($raw, [ref]$parsed)) {
             Write-Host "Invalid input. Please enter a number." -ForegroundColor Red
