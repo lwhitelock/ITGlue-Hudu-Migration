@@ -185,7 +185,7 @@ Any other org types will migrate as usual, but this one org type will be central
 
 If you have an existing Hudu instance and you like the layouts that you have created there, you can accomplish this task in a few ways. You can either:
 
-### A. Migrate a certain type of object directly to your desired Hudu Asset Layout
+### A. Migrate a certain type of object directly to your desired Hudu Asset Layout [coming soon]
 
 This allows you to go from any flexible asset layout, configuration type, location/contact to whichever asset layout(s) you want. To do this directly, you can answer the startup question to allow for custom mapping (or set $settings.AllowForCustomMapping = $true in your environment file). 
 
@@ -212,6 +212,19 @@ For more information on the rest of the process, please see MovingLayouts.md
 
 ### B. Migrate as normal, then after completed, migrate assets from one layout to another
 
+To migrate assets to a different layout after your ITGlue migration completes, you can simply run this post-run script,
+
+. .\Move-AssetsToNewLayout
+You'll be prompted for a source layout to get assets from and a target/destination layout.
+For the standalone script, above, a template, named mapping.ps1 will be generated. You'll also see a 'sourcefields.json' file which is for reference.
+
+Using the labels in the 'sourcefields.json', you'll fill out the from='label' fields in mapping.ps1
+
+Just about any source field_type can be mapped to a richtext field or a text field. Just be sure to enable HTML-stripping when targeting a text field with richtext data.
+
+You can also add multiple source field labls to the SMOOSHLABELS array, which will combine data from said fields into a richtext field or a text field.
+
+For filling out locationdata fields, just be sure to fill those out as if they were their own fields, even though they are themselves a singular field. 
 
 # Please Read!
 We use the Magick.NET libraries that you can find here https://github.com/dlemstra/Magick.NET/ for image type validation and metadata building.
