@@ -8,7 +8,7 @@ Migrate assets between **Hudu** layouts while flexibly mapping fields, concatena
 > 3) Edit the generated `mapping.ps1` (and optionally use `SMOOSH`)  
 > 4) Run the transfer and review the summary counts
 
-[Back to Main README.md](./README.MD)
+[Back to Main README.md](./README.md)
 
 ---
 
