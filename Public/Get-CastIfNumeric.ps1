@@ -17,3 +17,19 @@ function Get-CastIfNumeric {
     }
     return $Value
 }
+function Test-DateAfter {
+    param(
+        [Parameter(Mandatory)][string]$DateString,
+        [datetime]$Cutoff = [datetime]'1000-01-01'
+    )
+    $dt = $null
+    $ok = [datetime]::TryParseExact(
+        $DateString,
+        'yyyy-MM-dd',
+        [System.Globalization.CultureInfo]::InvariantCulture,
+        [System.Globalization.DateTimeStyles]::AssumeUniversal,
+        [ref]$dt
+    )
+    if (-not $ok) { return $false }   # invalid format → fail
+    return ($dt -ge $Cutoff)
+}

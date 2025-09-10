@@ -1421,8 +1421,17 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Assets.json")) {
                 if ($field) {
                     $supported = $true
 
-                    if ($field.FieldType -eq "Tag") {
-				
+                    if ($field.FieldType -eq "Date") {
+                        $ReturnData = $ITGValues.values ?? $ITGValues
+                        if (-not [bool]$(Test-DateAfter -DateString "$ReturnData" -Cutoff '1000-01-01')) {
+                            if ($true -eq $field.HuduLayoutField.required){
+                                $ReturnData = $(get-date).ToUniversalTime().ToString("yyyy-MM-dd")
+                            } else {
+                                continue
+                            }
+                        }
+                        $null = $AssetFields.add("$($field.HuduParsedName)", ("$ReturnData"))
+                    } elseif ($field.FieldType -eq "Tag") {
                         switch ($field.FieldSubType) {
                             "AccountsUsers" { Write-Host "Tags to Account Users are not supported $($field.FieldName) in $($UpdateAsset.Name) will need to be manually migrated, Sorry!"; $supported = $false }
                             "Checklists" { Write-Host "Tags to Checklists are not supported $($field.FieldName) in $($UpdateAsset.Name) will need to be manually migrated, Sorry!"; $supported = $false }
@@ -1433,8 +1442,6 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Assets.json")) {
                                 }
                                 $ReturnData = $ContactsLinked | convertto-json -compress -AsArray | Out-String
                                 $null = $AssetFields.add("$($field.HuduParsedName)", ("$ReturnData"))
-											
-											
                             }
                             "Configurations" {
                                 $ConfigsLinked = foreach ($IDMatch in $ITGValues.values) {
