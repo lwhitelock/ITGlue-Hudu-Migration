@@ -182,13 +182,13 @@ $ITGlueWebsites = Get-Content "$MigrationLogs\Websites.json" | ConvertFrom-json
 Write-Host "Loading Passwords Log"
 $ITGluePasswords = Get-Content "$MigrationLogs\Passwords.json" | ConvertFrom-json
 
-$AttachmentsToUpload = Get-ChildItem $AttachmentsPath -Recurse
-$FoundAssetsToAttach = $ITGlueAssets |Where-Object {$_.itgid -in $AttachmentsToUpload.name -and $_.HuduID -eq $null}
-$FoundDocumentsToAttach = $ITGlueDocuments |Where-Object {$_.itgid -in $AttachmentsToUpload.name}
-$FoundConfigurationsToAttach = $ITGlueConfigurations | Where-Object {$_.itgid -in $AttachmentsToUpload.name}
-$FoundLocationsToAttach = $ITGlueLocations | Where-Object {$_.itgid -in $AttachmentsToUpload.name}
-$FoundWebsitesToAttach = $ITGlueWebsites | Where-Object {$_.itgid -in $AttachmentsToUpload.name}
-$FoundPasswordsToAttach = $ITGluePasswords | Where-Object {$_.itgid -in $AttachmentsToUpload.name}
+$AttachmentsToUpload = Get-ChildItem -Path $AttachmentsPath -Recurse -File
+$filesById = $AttachmentsToUpload | Group-Object { $_.Directory.Name } -AsHashTable -AsString
+$FoundLocationsToAttach = $ITGlueLocations | Where-Object {$filesById.ContainsKey([string]$_.ITGID)}
+$FoundDocumentsToAttach = $ITGlueDocuments | Where-Object {$filesById.ContainsKey([string]$_.ITGID)}
+$FoundConfigurationsToAttach = $ITGlueConfigurations | Where-Object {$filesById.ContainsKey([string]$_.ITGID)}
+$FoundLocationsToAttach = $ITGlueLocations | Where-Object {$filesById.ContainsKey([string]$_.ITGID)}
+$FoundPasswordsToAttach = $ITGluePasswords| Where-Object {$filesById.ContainsKey([string]$_.ITGID)}
 
 if ($FoundAssetsToAttach) {Add-HuduAttachment -FoundAssetsToAttach $FoundAssetsToAttach -UploadType "Asset"}
 if ($FoundConfigurationsToAttach) {Add-HuduAttachment -FoundAssetsToAttach $FoundConfigurationsToAttach -UploadType "Asset"}
