@@ -8,7 +8,6 @@ Migrate assets between **Hudu** layouts while flexibly mapping fields, concatena
 > 3) Edit the generated `mapping.ps1` (and optionally use `SMOOSH`)  
 > 4) Run the transfer and review the summary counts
 
-[Back to Main README.md](./README.md)
 
 ---
 
@@ -20,12 +19,12 @@ Migrate assets between **Hudu** layouts while flexibly mapping fields, concatena
 - **HTML stripping & email normalization** on demand  
 - **AddressData** helper block mapping (line1/line2/city/state/zip/country)  
 - **Relation handling**: optional relinking of related assets; control over archived relations  
-- Built-in sanity checks + per-job settings
+- Built-in checks + per-job settings
 
 ---
 
 ## Requirements
-- **PowerShell** ≥ `7.5.1`
+- **PowerShell** ≥ `7.5.1` (will not work currently on other PowerShell versions)
 - Hudu **API Key** and **Base URL**
 - source asset layout with assets you hope to move to another existing layout
 
@@ -48,7 +47,7 @@ Migrate assets between **Hudu** layouts while flexibly mapping fields, concatena
 # 5) Press Enter in the shell to continue and execute the transfer
 ```
 
-> **Tip:** You can re-run safely; the script backs up an existing `mapping.ps1` to `mapping.ps1.old`.
+> **Tip:** You can safely re-run the script if needed; the script backs up an existing `mapping.ps1` to `mapping.ps1.old`.
 
 ---
 
