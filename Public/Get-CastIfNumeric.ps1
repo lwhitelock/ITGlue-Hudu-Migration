@@ -45,17 +45,14 @@ function Get-CoercedDate {
     $Inv    = [System.Globalization.CultureInfo]::InvariantCulture
     $Styles = [System.Globalization.DateTimeStyles]::AllowWhiteSpaces -bor `
               [System.Globalization.DateTimeStyles]::AssumeLocal
-    $Accepted = @(
-        "MM'/'dd'/'yyyy HH':'mm':'ss",
-        "MM'/'dd'/'yyyy hh':'mm':'ss tt"
-    )
+    $Accepted = [string[]]@('MM/dd/yyyy HH:mm:ss','MM/dd/yyyy hh:mm:ss tt')
 
     $dt = $null
-    if (-not [datetime]::TryParseExact($InputDate, $Accepted, $Inv, $Styles, [ref]$dt)) {
-        return $null
-    }
-
-    # cutoff check using yyyy-MM-dd
+    try {
+        if (-not [datetime]::TryParseExact($InputDate, $Accepted, $Inv, $Styles, [ref]$dt)) {
+            return $null
+        }
+    } catch { return $null }
     if ($dt -lt $Cutoff) { return $null }
 
     switch ($OutputFormat) {
