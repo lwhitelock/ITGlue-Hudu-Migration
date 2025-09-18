@@ -33,3 +33,34 @@ function Test-DateAfter {
     if (-not $ok) { return $false }   # invalid format → fail
     return ($dt -ge $Cutoff)
 }
+
+function Get-CoercedDate {
+    param(
+        [Parameter(Mandatory)][string]$InputDate,
+        [datetime]$Cutoff = [datetime]'1000-01-01',
+        [ValidateSet('DD.MM.YYYY','YYYY.MM.DD','MM/DD/YYYY')]
+        [string]$OutputFormat = 'MM/DD/YYYY'
+    )
+
+    $Inv    = [System.Globalization.CultureInfo]::InvariantCulture
+    $Styles = [System.Globalization.DateTimeStyles]::AllowWhiteSpaces -bor `
+              [System.Globalization.DateTimeStyles]::AssumeLocal
+    $Accepted = @(
+        "MM'/'dd'/'yyyy HH':'mm':'ss",
+        "MM'/'dd'/'yyyy hh':'mm':'ss tt"
+    )
+
+    $dt = $null
+    if (-not [datetime]::TryParseExact($InputDate, $Accepted, $Inv, $Styles, [ref]$dt)) {
+        return $null
+    }
+
+    # cutoff check using yyyy-MM-dd
+    if ($dt -lt $Cutoff) { return $null }
+
+    switch ($OutputFormat) {
+        'DD.MM.YYYY' { $dt.ToString('dd.MM.yyyy', $Inv) }
+        'YYYY.MM.DD' { $dt.ToString('yyyy.MM.dd', $Inv) }
+        'MM/DD/YYYY' { $dt.ToString('MM/dd/yyyy', $Inv) }
+    }
+}

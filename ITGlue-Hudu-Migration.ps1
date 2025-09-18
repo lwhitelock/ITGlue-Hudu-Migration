@@ -1421,11 +1421,12 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Assets.json")) {
                 if ($field) {
                     $supported = $true
 
-                    if ($field.FieldType -eq "Date") {
-                        $ReturnData = $ITGValues.values ?? $ITGValues
-                        if (-not [bool]$(Test-DateAfter -DateString "$ReturnData" -Cutoff '1000-01-01')) {
-                            if ($true -eq $field.HuduLayoutField.required){
-                                $ReturnData = $(get-date).ToUniversalTime().ToString("yyyy-MM-dd")
+                    if ($field.FieldType -ilike "*Date*") {
+                        $raw = ($ITGValues.values ?? $ITGValues) -as [string]
+                        $ReturnData = Get-CoercedDate -InputDate $raw -Cutoff '1000-01-01' -OutputFormat 'MM/DD/YYYY'
+                        if (-not $ReturnData) {
+                            if ($field.HuduLayoutField.required) {
+                                $ReturnData = (Get-Date).ToString('MM/dd/yyyy', [CultureInfo]::InvariantCulture)
                             } else {
                                 continue
                             }
