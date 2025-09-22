@@ -1421,7 +1421,7 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Assets.json")) {
                 if ($field) {
                     $supported = $true
 
-                    if ($field.FieldType -ilike "*Date*") {
+                    if ($field.FieldType -eq "Date") {
                         $raw = ($ITGValues.values ?? $ITGValues) -as [string]
                         $ReturnData = Get-CoercedDate -InputDate $raw -Cutoff '1000-01-01' -OutputFormat 'MM/DD/YYYY'
                         if (-not $ReturnData) {
