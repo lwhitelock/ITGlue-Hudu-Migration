@@ -139,15 +139,17 @@ Using Dot Sourcing to load the script will save your answers into variables and 
 
 It's best to run the script via dot-sourcing a copy of **environ.example** that has been filled out (if you use the environ file, rename it to something like migration.ps1 -- make sure it has the .ps1 extension so you can run it!) or via dot-sourcing the main script. It's best to store the script somewhere easy to run such as C:\temp
 
-For example, all of the packaged scripts will automatically run if dot-sourcing from environ file, otherwise, you'll have to manually run them at the end:
+**For example, all of the packaged scripts in the repo will automatically run if dot-sourcing from environ file, otherwise, you'll have to manually run them at the end:**
 
 ***main invocation***
 
-```. .\ITGlue-Hudu-Migration.ps1```
+
+```. .\migration.ps1``` (the modified environ.example file -- recommended) 
 
 or
 
-```. .\migration.ps1``` (the modified environ.example file) 
+```. .\ITGlue-Hudu-Migration.ps1```
+
 
 # Advanced / Other Use Cases
 
