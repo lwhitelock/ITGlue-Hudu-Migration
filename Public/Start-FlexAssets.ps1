@@ -193,7 +193,7 @@ param($UpdateAsset)
 
     $UpdateAsset.HuduObject = $UpdatedHuduAsset
     $UpdateAsset.Imported = "Created-By-Script"
-    return $UpdatedHuduAsset
+    return $UpdateAsset
 }
 
 function Start-FlexibleAssetContentsExample {
@@ -393,3 +393,4 @@ param($UpdateAsset)
     #$UpdateAsset.Imported = "Created-By-Script"
     return $AssetFields
 }
+
