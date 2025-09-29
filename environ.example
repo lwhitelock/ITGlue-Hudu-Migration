@@ -1,0 +1,61 @@
+
+$project_workdir="$PSScriptRoot"
+$debug_folder=$(join-path "$project_workdir" "debug")
+$errors_folder=$(join-path $debug_folder "errors")
+$global:GLOBAL_ERRORS_DIRECTORY="$errors_folder"
+$global:HAPI_ERRORS_DIRECTORY=$(join-path "$errors_folder" "huduapi")
+$global:ITG_ERRORS_DIRECTORY=$(join-path "$errors_folder" "itglue")
+
+$settings_folder=$(join-path "$project_workdir" "debug\settings")
+$logs_folder=$(join-path "$project_workdir" "debug\logs")
+$defaultSettingsPath=$(join-path "$settings_folder" "masond.json")
+
+foreach ($folder in @($debug_folder, $errors_folder, $logs_folder, $settings_folder, $HAPI_ERRORS_DIRECTORY, $ITG_ERRORS_DIRECTORY)) {
+    if (!(Test-Path -Path "$folder")) { New-Item "$folder" -ItemType Directory }
+    Get-ChildItem -Path "$folder" -File -Recurse -Force | Remove-Item -Force
+}
+
+$InitType = "full"
+$settings = @{
+    HuduBaseDomain          = "https://changeme.huducloud.com"
+    ITGURL                  = "https://changeme.itglue.com"
+    ITGAPIEndpoint          = "https://api.itglue.com"
+    customBrandedDomain     = "n"
+    ITGCustomDomains        = ""
+    InternalCompany         = "changeme inc."
+    GlobalKBFolder          = "y"
+    ConPromptPrefix         = "itg-"
+    FAPromptPrefix          = "itg-"
+    ITGLueExportPath        = "c:\tmp\export"
+    MigrationLogs           = "$logs_folder"
+}   
+$ITGKey                     = "ITG.key"
+$HuduApiKey                 = "HUDU.key"
+$reenterChoice              = "Continue"
+$choice                     = "N"
+$importChoice               = "$settings_folder"
+$customBrandedDomain        = "n"
+$resumeQuestion             = "yes"
+$ImportCompanies            = 1
+$ImportLocations            = 1
+$ImportDomains              = 1
+$DisableWebsiteMonitoring   = 1
+$ImportConfigurations       = 1
+$ImportContacts             = 1
+$ImportFlexibleAssetLayouts = 1
+$ImportFlexibleAssets       = 1
+$ImportArticles             = 1
+$ImportPasswords            = 1
+$NonInteractive             = 2
+$ScopedMigration            = 2
+# prescoped Companies
+$Prescoped = @(
+905
+859
+1387
+1152
+20
+1231
+932
+)
+. .\ITGlue-Hudu-Migration.ps1
