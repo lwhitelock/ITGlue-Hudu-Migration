@@ -39,7 +39,7 @@ param($UpdateAsset)
                                     $null = $AssetFields.Add($field.HuduParsedName, $ReturnData)
                                 }
                                 'Documents' {
-                                    $RelationsToCreate += foreach ($IDMatch in $ITGValues.values) {
+                                    $Script:RelationsToCreate += foreach ($IDMatch in $ITGValues.values) {
                                         @{ hudu_from_id = $UpdateAsset.HuduID; relation_type = 'Article'; itg_to_id = $IDMatch.id }
                                     }
                                     Write-Host "Tags to Articles $($field.FieldName) in $($UpdateAsset.Name) has been recorded for later."
@@ -58,7 +58,7 @@ param($UpdateAsset)
                                     }
                                 }
                                 'Passwords' {
-                                    $RelationsToCreate += foreach ($IDMatch in $ITGValues.values) {
+                                    $Script:RelationsToCreate += foreach ($IDMatch in $ITGValues.values) {
                                         @{ hudu_from_id = $UpdateAsset.HuduID; relation_type = 'AssetPassword'; itg_to_id = $IDMatch.id }
                                     }
                                     Write-Host "Tags to Password $($field.FieldName) in $($UpdateAsset.Name) has been recorded for later."
@@ -72,7 +72,7 @@ param($UpdateAsset)
                                     $null = $AssetFields.Add($field.HuduParsedName, $ReturnData)
                                 }
                                 'Organizations' {
-                                    $RelationsToCreate += foreach ($IDMatch in $ITGValues.values) {
+                                    $Script:RelationsToCreate += foreach ($IDMatch in $ITGValues.values) {
                                         @{ hudu_from_id = $UpdateAsset.HuduID; relation_type = 'Company'; itg_to_id = $IDMatch.id }
                                     }
                                     Write-Host "Tags to Companies $($field.FieldName) in $($UpdateAsset.Name) has been recorded later."
@@ -237,7 +237,7 @@ param($UpdateAsset)
                                     $null = $AssetFields.Add($field.HuduParsedName, $ReturnData)
                                 }
                                 'Documents' {
-                                    $RelationsToCreate += foreach ($IDMatch in $ITGValues.values) {
+                                    $Script:RelationsToCreate += foreach ($IDMatch in $ITGValues.values) {
                                         @{ hudu_from_id = $UpdateAsset.HuduID; relation_type = 'Article'; itg_to_id = $IDMatch.id }
                                     }
                                     Write-Host "Tags to Articles $($field.FieldName) in $($UpdateAsset.Name) has been recorded for later."
@@ -256,7 +256,7 @@ param($UpdateAsset)
                                     }
                                 }
                                 'Passwords' {
-                                    $RelationsToCreate += foreach ($IDMatch in $ITGValues.values) {
+                                    $Script:RelationsToCreate += foreach ($IDMatch in $ITGValues.values) {
                                         @{ hudu_from_id = $UpdateAsset.HuduID; relation_type = 'AssetPassword'; itg_to_id = $IDMatch.id }
                                     }
                                     Write-Host "Tags to Password $($field.FieldName) in $($UpdateAsset.Name) has been recorded for later."
@@ -270,7 +270,7 @@ param($UpdateAsset)
                                     $null = $AssetFields.Add($field.HuduParsedName, $ReturnData)
                                 }
                                 'Organizations' {
-                                    $RelationsToCreate += foreach ($IDMatch in $ITGValues.values) {
+                                    $Script:RelationsToCreate += foreach ($IDMatch in $ITGValues.values) {
                                         @{ hudu_from_id = $UpdateAsset.HuduID; relation_type = 'Company'; itg_to_id = $IDMatch.id }
                                     }
                                     Write-Host "Tags to Companies $($field.FieldName) in $($UpdateAsset.Name) has been recorded later."
@@ -393,4 +393,5 @@ param($UpdateAsset)
     #$UpdateAsset.Imported = "Created-By-Script"
     return $AssetFields
 }
+
 
