@@ -42,6 +42,9 @@ $FontAwesomeUpgrade = Get-FontAwesomeMap
 # Add Hudu Relations Function
 . $PSScriptRoot\Public\Add-HuduRelation.ps1
 
+# Add Flexible Asset Functions
+. $PSScriptRoot\Public\Start-FlexAssets.ps1
+
 # Add Timed (Noninteractive) Messages Helper
 . $PSScriptRoot\Public\Write-TimedMessage.ps1
 
@@ -1339,7 +1342,9 @@ $ITGPasswordsRaw = Import-CSV -Path "$ITGLueExportPath\passwords.csv"
 	
         #We now need to loop through all Assets again updating the assets to their final version
         foreach ($UpdateAsset in $MatchedAssets) {
-            Write-Host "Populating $($UpdateAsset.Name)"
+		$UpdateAsset = Start-FlexibleAssetContents -UpdateAsset $UpdateAsset
+           <# Replaced with Function Above. Needs testing!
+		   Write-Host "Populating $($UpdateAsset.Name)"
 		
             $AssetFields = @{ 
                 'imported_from_itglue' = Get-Date -Format "o"
@@ -1509,7 +1514,7 @@ $ITGPasswordsRaw = Import-CSV -Path "$ITGLueExportPath\passwords.csv"
 
             $UpdateAsset.HuduObject = $UpdatedHuduAsset
             $UpdateAsset.Imported = "Created-By-Script"
-        }
+        } #>
 
 
         $MatchedAssets | ConvertTo-Json -depth 100 | Out-File "$MigrationLogs\Assets.json"
