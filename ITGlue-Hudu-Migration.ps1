@@ -765,6 +765,7 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Configurations.json")
             # 'updated_at'                = $unmatchedImport."ITGObject".attributes."updated-at"
             'configuration_type_name'   = $unmatchedImport."ITGObject".attributes."configuration-type-name"
             'configuration_type_kind'   = $unmatchedImport."ITGObject".attributes."configuration-type-kind"
+            'manufacturer_name'  		= $unmatchedImport."ITGObject".attributes."manufacturer-name"			
             'configuration_status_name' = $unmatchedImport."ITGObject".attributes."configuration-status-name"
             'operating_system_name'     = $unmatchedImport."ITGObject".attributes."operating-system-name"
             'location_name'             = $unmatchedImport."ITGObject".attributes."location-name"
@@ -1488,7 +1489,7 @@ $ITGPasswordsRaw = Import-CSV -Path "$ITGLueExportPath\passwords.csv"
                                 }
                                 $null = $MatchedAssetPasswords.add($MigratedPassword)
                             } else {
-                                if ($CurrentVersion  -eq [version]"2.37.1") {
+                                if ($CurrentVersion  -ge [version]"2.37.1") {
                                     # This version won't cast doubles for 'number' fields. It expects only integers.
                                     $coerced = Get-CastIfNumeric ($_.value -replace '[^\x09\x0A\x0D\x20-\xD7FF\xE000-\xFFFD\x10000\x10FFFF]')
                                     $null = $AssetFields.add("$($field.HuduParsedName)", $coerced)
