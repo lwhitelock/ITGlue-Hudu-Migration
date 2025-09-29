@@ -116,13 +116,17 @@ if ((get-host).version.major -ne 7) {
 
 
 #Get the Hudu API Module if not installed
-if ((Get-Module -ListAvailable -Name HuduAPI).version -ge '2.4.4') {
+$HAPImodulePath = "C:\Users\$env:USERNAME\Documents\GitHub\HuduAPI\HuduAPI\HuduAPI.psm1"
+if (Test-Path $HAPImodulePath) {
+    Import-Module $HAPImodulePath -Force
+    Write-Host "Module imported from $HAPImodulePath"
+} elseif ((Get-Module -ListAvailable -Name HuduAPI).version -ge '2.4.4') {
+    Write-Host "Module imported from $HAPImodulePath"
     Import-Module HuduAPI
 } else {
     Install-Module HuduAPI -MinimumVersion 2.4.5 -Scope CurrentUser
     Import-Module HuduAPI
-}
-  
+}  
 #Login to Hudu
 New-HuduAPIKey $HuduAPIKey
 New-HuduBaseUrl $HuduBaseDomain
@@ -193,25 +197,35 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Companies.json")) {
     $ITGCompaniesFromCSV = Import-CSV (Join-Path -Path $ITGlueExportPath -ChildPath "organizations.csv")
 
     Write-Host "$($ITGCompanies.count) ITG Glue Companies Found" 
+    
     if ($ScopedMigration) {
         $OriginalCompanyCount = $($ITGcompanies.count)
         Write-Host "Setting companies to those in scope..." -foregroundcolor Yellow
         $ITGCompanies = Set-MigrationScope -AllITGCompanies $ITGCompanies -InternalCompany $InternalCompany
         Write-Host "Companies scoped... $OriginalCompanyCount => $($Itgcompanies.count)"
     }
-    $ScopedITGCompanyIds = $ITGCompanies.id
+    $ScopedITGCompanyIds = $ITGCompanies.id    
 
-    $MatchedCompanies = foreach ($itgcompany in $ITGCompanies ) {
-        $HuduCompany = $HuduCompanies | where-object { $_.name -eq $itgcompany.attributes.name }
-        if ($InternalCompany -eq $itgcompany.attributes.name) {
-            $intCompany = $true
+    $nameTracker = @{}
+    $MatchedCompanies = foreach ($itgcompany in $ITGCompanies) {
+        $originalName = $itgcompany.attributes.name
+
+        # Create a unique name if it's already been seen
+        if ($nameTracker.ContainsKey($originalName)) {
+            $nameTracker[$originalName]++
+            $uniqueName = "$originalName-$($nameTracker[$originalName])"
         } else {
-            $intCompany = $false
+            $nameTracker[$originalName] = 0
+            $uniqueName = $originalName
         }
-	
+
+        $HuduCompany = $HuduCompanies | Where-Object -Filter { $_.name -eq $originalName }
+
+        $intCompany = $InternalCompany -eq $originalName
+
         if ($HuduCompany) {
             [PSCustomObject]@{
-                "CompanyName"       = $itgcompany.attributes.name
+                "CompanyName"       = $uniqueName
                 "ITGID"             = $itgcompany.id
                 "HuduID"            = $HuduCompany.id
                 "Matched"           = $true
@@ -219,11 +233,10 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Companies.json")) {
                 "HuduCompanyObject" = $HuduCompany
                 "ITGCompanyObject"  = $itgcompany
                 "Imported"          = "Pre-Existing"
-			
             }
         } else {
             [PSCustomObject]@{
-                "CompanyName"       = $itgcompany.attributes.name
+                "CompanyName"       = $uniqueName
                 "ITGID"             = $itgcompany.id
                 "HuduID"            = ""
                 "Matched"           = $false
