@@ -186,13 +186,14 @@ Write-Host "Starting script. Press CTRL+C to cancel" -ForegroundColor Yellow
 Pause
 
 
-$AttachmentsToUpload = Get-ChildItem $AttachmentsPath -Recurse
-$FoundAssetsToAttach = $MatchedAssets |Where-Object {$_.itgid -in $AttachmentsToUpload.name -and $_.HuduID -eq $null}
-$FoundDocumentsToAttach = $MatchedArticles |Where-Object {$_.itgid -in $AttachmentsToUpload.name}
-$FoundConfigurationsToAttach = $MatchedConfigurations | Where-Object {$_.itgid -in $AttachmentsToUpload.name}
-$FoundLocationsToAttach = $MatchedLocations | Where-Object {$_.itgid -in $AttachmentsToUpload.name}
-$FoundWebsitesToAttach = $ITGlueWebsites | Where-Object {$_.itgid -in $AttachmentsToUpload.name}
-$FoundPasswordsToAttach = $MatchedPasswords | Where-Object {$_.itgid -in $AttachmentsToUpload.name}
+$AttachmentsToUpload = Get-ChildItem -Path $AttachmentsPath -Recurse -File
+$filesById = $AttachmentsToUpload | Group-Object { $_.Directory.Name } -AsHashTable -AsString
+$FoundLocationsToAttach = $ITGlueLocations | Where-Object {$filesById.ContainsKey([string]$_.ITGID)}
+$FoundDocumentsToAttach = $ITGlueDocuments | Where-Object {$filesById.ContainsKey([string]$_.ITGID)}
+$FoundConfigurationsToAttach = $ITGlueConfigurations | Where-Object {$filesById.ContainsKey([string]$_.ITGID)}
+$FoundLocationsToAttach = $ITGlueLocations | Where-Object {$filesById.ContainsKey([string]$_.ITGID)}
+$FoundPasswordsToAttach = $ITGluePasswords| Where-Object {$filesById.ContainsKey([string]$_.ITGID)}
+
 
 if ($FoundAssetsToAttach) {Add-HuduAttachment -FoundAssetsToAttach $FoundAssetsToAttach -UploadType "Asset"}
 if ($FoundConfigurationsToAttach) {Add-HuduAttachment -FoundAssetsToAttach $FoundConfigurationsToAttach -UploadType "Asset"}
