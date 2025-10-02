@@ -70,7 +70,9 @@ function Select-ObjectFromList($objects, $message, $inspectObjects = $false, $al
                 "$($i+1): $(Write-InspectObject -object $object)"
             } elseif ($null -ne $object.OptionMessage) {
                 "$($i+1): $($object.OptionMessage)"
-            } elseif ($null -ne $object.name) {
+            } elseif (-not $([string]::IsNullOrEmpty($object.attributes.name))) {
+                "$($i+1): $($object.attributes.name)"
+            } elseif (-not $([string]::IsNullOrEmpty($object.name))) {
                 "$($i+1): $($object.name)"
             } else {
                 "$($i+1): $($object)"
