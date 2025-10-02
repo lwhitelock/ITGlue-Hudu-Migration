@@ -176,7 +176,7 @@ function Set-ExternalModulesInitialized {
     param (
             [string]$HAPImodulePath = "C:\Users\$env:USERNAME\Documents\GitHub\HuduAPI\HuduAPI\HuduAPI.psm1",
             [bool]$use_hudu_fork = $true,
-            [version]$RequiredHuduVersion = [version]"2.38.0",
+            [version]$RequiredHuduVersion = [version]"2.39.3",
             $DisallowedVersions = @([version]"2.37.0")
         )
 
@@ -213,12 +213,13 @@ function Set-ExternalModulesInitialized {
     New-HuduBaseUrl $HuduBaseDomain
 
     # Check we have the correct version
-    $HuduAppInfo = Get-HuduAppInfo
-    $CurrentVersion = [version]$HuduAppInfo.version
+    $CurrentVersion = [version]($(Get-HuduAppInfo).version)
 
     if ($CurrentVersion -lt [version]$RequiredHuduVersion -or $DisallowedVersions -contains $CurrentVersion) {
         Write-Host "This script requires at least version $RequiredHuduVersion and cannot run with version $CurrentVersion. Please update your version of Hudu."
         exit 1
+    } else {
+        write-host "Current version $CurrentVersion is compatible."
     }
 
     try {

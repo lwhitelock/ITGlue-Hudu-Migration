@@ -4,10 +4,10 @@
 # Use this to set the context of the script runs
 $FirstTimeLoad = 1
 
-# if ((get-host).version.major -ne 7) {
-#     Write-Host "Powershell 7 Required" -foregroundcolor Red
-#     exit 1
-# }
+if ((get-host).version.major -ne 7) {
+    Write-Host "Powershell 7 Required" -foregroundcolor Red
+    exit 1
+}
 ############################### Functions ###############################
 # Import ImageMagick for Invoke-ImageTest Function (Disabled)
  . $PSScriptRoot\Private\Initialize-ImageMagik.ps1
@@ -1193,9 +1193,12 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\AssetLayouts.json")) 
                 }
                 $NewIcon = $CurrentIcon
             }
-		
-		
-            $NewLayout = New-HuduAssetLayout -name "$($FlexibleLayoutPrefix)$($UnmatchedLayout.ITGObject.attributes.name)" -icon "fas fa-$NewIcon" -color "#6136ff" -icon_color "#ffffff" -include_passwords $true -include_photos $true -include_comments $true -include_files $true -fields $TempLayoutFields 
+            # account for layout-collision between split configurations and flexible asset layouts [when either not prefixed]
+            if (-not $(Get-HuduAssetLayouts -name "$($FlexibleLayoutPrefix)$($UnmatchedLayout.ITGObject.attributes.name)")){
+                $NewLayout = New-HuduAssetLayout -name "$($FlexibleLayoutPrefix)$($UnmatchedLayout.ITGObject.attributes.name)" -icon "fas fa-$NewIcon" -color "#6136ff" -icon_color "#ffffff" -include_passwords $true -include_photos $true -include_comments $true -include_files $true -fields $TempLayoutFields 
+            } else {
+                $NewLayout = New-HuduAssetLayout -name "$($FlexibleLayoutPrefix)$($UnmatchedLayout.ITGObject.attributes.name)-Assets" -icon "fas fa-$NewIcon" -color "#6136ff" -icon_color "#ffffff" -include_passwords $true -include_photos $true -include_comments $true -include_files $true -fields $TempLayoutFields 
+            }
             $MatchedNewLayout = Get-HuduAssetLayouts -layoutid $NewLayout.asset_layout.id
 
             $UnmatchedLayout.HuduObject = $MatchedNewLayout
@@ -2201,8 +2204,6 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Passwords.json")) {
                             $unmatchedPassword.matched = $false
                             Write-Warning "$($HuduNewPassword.Name) Has been skipped and added to manual actions due to being empty"                            
                         } else {
-                            write-host $PasswordSplat
-
                             $HuduNewPassword = (New-HuduPassword @PasswordSplat).asset_password 
                             $unmatchedPassword.matched = $true
                             $unmatchedPassword.HuduID = $HuduNewPassword.id
