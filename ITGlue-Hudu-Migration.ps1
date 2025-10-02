@@ -4,10 +4,10 @@
 # Use this to set the context of the script runs
 $FirstTimeLoad = 1
 
-if ((get-host).version.major -ne 7) {
-    Write-Host "Powershell 7 Required" -foregroundcolor Red
-    exit 1
-}
+# if ((get-host).version.major -ne 7) {
+#     Write-Host "Powershell 7 Required" -foregroundcolor Red
+#     exit 1
+# }
 ############################### Functions ###############################
 # Import ImageMagick for Invoke-ImageTest Function (Disabled)
  . $PSScriptRoot\Private\Initialize-ImageMagik.ps1
@@ -115,7 +115,7 @@ Write-Host "######################################################" -ForegroundC
 $backups=$(if ($true -eq $NonInteractive) {"Y"} else {Read-Host "Y/n"})
 $ScriptStartTime = $(Get-Date -Format "o")
 $CurrentVersion =  Set-ExternalModulesInitialized `
-                -RequiredHuduVersion ([version]"2.38.0") `
+                -RequiredHuduVersion ([version]"2.39.3") `
                 -DisallowedVersions @([version]"2.37.0")
 # Check if we have a logs folder
 
@@ -437,10 +437,10 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Locations.json")) {
             show_in_list = 'false'
             position     = 502}
         $LocAssetFieldsMap = { @{ 
-            'address_1'   = $unmatchedImport."ITGObject".attributes."address-1"
-            'address_2'   = $unmatchedImport."ITGObject".attributes."address-2"
+            'address 1'   = $unmatchedImport."ITGObject".attributes."address-1"
+            'address 2'   = $unmatchedImport."ITGObject".attributes."address-2"
             'city'        = $unmatchedImport."ITGObject".attributes."city"
-            'postal_code' = $unmatchedImport."ITGObject".attributes."postal-code"
+            'postal code' = $unmatchedImport."ITGObject".attributes."postal-code"
             'region'      = $unmatchedImport."ITGObject".attributes."region-name"
             'country'     = $unmatchedImport."ITGObject".attributes."country-name"
             'phone'       = $unmatchedImport."ITGObject".attributes."phone"
@@ -450,10 +450,10 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Locations.json")) {
         } }            
     } else {
         $LocAssetFieldsMap = { @{ 
-            'address_1'   = $unmatchedImport."ITGObject".attributes."address-1"
-            'address_2'   = $unmatchedImport."ITGObject".attributes."address-2"
+            'address 1'   = $unmatchedImport."ITGObject".attributes."address-1"
+            'address 2'   = $unmatchedImport."ITGObject".attributes."address-2"
             'city'        = $unmatchedImport."ITGObject".attributes."city"
-            'postal_code' = $unmatchedImport."ITGObject".attributes."postal-code"
+            'postal code' = $unmatchedImport."ITGObject".attributes."postal-code"
             'region'      = $unmatchedImport."ITGObject".attributes."region-name"
             'country'     = $unmatchedImport."ITGObject".attributes."country-name"
             'phone'       = $unmatchedImport."ITGObject".attributes."phone"
@@ -779,53 +779,53 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Configurations.json")
             position     = 502}
         $ConfigAssetFieldsMap = { @{ 
             'hostname'                  = $unmatchedImport."ITGObject".attributes."hostname"
-            'primary_ip'                = $unmatchedImport."ITGObject".attributes."primary-ip"
-            'mac_address'               = $unmatchedImport."ITGObject".attributes."mac-address"
-            'default_gateway'           = $unmatchedImport."ITGObject".attributes."default-gateway"
-            'serial_number'             = $unmatchedImport."ITGObject".attributes."serial-number"
-            'asset_tag'                 = $unmatchedImport."ITGObject".attributes."asset-tag"
+            'primary ip'                = $unmatchedImport."ITGObject".attributes."primary-ip"
+            'mac address'               = $unmatchedImport."ITGObject".attributes."mac-address"
+            'default gateway'           = $unmatchedImport."ITGObject".attributes."default-gateway"
+            'serial number'             = $unmatchedImport."ITGObject".attributes."serial-number"
+            'asset tag'                 = $unmatchedImport."ITGObject".attributes."asset-tag"
             'position'                  = $unmatchedImport."ITGObject".attributes."position"
-            'installed_by'              = $unmatchedImport."ITGObject".attributes."installed-by"
-            'purchased_by'              = $unmatchedImport."ITGObject".attributes."purchased-by"
+            'installed by'              = $unmatchedImport."ITGObject".attributes."installed-by"
+            'purchased by'              = $unmatchedImport."ITGObject".attributes."purchased-by"
             'notes'                     = $unmatchedImport."ITGObject".attributes."notes"
-            'operating_system_notes'    = $unmatchedImport."ITGObject".attributes."operating-system-notes"
-            'warranty_expires_at'       = $unmatchedImport."ITGObject".attributes."warranty-expires-at"
-            'installed_at'              = $unmatchedImport."ITGObject".attributes."installed-at"
-            'purchased_at'              = $unmatchedImport."ITGObject".attributes."purchased-at"
-            'configuration_type_name'   = $unmatchedImport."ITGObject".attributes."configuration-type-name"
-            'configuration_type_kind'   = $unmatchedImport."ITGObject".attributes."configuration-type-kind"
-            'manufacturer_name'  		= $unmatchedImport."ITGObject".attributes."manufacturer-name"			
-            'configuration_status_name' = $unmatchedImport."ITGObject".attributes."configuration-status-name"
-            'operating_system_name'     = $unmatchedImport."ITGObject".attributes."operating-system-name"
-            'location_name'             = $unmatchedImport."ITGObject".attributes."location-name"
-            'model_name'                = $unmatchedImport."ITGObject".attributes."model-name"
-            'contact_name'              = $unmatchedImport."ITGObject".attributes."contact-name"	
+            'operating system notes'    = $unmatchedImport."ITGObject".attributes."operating-system-notes"
+            'warranty expires at'       = $unmatchedImport."ITGObject".attributes."warranty-expires-at"
+            'installed at'              = $unmatchedImport."ITGObject".attributes."installed-at"
+            'purchased at'              = $unmatchedImport."ITGObject".attributes."purchased-at"
+            'configuration type name'   = $unmatchedImport."ITGObject".attributes."configuration-type-name"
+            'configuration type kind'   = $unmatchedImport."ITGObject".attributes."configuration-type-kind"
+            'manufacturer name'  		= $unmatchedImport."ITGObject".attributes."manufacturer-name"			
+            'configuration status_name' = $unmatchedImport."ITGObject".attributes."configuration-status-name"
+            'operating system name'     = $unmatchedImport."ITGObject".attributes."operating-system-name"
+            'location name'             = $unmatchedImport."ITGObject".attributes."location-name"
+            'model name'                = $unmatchedImport."ITGObject".attributes."model-name"
+            'contact name'              = $unmatchedImport."ITGObject".attributes."contact-name"	
             'ITGlue ID'                 = $unmatchedImport."ITGObject".id
         } }    
     } else {
         $ConfigAssetFieldsMap = { @{ 
             'hostname'                  = $unmatchedImport."ITGObject".attributes."hostname"
-            'primary_ip'                = $unmatchedImport."ITGObject".attributes."primary-ip"
-            'mac_address'               = $unmatchedImport."ITGObject".attributes."mac-address"
-            'default_gateway'           = $unmatchedImport."ITGObject".attributes."default-gateway"
-            'serial_number'             = $unmatchedImport."ITGObject".attributes."serial-number"
-            'asset_tag'                 = $unmatchedImport."ITGObject".attributes."asset-tag"
+            'primary ip'                = $unmatchedImport."ITGObject".attributes."primary-ip"
+            'mac address'               = $unmatchedImport."ITGObject".attributes."mac-address"
+            'default gateway'           = $unmatchedImport."ITGObject".attributes."default-gateway"
+            'serial number'             = $unmatchedImport."ITGObject".attributes."serial-number"
+            'asset tag'                 = $unmatchedImport."ITGObject".attributes."asset-tag"
             'position'                  = $unmatchedImport."ITGObject".attributes."position"
-            'installed_by'              = $unmatchedImport."ITGObject".attributes."installed-by"
-            'purchased_by'              = $unmatchedImport."ITGObject".attributes."purchased-by"
+            'installed by'              = $unmatchedImport."ITGObject".attributes."installed-by"
+            'purchased by'              = $unmatchedImport."ITGObject".attributes."purchased-by"
             'notes'                     = $unmatchedImport."ITGObject".attributes."notes"
-            'operating_system_notes'    = $unmatchedImport."ITGObject".attributes."operating-system-notes"
-            'warranty_expires_at'       = $unmatchedImport."ITGObject".attributes."warranty-expires-at"
-            'installed_at'              = $unmatchedImport."ITGObject".attributes."installed-at"
-            'purchased_at'              = $unmatchedImport."ITGObject".attributes."purchased-at"
-            'configuration_type_name'   = $unmatchedImport."ITGObject".attributes."configuration-type-name"
-            'configuration_type_kind'   = $unmatchedImport."ITGObject".attributes."configuration-type-kind"
-            'manufacturer_name'  		= $unmatchedImport."ITGObject".attributes."manufacturer-name"			
-            'configuration_status_name' = $unmatchedImport."ITGObject".attributes."configuration-status-name"
-            'operating_system_name'     = $unmatchedImport."ITGObject".attributes."operating-system-name"
-            'location_name'             = $unmatchedImport."ITGObject".attributes."location-name"
-            'model_name'                = $unmatchedImport."ITGObject".attributes."model-name"
-            'contact_name'              = $unmatchedImport."ITGObject".attributes."contact-name"	
+            'operating system notes'    = $unmatchedImport."ITGObject".attributes."operating-system-notes"
+            'warranty expires at'       = $unmatchedImport."ITGObject".attributes."warranty-expires-at"
+            'installed at'              = $unmatchedImport."ITGObject".attributes."installed-at"
+            'purchased at'              = $unmatchedImport."ITGObject".attributes."purchased-at"
+            'configuration type name'   = $unmatchedImport."ITGObject".attributes."configuration-type-name"
+            'configuration type kind'   = $unmatchedImport."ITGObject".attributes."configuration-type-kind"
+            'manufacturer name'  		= $unmatchedImport."ITGObject".attributes."manufacturer-name"			
+            'configuration status_name' = $unmatchedImport."ITGObject".attributes."configuration-status-name"
+            'operating system name'     = $unmatchedImport."ITGObject".attributes."operating-system-name"
+            'location name'             = $unmatchedImport."ITGObject".attributes."location-name"
+            'model name'                = $unmatchedImport."ITGObject".attributes."model-name"
+            'contact name'              = $unmatchedImport."ITGObject".attributes."contact-name"	
         } }
     }
 
@@ -1038,10 +1038,10 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Contacts.json")) {
             show_in_list = 'false'
             position     = 502}
         $ConAssetFieldsMap = { @{ 
-            'first_name'   = $unmatchedImport."ITGObject".attributes."first-name"
-            'last_name'    = $unmatchedImport."ITGObject".attributes."last-name"
+            'first name'   = $unmatchedImport."ITGObject".attributes."first-name"
+            'last name'    = $unmatchedImport."ITGObject".attributes."last-name"
             'title'        = $unmatchedImport."ITGObject".attributes."title"
-            'contact_type' = $unmatchedImport."ITGObject".attributes."contact-type-name"
+            'contact type' = $unmatchedImport."ITGObject".attributes."contact-type-name"
             'location'     = $ITGLocationsHashTable["$($unmatchedImport."ITGObject".attributes.'location-id')"] | Select-Object @{N='id';E={$_.HuduID}}, @{N='name';E={$_.Name}} | convertto-json -AsArray -Compress | out-string
             'important'    = $unmatchedImport."ITGObject".attributes."important"
             'notes'        = $unmatchedImport."ITGObject".attributes."notes"
@@ -1051,10 +1051,10 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Contacts.json")) {
         } } 
     } else {
         $ConAssetFieldsMap = { @{ 
-            'first_name'   = $unmatchedImport."ITGObject".attributes."first-name"
-            'last_name'    = $unmatchedImport."ITGObject".attributes."last-name"
+            'first name'   = $unmatchedImport."ITGObject".attributes."first-name"
+            'last name'    = $unmatchedImport."ITGObject".attributes."last-name"
             'title'        = $unmatchedImport."ITGObject".attributes."title"
-            'contact_type' = $unmatchedImport."ITGObject".attributes."contact-type-name"
+            'contact type' = $unmatchedImport."ITGObject".attributes."contact-type-name"
             'location'     = $ITGLocationsHashTable["$($unmatchedImport."ITGObject".attributes.'location-id')"] | Select-Object @{N='id';E={$_.HuduID}}, @{N='name';E={$_.Name}} | convertto-json -AsArray -Compress | out-string
             'important'    = $unmatchedImport."ITGObject".attributes."important"
             'notes'        = $unmatchedImport."ITGObject".attributes."notes"
@@ -1221,8 +1221,11 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\AssetLayouts.json")) 
 
             $UpdateLayoutFields = foreach ($ITGField in $FlexLayoutFields) {
                 $ITGFieldRequired = [bool]$ITGField.Attributes.required
-                $requiredForHudu = $ITGFieldRequired -and ($($fullyPopulated[$ITGField.Attributes.name] ?? $false) -eq $true)
-            
+                if ($ITGField.attributes.kind -eq "Tag"){
+                    $requiredForHudu = $false
+                } else {
+                    $requiredForHudu = $ITGFieldRequired -and ($($fullyPopulated[$ITGField.Attributes.name] ?? $false) -eq $true)
+                }
                 $LayoutField = @{
                     label        = $ITGField.Attributes.name
                     show_in_list = $ITGField.Attributes."show-in-list"
@@ -1380,9 +1383,9 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Assets.json")) {
                 $HuduCompanyID = ($MatchedCompanies | Where-Object { $_.ITGID -eq $ITGAsset.attributes.'organization-id' }).HuduID
 
                 $AssetFields = @{ 
-                    'imported_from_itglue' = Get-Date -Format "o"
-                    'itglue_url' = $ITGAsset.attributes.'resource-url'
-                    'itglue_id' = $ITGAsset.id
+                    'Imported From ITGlue' = Get-Date -Format "o"
+                    'ITGlue URL' = $ITGAsset.attributes.'resource-url'
+                    'ITGlue ID' = $ITGAsset.id
                 }
 			
                 $NewHuduAsset = (New-HuduAsset -name $ITGAsset.attributes.name -company_id $HuduCompanyID -asset_layout_id $Layout.HuduObject.id -fields $AssetFields).asset
@@ -2198,6 +2201,8 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Passwords.json")) {
                             $unmatchedPassword.matched = $false
                             Write-Warning "$($HuduNewPassword.Name) Has been skipped and added to manual actions due to being empty"                            
                         } else {
+                            write-host $PasswordSplat
+
                             $HuduNewPassword = (New-HuduPassword @PasswordSplat).asset_password 
                             $unmatchedPassword.matched = $true
                             $unmatchedPassword.HuduID = $HuduNewPassword.id
