@@ -1567,9 +1567,9 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\ArticleBase.json")) {
             $folders = $RelativePath -split '\\'
             $FilenameFromFolder = ($folders[$folders.count - 1] -split ' ', 2)[1]
             $Filename = $FilenameFromFolder
+            $company = $MatchedCompanies | Where-Object { $_.CompanyName -eq $doc.organization }
 
-            $pathtest = Test-Path -LiteralPath "$($dir.Fullname)\$($filename).html"
-
+			$pathtest = Test-Path -LiteralPath "$($dir.Fullname)\$($filename).html"
             if ($pathtest -eq $false) {
                 $filename = $doc.name
                 $pathtest = Test-Path -LiteralPath "$($dir.Fullname)\$($filename).html"
@@ -1578,6 +1578,19 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\ArticleBase.json")) {
                     $pathtest = Test-Path -LiteralPath "$($dir.Fullname)\$($filename).html"
                     if ($pathtest -eq $false) {
                         Write-Host "Not Found $($dir.Fullname)\$($filename).html this article will need to be migrated manually" -foregroundcolor red
+						[PSCustomObject]@{
+							"Name"       = $doc.name
+							"Filename"   = $Filename
+							"Path"       = $($dir.Fullname)
+							"FullPath"   = "$($dir.Fullname)\$($filename).html"
+							"ITGID"      = $doc.id
+							"ITGLocator" = $doc.locator
+							"HuduID"     = $null
+							"HuduObject" = $null
+							"Folders"    = $folders
+							"Imported"   = "Skipped - Missing File"
+							"Company"    = $company
+						}
                         continue
                     }
                 }
@@ -1585,7 +1598,6 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\ArticleBase.json")) {
             }
 
 
-            $company = $MatchedCompanies | Where-Object { $_.CompanyName -eq $doc.organization }
             if (($company | Measure-Object).count -eq 1) {
 
                 $art_folder_id = $null
