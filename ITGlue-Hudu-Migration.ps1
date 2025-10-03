@@ -1557,18 +1557,43 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\ArticleBase.json")) {
         $ITGDocuments = Import-CSV -Path (Join-Path -path $ITGLueExportPath -ChildPath "documents.csv")
         [string]$ITGDocumentsPath = Join-Path -path $ITGLueExportPath -ChildPath "Documents"
 
-        $files = Get-ChildItem -Path $ITGDocumentsPath -recurse
+        $Files = Get-ChildItem -Path $ITGDocumentsPath -Recurse -Force
 
         # First lets find each article in the file system and then create blank stubs for them all so we can match relations later
         $MatchedArticles = Foreach ($doc in $ITGDocuments) {
             Write-Host "Starting $($doc.name)" -ForegroundColor Green
             $dir = $files | Where-Object { $_.PSIsContainer -eq $true -and $_.Name -match $doc.locator }
-            $RelativePath = ($dir.FullName).Substring($ITGDocumentsPath.Length)
-            $folders = $RelativePath -split '\\'
+			# ITGlue sometimes has export oddities like multiple folders for the same article or various names on the articles. This is assuming only one HTML file.
+			$DocumentFile = Get-ChildItem $dir -filter *.htm*
+			if (-not $DocumentFile)  {
+				Write-Host "HTML Files were not found under $($dir.fullname) this article will need to be migrated manually" -foregroundcolor red
+				[PSCustomObject]@{
+					"Name"       = $doc.name
+					"Filename"   = $Filename
+					"Path"       = $($dir.Fullname)
+					"FullPath"   = "$($dir.Fullname)\$($filename).html"
+					"ITGID"      = $doc.id
+					"ITGLocator" = $doc.locator
+					"HuduID"     = $null
+					"HuduObject" = $null
+					"Folders"    = $folders
+					"Imported"   = "Skipped - Missing File"
+					"Company"    = $company
+				}
+				continue
+			}
+			elseif ($DocumentFile.count -gt 1) {Write-Warning "Found more than one HTML file for this article. This is a warning only"}
+			# Disabling this line and replacing it with the found file
+            # $RelativePath = ($dir.FullName).Substring($ITGDocumentsPath.Length)
+			$RelativePath = ($DocumentFile.Directory.FullName).Substring($ITGDocumentsPath.Length)
+            $folders = ($RelativePath -split '\\').trim('_').trim()
             $FilenameFromFolder = ($folders[$folders.count - 1] -split ' ', 2)[1]
-            $Filename = $FilenameFromFolder
+            # Disabling this line and using the found file name
+			# $Filename = $FilenameFromFolder
+			$Filename = $DocumentFile.name
             $company = $MatchedCompanies | Where-Object { $_.CompanyName -eq $doc.organization }
 
+<# Disabling this block since the Test-Path becomes pointless when the file is found
 			$pathtest = Test-Path -LiteralPath "$($dir.Fullname)\$($filename).html"
             if ($pathtest -eq $false) {
                 $filename = $doc.name
@@ -1596,6 +1621,7 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\ArticleBase.json")) {
                 }
 	
             }
+Closing the disabled block, this will be removed at some point #>
 
 
             if (($company | Measure-Object).count -eq 1) {
