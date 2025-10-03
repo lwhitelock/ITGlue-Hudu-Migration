@@ -1556,15 +1556,16 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\ArticleBase.json")) {
 
         $ITGDocuments = Import-CSV -Path (Join-Path -path $ITGLueExportPath -ChildPath "documents.csv")
         [string]$ITGDocumentsPath = Join-Path -path $ITGLueExportPath -ChildPath "Documents"
+		$ITGDocumentsPath = "\\?\$ITGDocumentsPath"
 
-        $Files = Get-ChildItem -Path $ITGDocumentsPath -Recurse -Force
+        $Files = Get-ChildItem -LiteralPath $ITGDocumentsPath -Recurse -Force
 
         # First lets find each article in the file system and then create blank stubs for them all so we can match relations later
         $MatchedArticles = Foreach ($doc in $ITGDocuments) {
             Write-Host "Starting $($doc.name)" -ForegroundColor Green
             $dir = $files | Where-Object { $_.PSIsContainer -eq $true -and $_.Name -match $doc.locator }
 			# ITGlue sometimes has export oddities like multiple folders for the same article or various names on the articles. This is assuming only one HTML file.
-			$DocumentFile = Get-ChildItem $dir -filter *.htm*
+			$DocumentFile = Get-ChildItem -LiteralPath $dir -filter *.htm*
 			if (-not $DocumentFile)  {
 				Write-Host "HTML Files were not found under $($dir.fullname) this article will need to be migrated manually" -foregroundcolor red
 				[PSCustomObject]@{
