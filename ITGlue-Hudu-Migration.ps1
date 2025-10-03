@@ -1571,7 +1571,7 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\ArticleBase.json")) {
 					"Name"       = $doc.name
 					"Filename"   = $Filename
 					"Path"       = $($dir.Fullname)
-					"FullPath"   = "$($dir.Fullname)\$($filename).html"
+					"FullPath"   = $null
 					"ITGID"      = $doc.id
 					"ITGLocator" = $doc.locator
 					"HuduID"     = $null
@@ -1681,8 +1681,8 @@ Closing the disabled block, this will be removed at some point #>
             [PSCustomObject]@{
                 "Name"       = $doc.name
                 "Filename"   = $Filename
-                "Path"       = $($dir.Fullname)
-                "FullPath"   = "$($dir.Fullname)\$($filename).html"
+                "Path"       = $DocumentFile.Directory.FullName
+                "FullPath"   = $DocumentFile.fullname
                 "ITGID"      = $doc.id
                 "ITGLocator" = $doc.locator
                 "HuduID"     = $NewArticle.ID
