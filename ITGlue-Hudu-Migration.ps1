@@ -1726,6 +1726,7 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Articles.json")) {
                 $html = ''
                 $rawsource = ''
 
+<# Attachments are now supported - disabling this manual log entry
                 $ManualLog = [PSCustomObject]@{
                     Document_Name = $Article.Name
                     Asset_Type    = "Article"
@@ -1739,6 +1740,7 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Articles.json")) {
                     ITG_URL       = "$ITGURL/$($Article.ITGLocator)"
                 }
                 $null = $ManualActions.add($ManualLog)
+End of comment block - will delete after testing #>
 
             }
 
