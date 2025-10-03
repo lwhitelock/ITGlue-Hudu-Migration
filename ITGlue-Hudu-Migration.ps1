@@ -1712,7 +1712,9 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Articles.json")) {
 } else {
 	
     if ($ImportArticles -eq $true) {
-        $Attachfiles = Get-ChildItem (Join-Path -Path $ITGLueExportPath -ChildPath "attachments\documents") -recurse
+		$AttchmentsPath = Join-Path -Path $ITGLueExportPath -ChildPath "attachments\documents"
+		$AttchmentsPath = "\\?\$AttchmentsPath"
+        $Attachfiles = Get-ChildItem -LiteralPath $AttchmentsPath -Recurse -Force
 
         # Now do the actual work of populating the content of articles
         $ArticleErrors = foreach ($Article in $MatchedArticles) {
@@ -1811,13 +1813,13 @@ End of comment block - will delete after testing #>
                     }
 
                         # Test the path to ensure that a file extension exists, if no file extension we get problems later on. We rename it if there's no ext.
-                        if ($imagePath -and (Test-Path $imagePath -ErrorAction SilentlyContinue)) {
-                            if ((Get-Item -path $imagePath).extension -eq '') {
+                        if ($imagePath -and (Test-Path -LiteralPath $imagePath -ErrorAction SilentlyContinue)) {
+                            if ((Get-Item -LiteralPath $imagePath).extension -eq '') {
                                 Write-Warning "$imagePath is undetermined image. Testing..."
                                 if ($Magick = New-Object ImageMagick.MagickImage($imagePath)) {
                                     $OriginalFullImagePath = $imagePath
                                     $imagePath = "$($imagePath).$($Magick.format)"
-                                    $MovedItem = Move-Item -Path $OriginalFullImagePath -Destination $imagePath
+                                    $MovedItem = Move-Item -LiteralPath $OriginalFullImagePath -Destination $imagePath
                                 }
                             }                        
                             $imageType = Invoke-ImageTest($imagePath)
@@ -1851,7 +1853,7 @@ End of comment block - will delete after testing #>
                                 }
 
                                 if ($Magick -and $MovedItem) {
-                                    Move-Item -Path $imagePath -Destination $OriginalFullImagePath
+                                    Move-Item -LiteralPath $imagePath -Destination $OriginalFullImagePath
                                 }
         
                             }
