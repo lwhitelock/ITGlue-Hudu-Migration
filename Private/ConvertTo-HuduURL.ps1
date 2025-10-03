@@ -38,7 +38,7 @@ $MatchedArticles = $MatchedArticleBase
 # 3 = type of Entity (Important for location)
 # 4 = ITGlue Entity ID
 
-$RichRegexPatternToMatchSansAssets = "<(A|a) href=\S$EscapedITGURL/([0-9]{1,20})/(docs|passwords|configurations)/([0-9]{1,20})\S.*?</(A|a)>"
+$RichRegexPatternToMatchSansAssets = "<(A|a) href=\S$EscapedITGURL/([0-9]{1,20})/(docs|passwords|configurations|assets)/([0-9]{1,20})\S.*?</(A|a)>"
 $RichRegexPatternToMatchWithAssets = "<(A|a) href=\S$EscapedITGURL/([0-9]{1,20})/(assets)/.*?/([0-9]{1,20})\S.*?</(A|a)>"
 $ImgRegexPatternToMatch = @"
 $EscapedITGURL/([0-9]{1,20}/docs/([0-9]{1,20})/(images)/([0-9]{1,20}).*?)(?=")
