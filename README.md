@@ -10,7 +10,7 @@ You'll want to make sure your Hudu instance is prepared for migration and that y
 >The original project was started by Luke Whitelock and often being maintained by Mendy Green and community contributors. This fork is tested for and intended to be used with the very newest Hudu versions. It includes some features that may not (yet) be present in the main repo, [here](https://github.com/lwhitelock/ITGlue-Hudu-Migration). It also includes a more rigid minimum Hudu version requirement.
 
 > [!CAUTION]
-> Depending on the size of your ITGlue instance, the migration script can take several hours to run. As such, it's highly recommended to run the migration script on a Windows Server or a machine that has ***Windows Update and Sleep disabled***
+> Depending on the size of your ITGlue instance, the migration script can take several hours to run (we've seen it take as long as 24 hours). As such, it's highly recommended to run the migration script on a Windows Server or a machine that has ***Windows Update and Sleep [temporarily] disabled***
 
 > [!IMPORTANT]
 > You must be on the ITGlue **Enterprise Plan** (or a legacy plan with API Access) to be able to run the script.
@@ -24,31 +24,38 @@ You'll want to make sure your Hudu instance is prepared for migration and that y
 - Flexible Asset Layouts
 - Flexible Assets
 - Documents with folder structure
-- Passwords
+- Passwords* (Password Folders _do not_ get  migrated)
 - Document Links
 
 ## What the script cannot migrate:
 - Checklists - This is a limitation in the ITGlue API and export lacking functionality for checklists, so there currently is not a workaround.
 - SSL Certificates
+- Password Folders
+ - Unforunately, the IT Glue API does not expose password folders, so there currently isn't a way to bring folders over)
+- Personal Passwords
 - Permissions (Folders, Companies, Passwords, KBs, etc.)
+- List of share links (external articles, passwords, etc.)
+ - To our knowledge, there isn't a way to know if/where/how many external share links you are using. Hudu supports external sharing as well, so you'll have to enable those on the Hudu side and get the new links shared out. 
 
 
 ## What you'll need
 - An ITGlue API Key with password access (API access is generally limited to the Enterprise plan)
 - Your IT Glue API URL
-- A full export of your IT Glue tenant
+- A full export of your IT Glue tenant (it's recommended to put a hault on IT Glue data updates once you initiate an export)
 - A Hudu instance (either self-hosted or cloud hosted)
 - A Hudu API Key
-- Your Hudu Domain
+- Your Hudu URL
 
 
 # Prerequisites -  ***Hudu Instance***
 
 It's recommended to have a fresh Hudu install with no integrations setup. You'll want to sync things like companies and contacts from your PSA and configurations from your RMM **after** the migration is completed. Don’t setup any custom Asset Layouts and let the migration create the initial assets.
 
+If you have an existing asset layouts in Hudu, it's recommended to rename them all (i.e. suffixed "-original") before you begin or instruction the migration script to 
+
 **1. Make sure you are on a known-compatible Hudu version--**
 
-At this point in time **(August 27, 2025)**, the ideal version to be on when using this fork is at least `2.37.1` image. Up to `2.39.0` has been tested to be stable thus far.
+At this point in time, the ideal version to be on when using this fork is at least `2.39.1` image. Up to `2.39.0` has been tested to be stable thus far.
 
 **2 (optional).** If you're self hosted, It's best to set ratelimit to be high. To do so, you can add this to your .env file and perform a docker compose down/up. If you're Cloud/Hudu hosted, the script will automatically wait if it hits the rate limit and will continue automatically.
 
@@ -67,7 +74,7 @@ Contact Hudu support [support@hudu.com](support@hudu.com) and we can reset your 
 
 # Prerequisites - ***ITGlue Instance***
 
-It's highly encouraged to perform a clean up of you IT Glue environment. Such as removing any duplicate records and deleting any old data you don’t want to migrate.
+It's highly encouraged to perform a clean up of you IT Glue environment, such as removing any duplicate records and deleting any old data you don’t want to migrate.
 
 Check that your Flexible Layouts don’t have any fields named the same thing on the same layout. For example, if you have two fields called Pre-Shared Key on the "Wireless" asset (One for primary one for guest), rename one of them to prevent script errors. 
 
@@ -77,15 +84,15 @@ ITGlue allows for more than one client to exist with the same Name but Hudu does
 
 Blank passwords in ITGlue will cause issues on import and cause the entire password to fail. 
 
-Make sure the API Key you're using has password access, and that all passwords have values if they're important.
+Make sure the API Key you're using has password access, and that all passwords have values, if they're important.
 
 
 ## Data Export
 
-1. **Initiate ITGlue Export.** You will need to log into ITGlue and perform a full export of your instance. To do so, you'll need to log in as a Super Admin and go to Admin>Export. You can choose to run an export with or without activity logs (activity logs are not needed for the migration and having them selected can make the export take longer). ITGlue will email you when the export is completed (normally takes ~30 minutes). 
+1. **Initiate ITGlue Export.** You will need to log into ITGlue and perform a full export of your instance. To do so, you'll need to log in as a Super Admin and go to Admin>Export. You can choose to run an export with or without activity logs (activity logs are not needed for the migration and having them selected can make the export take longer). ITGlue will email you when the export is completed (normally takes <30 minutes). 
 <img width="750"  alt="IT_Glue_Migration_Guide" src="https://github.com/user-attachments/assets/e5b2c49d-6ae5-4960-844e-5f28390de665" />
 
-2. **Download ITGlue Export.** Once the export is complete, navigate back to Admin>Export in ITGlue, download the .zip file, and save it to a safe and secure place (we generally recommend somewhere easy like C:\temp\export). ***Don't unzip the files yet***
+2. **Download ITGlue Export.** Once the export is complete, navigate back to Admin>Export in ITGlue, download the .zip file, and save it to a safe and secure place (we generally recommend somewhere easy like C:\temp\export). ***Do not unzip the files yet***
 
 3. **Unzipping the files.** Once your data is saved to a good place, it's time to extract the files. It's highly recommended to use a ZIP tool such as 7-zip as the ITGlue export can sometimes name files in a way that Windows Explorer does not natively handle and can cause file names to have strange characters (thus causing some KB articles to not migrate over correctly).
 
@@ -165,7 +172,7 @@ If you have designated an organization type (like vendor, partner, non-profit, m
 
 Any other org types will migrate as usual, but this one org type will be centralized to one hudu company.
 
-## 2. Checklists [coming soon]
+## 3. Checklists [coming soon] - Checklists from IT Glue currently do not come over
 
 
 ## 4. Custom-Mapping for Target Layouts (ADVANCED)
@@ -227,7 +234,7 @@ These are used only when the image extension was not properly retained in the ex
 
 
 # Known Issues
- - Password Relations to Articles and SSL Certificates are not currently included
+ - Password Relations to Articles, Password Folders, and SSL Certificates are not currently included
 
 Password relations are only available from ITGlue when querying the API directly for each password individually. Since this will increase the runtime of the script by hours or days potentially we'll be making a script to run at the end which will loop through passwords and update the relations at that time. For right now relationships between Passwords and any entity that is not available in the API (Articles, and SSL Certificates) is completely invisbile to this migration script.
 
