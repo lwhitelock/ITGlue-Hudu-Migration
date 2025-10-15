@@ -24,7 +24,7 @@ You'll want to make sure your Hudu instance is prepared for migration and that y
 - Flexible Asset Layouts
 - Flexible Assets
 - Documents with folder structure
-- Passwords* (Password Folders _do not_ get  migrated)
+- Passwords (with OTP codes)* (Password Folders _do not_ get  migrated)
 - Document Links
 
 ## What the script cannot migrate:
