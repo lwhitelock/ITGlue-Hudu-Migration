@@ -1788,9 +1788,9 @@ End of comment block - will delete after testing #>
                         Write-Host "Processing IMG: $tnImgPath"
                         
                         # Some logic to test for the original data source being specified vs the thumbnail. Grab the Thumbnail or final source.
-                        if ($fullImgUrl -and ($foundFile = Get-Item -LiteralPath "$fullImgPath*" -ErrorAction SilentlyContinue)) {
+                        if ($fullImgUrl -and ($foundFile = Get-Item -LiteralPath "$fullImgPath" -ErrorAction SilentlyContinue)) {
                             $imagePath = $foundFile.FullName
-                        } elseif ($tnImgUrl -and ($foundFile = Get-Item -LiteralPath "$tnImgPath*" -ErrorAction SilentlyContinue)) {
+                        } elseif ($tnImgUrl -and ($foundFile = Get-Item -LiteralPath "$tnImgPath" -ErrorAction SilentlyContinue)) {
                             $imagePath = $foundFile.FullName
                         } else { 
                             Remove-Variable -Name imagePath -ErrorAction SilentlyContinue
