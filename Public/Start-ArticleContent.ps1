@@ -28,8 +28,10 @@ if (-not ($FirstTimeLoad -eq 1)) {
 
         # This is specifically for the article content, skipping stubs for right now.
         # Get Attachment directories so we can match on the name per article, this needs to be outside the loop so we don't constantly re-run it
-        $Attachfiles = Get-ChildItem (Join-Path -Path $ITGLueExportPath -ChildPath "attachments\documents") -recurse
-
+		$AttchmentsPath = Join-Path -Path $ITGLueExportPath -ChildPath "attachments\documents"
+		$AttchmentsPath = "\\?\$AttchmentsPath"
+        $Attachfiles = Get-ChildItem -LiteralPath $AttchmentsPath -Recurse -Force
+        
                     # Now do the actual work of populating the content of articles
             $ArticleErrors = foreach ($Article in $UnmatchedArticles) {
 
@@ -100,9 +102,9 @@ if (-not ($FirstTimeLoad -eq 1)) {
                             Write-Host "Processing IMG: $tnImgPath"
                             
                             # Some logic to test for the original data source being specified vs the thumbnail. Grab the Thumbnail or final source.
-                            if ($fullImgUrl -and ($foundFile = Get-Item -Path "$fullImgPath*" -ErrorAction SilentlyContinue)) {
+                            if ($fullImgUrl -and ($foundFile = Get-Item -LiteralPath "$fullImgPath*" -ErrorAction SilentlyContinue)) {
                                 $imagePath = $foundFile.FullName
-                            } elseif ($tnImgUrl -and ($foundFile = Get-Item -Path "$tnImgPath*" -ErrorAction SilentlyContinue)) {
+                            } elseif ($tnImgUrl -and ($foundFile = Get-Item -LiteralPath "$tnImgPath*" -ErrorAction SilentlyContinue)) {
                                 $imagePath = $foundFile.FullName
                             } else { 
                                 Remove-Variable -Name imagePath -ErrorAction SilentlyContinue
@@ -118,7 +120,7 @@ if (-not ($FirstTimeLoad -eq 1)) {
 
                             # Test the path to ensure that a file extension exists, if no file extension we get problems later on. We rename it if there's no ext.
                             if ($imagePath -and (Test-Path $imagePath -ErrorAction SilentlyContinue)) {
-                                if ((Get-Item -path $imagePath).extension -eq '') {
+                                if ((Get-Item -LiteralPath $imagePath).extension -eq '') {
                                     Write-Warning "$imagePath is undetermined image. Testing..."
                                     if ($Magick = New-Object ImageMagick.MagickImage($imagePath)) {
                                         $OriginalFullImagePath = $imagePath
@@ -215,3 +217,4 @@ if (-not ($FirstTimeLoad -eq 1)) {
 
 
     }
+
