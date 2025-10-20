@@ -1195,7 +1195,7 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\AssetLayouts.json")) 
                 $NewIcon = $CurrentIcon
             }
             # account for layout-collision between split configurations and flexible asset layouts [when either not prefixed]
-            if (-not $(Get-HuduAssetLayouts -name "$($FlexibleLayoutPrefix)$($UnmatchedLayout.ITGObject.attributes.name)")){
+            if (-not $(Get-HuduAssetLayouts | where-object {$_.name -ieq "$($FlexibleLayoutPrefix)$($UnmatchedLayout.ITGObject.attributes.name)"} )){
                 $NewLayout = New-HuduAssetLayout -name "$($FlexibleLayoutPrefix)$($UnmatchedLayout.ITGObject.attributes.name)" -icon "fas fa-$NewIcon" -color "#6136ff" -icon_color "#ffffff" -include_passwords $true -include_photos $true -include_comments $true -include_files $true -fields $TempLayoutFields 
             } else {
                 $NewLayout = New-HuduAssetLayout -name "$($FlexibleLayoutPrefix)$($UnmatchedLayout.ITGObject.attributes.name)-Assets" -icon "fas fa-$NewIcon" -color "#6136ff" -icon_color "#ffffff" -include_passwords $true -include_photos $true -include_comments $true -include_files $true -fields $TempLayoutFields 
@@ -1931,14 +1931,14 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Articles.json")) {
                 $ManualLog = [PSCustomObject]@{
                     Document_Name   = $Article.name
                     Asset_Type      = 'Article'
-		    Company_Name = $Article.Company.CompanyName
-		    Field_Name	   = 'N/A'
-		    HuduID = $Article.HuduID                    
-		    Notes       = 'Empty Document'
-		    Action	  = 'Validate the document is blank in ITGlue, or manually copy the content across. Note that embedded documents in ITGlue will be migrated in blank with an attachment of the original doc'
+                    Company_Name = $Article.Company.CompanyName
+                    Field_Name	   = 'N/A'
+                    HuduID = $Article.HuduID                    
+                    Notes       = 'Empty Document'
+                    Action	  = 'Validate the document is blank in ITGlue, or manually copy the content across. Note that embedded documents in ITGlue will be migrated in blank with an attachment of the original doc'
                     Data          = "$InFile"
                     Hudu_URL = $Article.HuduObject.url
-		    ITG_URL = "$ITGURL/$($Article.ITGLocator)"
+                    ITG_URL = "$ITGURL/$($Article.ITGLocator)"
                 }
 
                 $null = $ManualActions.add($ManualLog)
@@ -1975,7 +1975,6 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Articles.json")) {
     }
 
 }
-
 
 ############################### Passwords ###############################
 

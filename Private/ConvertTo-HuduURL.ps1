@@ -8,27 +8,6 @@ if ($environmentSettings.ITGCustomDomains) {
     $EscapedITGURL = "(?:$EscapedITGURL|$combinedEscapedURLs)"
 }
 
-# Gather all the Hudu Migration logs
-# This should create $MatchedArticleBase, $MatchedAssetts, $MatchedCompanies, $MatchedConfigurations, $MatchedPasswords etc.
-<# 
-Disabling this block to merge this file under the main migration.
-foreach ($File in (Get-ChildItem  "$MigrationLogs\*.json")) {
-    try {
-        New-Variable -Name "Matched$($file.name.replace('.json',''))" -Value (Get-Content $File.FullName -raw |ConvertFrom-Json -Depth 100) -ErrorAction Stop
-    }
-    catch {
-        "Variable clobbering is occurring. Please clear the variables"
-    }
-    
-}
-$MatchedArticles = $MatchedArticleBase
-#>
-
-# Disabling this line, since we'll have article content already.
-# $AllArticles = Get-HuduArticles
-# Disabling this line as we'll have the article content already
-# $ArticlesWithITGlueLinks = $AllArticles | Where-Object {$_.content -like "*$ITGlueURL*"}
-
 
 # We want to grab all assets, passwords, websites, and companies, filter to fields and notes that have ITGlue URLs in them and prime for replacement.
 # Following capture Groups
@@ -38,7 +17,7 @@ $MatchedArticles = $MatchedArticleBase
 # 3 = type of Entity (Important for location)
 # 4 = ITGlue Entity ID
 
-$RichRegexPatternToMatchSansAssets = "<(A|a) href=\S$EscapedITGURL/([0-9]{1,20})/(docs|passwords|configurations)/([0-9]{1,20})\S.*?</(A|a)>"
+$RichRegexPatternToMatchSansAssets = "<(A|a) href=\S$EscapedITGURL/([0-9]{1,20})/(docs|passwords|configurations|assets)/([0-9]{1,20})\S.*?</(A|a)>"
 $RichRegexPatternToMatchWithAssets = "<(A|a) href=\S$EscapedITGURL/([0-9]{1,20})/(assets)/.*?/([0-9]{1,20})\S.*?</(A|a)>"
 $ImgRegexPatternToMatch = @"
 $EscapedITGURL/([0-9]{1,20}/docs/([0-9]{1,20})/(images)/([0-9]{1,20}).*?)(?=")
@@ -185,21 +164,3 @@ function ConvertTo-HuduURL {
     return $NewContent
 
 }
-
-
-
-<# Disabled block for merging into main conversion module
-Write-Warning "Found $($ArticlesWithITGlueLinks.count) Articles with ITGlue Links. Cancel now if you don't want to replace them!"
-Pause
-
-$articlesUpdated = @()
-foreach ($articleFound in $ArticlesWithITGlueLinks) {
-    $NewContent = Update-StringWithCaptureGroups -inputString $articleFound.content -pattern $RegexPatternToMatchSansAssets
-    $NewContent = Update-StringWithCaptureGroups -inputString $NewContent -pattern $RegexPatternToMatchWithAssets
-    Write-Host "Updating Article $($articleFound.name) with replaced Content" -ForegroundColor 'Green'
-    $articlesUpdated += @{"original_article" = $articleFound; "updated_article" = Set-HuduArticle -Name $articleFound.name -id $articleFound.id -Content $NewContent}
-
-}
-
-$articlesUpdated | ConvertTo-Json -depth 100 |Out-file "$MigrationLogs\ReplacedArticlesURL.json"
-#>
