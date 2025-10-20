@@ -1,3 +1,6 @@
+if (-not (Get-Command -Name Get-EnsuredPath -ErrorAction SilentlyContinue)) { . $PSScriptRoot\Public\Init-OptionsAndLogs.ps1 }
+$ErroredItemsFolder = $(Get-EnsuredPath -path $(join-path $(Resolve-Path .).path "debug"))
+
 # Main settings load
 . $PSScriptRoot\Initialize-Module.ps1 -InitType 'Full'
 
@@ -60,8 +63,6 @@ $FontAwesomeUpgrade = Get-FontAwesomeMap
 . $PSScriptRoot\Public\Normalize-And-ConvertImage.ps1
 # initialization helper and field requirement helper, logging, selection helper
 . $PSScriptRoot\Public\Get-ITGFieldPopulated.ps1
-if (-not (Get-Command -Name Get-EnsuredPath -ErrorAction SilentlyContinue)) { . $PSScriptRoot\Public\Init-OptionsAndLogs.ps1 }
-$ErroredItemsFolder = $(Get-EnsuredPath -path $(join-path $(Resolve-Path .).path "debug"))
 
 ############################### End of Functions ###############################
 
