@@ -1195,7 +1195,7 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\AssetLayouts.json")) 
                 $NewIcon = $CurrentIcon
             }
             # account for layout-collision between split configurations and flexible asset layouts [when either not prefixed]
-            if (-not $(Get-HuduAssetLayouts -name "$($FlexibleLayoutPrefix)$($UnmatchedLayout.ITGObject.attributes.name)")){
+            if (-not $(Get-HuduAssetLayouts | where-object {$_.name -ieq "$($FlexibleLayoutPrefix)$($UnmatchedLayout.ITGObject.attributes.name)"} )){
                 $NewLayout = New-HuduAssetLayout -name "$($FlexibleLayoutPrefix)$($UnmatchedLayout.ITGObject.attributes.name)" -icon "fas fa-$NewIcon" -color "#6136ff" -icon_color "#ffffff" -include_passwords $true -include_photos $true -include_comments $true -include_files $true -fields $TempLayoutFields 
             } else {
                 $NewLayout = New-HuduAssetLayout -name "$($FlexibleLayoutPrefix)$($UnmatchedLayout.ITGObject.attributes.name)-Assets" -icon "fas fa-$NewIcon" -color "#6136ff" -icon_color "#ffffff" -include_passwords $true -include_photos $true -include_comments $true -include_files $true -fields $TempLayoutFields 
@@ -1623,46 +1623,20 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\ArticleBase.json")) {
 
         $ITGDocuments = Import-CSV -Path (Join-Path -path $ITGLueExportPath -ChildPath "documents.csv")
         [string]$ITGDocumentsPath = Join-Path -path $ITGLueExportPath -ChildPath "Documents"
-		$ITGDocumentsPath = "\\?\$ITGDocumentsPath"
 
-        $Files = Get-ChildItem -LiteralPath $ITGDocumentsPath -Recurse -Force
+        $files = Get-ChildItem -Path $ITGDocumentsPath -recurse
 
         # First lets find each article in the file system and then create blank stubs for them all so we can match relations later
         $MatchedArticles = Foreach ($doc in $ITGDocuments) {
             Write-Host "Starting $($doc.name)" -ForegroundColor Green
             $dir = $files | Where-Object { $_.PSIsContainer -eq $true -and $_.Name -match $doc.locator }
-			# ITGlue sometimes has export oddities like multiple folders for the same article or various names on the articles. This is assuming only one HTML file.
-			$DocumentFile = Get-ChildItem -LiteralPath $dir -filter *.htm*
-			if (-not $DocumentFile)  {
-				Write-Host "HTML Files were not found under $($dir.fullname) this article will need to be migrated manually" -foregroundcolor red
-				[PSCustomObject]@{
-					"Name"       = $doc.name
-					"Filename"   = $Filename
-					"Path"       = $($dir.Fullname)
-					"FullPath"   = $null
-					"ITGID"      = $doc.id
-					"ITGLocator" = $doc.locator
-					"HuduID"     = $null
-					"HuduObject" = $null
-					"Folders"    = $folders
-					"Imported"   = "Skipped - Missing File"
-					"Company"    = $company
-				}
-				continue
-			}
-			elseif ($DocumentFile.count -gt 1) {Write-Warning "Found more than one HTML file for this article. This is a warning only"}
-			# Disabling this line and replacing it with the found file
-            # $RelativePath = ($dir.FullName).Substring($ITGDocumentsPath.Length)
-			$RelativePath = ($DocumentFile.Directory.FullName).Substring($ITGDocumentsPath.Length)
-            $folders = ($RelativePath -split '\\').trim('_').trim()
+            $RelativePath = ($dir.FullName).Substring($ITGDocumentsPath.Length)
+            $folders = $RelativePath -split '\\'
             $FilenameFromFolder = ($folders[$folders.count - 1] -split ' ', 2)[1]
-            # Disabling this line and using the found file name
-			# $Filename = $FilenameFromFolder
-			$Filename = $DocumentFile.name
-            $company = $MatchedCompanies | Where-Object { $_.CompanyName -eq $doc.organization }
+            $Filename = $FilenameFromFolder
 
-<# Disabling this block since the Test-Path becomes pointless when the file is found
-			$pathtest = Test-Path -LiteralPath "$($dir.Fullname)\$($filename).html"
+            $pathtest = Test-Path -LiteralPath "$($dir.Fullname)\$($filename).html"
+
             if ($pathtest -eq $false) {
                 $filename = $doc.name
                 $pathtest = Test-Path -LiteralPath "$($dir.Fullname)\$($filename).html"
@@ -1671,27 +1645,14 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\ArticleBase.json")) {
                     $pathtest = Test-Path -LiteralPath "$($dir.Fullname)\$($filename).html"
                     if ($pathtest -eq $false) {
                         Write-Host "Not Found $($dir.Fullname)\$($filename).html this article will need to be migrated manually" -foregroundcolor red
-						[PSCustomObject]@{
-							"Name"       = $doc.name
-							"Filename"   = $Filename
-							"Path"       = $($dir.Fullname)
-							"FullPath"   = "$($dir.Fullname)\$($filename).html"
-							"ITGID"      = $doc.id
-							"ITGLocator" = $doc.locator
-							"HuduID"     = $null
-							"HuduObject" = $null
-							"Folders"    = $folders
-							"Imported"   = "Skipped - Missing File"
-							"Company"    = $company
-						}
                         continue
                     }
                 }
 	
             }
-Closing the disabled block, this will be removed at some point #>
 
 
+            $company = $MatchedCompanies | Where-Object { $_.CompanyName -eq $doc.organization }
             if (($company | Measure-Object).count -eq 1) {
 
                 $art_folder_id = $null
@@ -1749,8 +1710,8 @@ Closing the disabled block, this will be removed at some point #>
             [PSCustomObject]@{
                 "Name"       = $doc.name
                 "Filename"   = $Filename
-                "Path"       = $DocumentFile.Directory.FullName
-                "FullPath"   = $DocumentFile.fullname
+                "Path"       = $($dir.Fullname)
+                "FullPath"   = "$($dir.Fullname)\$($filename).html"
                 "ITGID"      = $doc.id
                 "ITGLocator" = $doc.locator
                 "HuduID"     = $NewArticle.ID
@@ -1779,9 +1740,7 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Articles.json")) {
 } else {
 	
     if ($ImportArticles -eq $true) {
-		$AttchmentsPath = Join-Path -Path $ITGLueExportPath -ChildPath "attachments\documents"
-		$AttchmentsPath = "\\?\$AttchmentsPath"
-        $Attachfiles = Get-ChildItem -LiteralPath $AttchmentsPath -Recurse -Force
+        $Attachfiles = Get-ChildItem (Join-Path -Path $ITGLueExportPath -ChildPath "attachments\documents") -recurse
 
         # Now do the actual work of populating the content of articles
         $ArticleErrors = foreach ($Article in $MatchedArticles) {
@@ -1796,7 +1755,6 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Articles.json")) {
                 $html = ''
                 $rawsource = ''
 
-<# Attachments are now supported - disabling this manual log entry
                 $ManualLog = [PSCustomObject]@{
                     Document_Name = $Article.Name
                     Asset_Type    = "Article"
@@ -1810,7 +1768,6 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Articles.json")) {
                     ITG_URL       = "$ITGURL/$($Article.ITGLocator)"
                 }
                 $null = $ManualActions.add($ManualLog)
-End of comment block - will delete after testing #>
 
             }
 
@@ -1853,18 +1810,11 @@ End of comment block - will delete after testing #>
                         Write-Host "Processing IMG: $tnImgPath"
                         
                         # Some logic to test for the original data source being specified vs the thumbnail. Grab the Thumbnail or final source.
-                        if ($fullImgUrl -and ($foundFile = Get-Item -LiteralPath "$fullImgPath" -ErrorAction SilentlyContinue)) {
+                        if ($fullImgUrl -and ($foundFile = Get-Item -Path "$fullImgPath*" -ErrorAction SilentlyContinue)) {
                             $imagePath = $foundFile.FullName
-                        } elseif ($tnImgUrl -and ($foundFile = Get-Item -LiteralPath "$tnImgPath" -ErrorAction SilentlyContinue)) {
+                        } elseif ($tnImgUrl -and ($foundFile = Get-Item -Path "$tnImgPath*" -ErrorAction SilentlyContinue)) {
                             $imagePath = $foundFile.FullName
-                        } elseif ($tnImgUrl) {
-							# Everything else failed, trying one last attempt to find the image
-							$imageBaseDir = Split-Path -LiteralPath $tnImgPath
-							$imageFileName = Split-Path -Path $tnImgPath -Leaf
-							$foundFile = Get-ChildItem -LiteralPath $imageBaseDir -Filter ("$($imageFileName).*")
-							if ($foundFile.count -eq 1) { $imagePath = $foundFile.FullName }
-						}
-						else { 
+                        } else { 
                             Remove-Variable -Name imagePath -ErrorAction SilentlyContinue
                             Remove-Variable -Name foundFile -ErrorAction SilentlyContinue
                             Write-Warning "Unable to validate image file."
@@ -1883,10 +1833,10 @@ End of comment block - will delete after testing #>
                             continue
                     }
                     # Test the path to ensure that a file extension exists, if no file extension we get problems later on. We rename it if there's no ext.
-                    if ($imagePath -and (Test-Path -LiteralPath $imagePath -ErrorAction SilentlyContinue)) {
+                    if ($imagePath -and (Test-Path $imagePath -ErrorAction SilentlyContinue)) {
                         Write-Host "File present at purported image path: $imagePath... checking for image..." -ForegroundColor DarkRed
 
-                            $imageType = Invoke-ImageTest($imagePath)
+                            $imageType = Invoke-ImageTest $imagePath
                             if ($imageType) {
                                 Write-Host "$imagePath appears to contain image... normalizing..." -ForegroundColor DarkRed
                                 $imageInfo = Normalize-And-ConvertImage -InputPath $imagePath
@@ -1981,14 +1931,14 @@ End of comment block - will delete after testing #>
                 $ManualLog = [PSCustomObject]@{
                     Document_Name   = $Article.name
                     Asset_Type      = 'Article'
-		    Company_Name = $Article.Company.CompanyName
-		    Field_Name	   = 'N/A'
-		    HuduID = $Article.HuduID                    
-		    Notes       = 'Empty Document'
-		    Action	  = 'Validate the document is blank in ITGlue, or manually copy the content across. Note that embedded documents in ITGlue will be migrated in blank with an attachment of the original doc'
+                    Company_Name = $Article.Company.CompanyName
+                    Field_Name	   = 'N/A'
+                    HuduID = $Article.HuduID                    
+                    Notes       = 'Empty Document'
+                    Action	  = 'Validate the document is blank in ITGlue, or manually copy the content across. Note that embedded documents in ITGlue will be migrated in blank with an attachment of the original doc'
                     Data          = "$InFile"
                     Hudu_URL = $Article.HuduObject.url
-		    ITG_URL = "$ITGURL/$($Article.ITGLocator)"
+                    ITG_URL = "$ITGURL/$($Article.ITGLocator)"
                 }
 
                 $null = $ManualActions.add($ManualLog)
@@ -2025,7 +1975,6 @@ End of comment block - will delete after testing #>
     }
 
 }
-
 
 ############################### Passwords ###############################
 
