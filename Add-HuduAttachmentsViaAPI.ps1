@@ -188,11 +188,11 @@ Pause
 
 $AttachmentsToUpload = Get-ChildItem -Path $AttachmentsPath -Recurse -File
 $filesById = $AttachmentsToUpload | Group-Object { $_.Directory.Name } -AsHashTable -AsString
-$FoundLocationsToAttach = $ITGlueLocations | Where-Object {$filesById.ContainsKey([string]$_.ITGID)}
-$FoundDocumentsToAttach = $ITGlueDocuments | Where-Object {$filesById.ContainsKey([string]$_.ITGID)}
-$FoundConfigurationsToAttach = $ITGlueConfigurations | Where-Object {$filesById.ContainsKey([string]$_.ITGID)}
-$FoundLocationsToAttach = $ITGlueLocations | Where-Object {$filesById.ContainsKey([string]$_.ITGID)}
-$FoundPasswordsToAttach = $ITGluePasswords| Where-Object {$filesById.ContainsKey([string]$_.ITGID)}
+$FoundLocationsToAttach = $MatchedLocations | Where-Object {$filesById.ContainsKey([string]$_.ITGID)}
+$FoundDocumentsToAttach = $MatchedArticles | Where-Object {$filesById.ContainsKey([string]$_.ITGID)}
+$FoundConfigurationsToAttach = $MatchedConfigurations | Where-Object {$filesById.ContainsKey([string]$_.ITGID)}
+$FoundLocationsToAttach = $MatchedLocations | Where-Object {$filesById.ContainsKey([string]$_.ITGID)}
+$FoundPasswordsToAttach = $MatchedPasswords| Where-Object {$filesById.ContainsKey([string]$_.ITGID)}
 
 
 if ($FoundAssetsToAttach) {Add-HuduAttachment -FoundAssetsToAttach $FoundAssetsToAttach -UploadType "Asset"}
