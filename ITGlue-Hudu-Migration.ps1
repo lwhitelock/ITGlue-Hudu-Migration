@@ -1729,22 +1729,6 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Articles.json")) {
                 $html = ''
                 $rawsource = ''
 
-<# Attachments are now supported - disabling this manual log entry
-                $ManualLog = [PSCustomObject]@{
-                    Document_Name = $Article.Name
-                    Asset_Type    = "Article"
-                    Company_Name  = $Article.HuduObject.company_name
-                    HuduID        = $Article.HuduID
-                    Field_Name    = "N/A"
-                    Notes         = "Attached Files not Supported"
-                    Action        = "Manually Upload files to Related Files"
-                    Data          = $attachdir.fullname
-                    Hudu_URL      = $Article.HuduObject.url
-                    ITG_URL       = "$ITGURL/$($Article.ITGLocator)"
-                }
-                $null = $ManualActions.add($ManualLog)
-End of comment block - will delete after testing #>
-
             }
 
 
@@ -1797,7 +1781,26 @@ End of comment block - will delete after testing #>
 							$imageBaseDir = Split-Path -LiteralPath $tnImgPath
 							$imageFileName = Split-Path -Path $tnImgPath -Leaf
 							$foundFile = Get-ChildItem -LiteralPath $imageBaseDir -Filter ("$($imageFileName).*")
-							if ($foundFile.count -eq 1) { $imagePath = $foundFile.FullName }
+							if ($foundFile.count -eq 1) { 
+								$imagePath = $foundFile.FullName 
+							} else {
+								Remove-Variable -Name imagePath -ErrorAction SilentlyContinue
+								Remove-Variable -Name foundFile -ErrorAction SilentlyContinue
+								Write-Warning "Unable to validate image file."
+								$ManualLog = [PSCustomObject]@{
+								Document_Name = $Article.Name
+								Asset_Type    = "Article"
+								Company_Name  = $Article.Company.CompanyName
+								HuduID        = $Article.HuduID
+								Notes = 'Missing image, file not found'
+								Actions = "Neither $fullImgPath or $tnImgPath were found, validate the images exist in the export, or retrieve them from ITGlue directly"
+								Data = "$InFile"
+								Hudu_URL = $Article.HuduObject.url
+								ITG_URL = "$ITGURL/$($Article.ITGLocator)"
+								}
+	
+								$null = $ManualActions.add($ManualLog)
+							}
 						}
 						else { 
                             Remove-Variable -Name imagePath -ErrorAction SilentlyContinue
