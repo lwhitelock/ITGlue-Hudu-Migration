@@ -1843,7 +1843,7 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Articles.json")) {
                                     $_.src = [string]$NewImageURL
                                     
                                     # Update Links for this image
-                                    $ImgLink.href = [string]$NewImageUrl
+                                    if ($ImgLink) {$ImgLink.href = [string]$NewImageUrl}
 
                                 }
                                 catch {
