@@ -178,7 +178,7 @@ function Set-ExternalModulesInitialized {
     param (
             [string]$HAPImodulePath = "C:\Users\$env:USERNAME\Documents\GitHub\HuduAPI\HuduAPI\HuduAPI.psm1",
             [bool]$use_hudu_fork = $true,
-            [version]$RequiredHuduVersion = [version]"2.39.3",
+            [version]$RequiredHuduVersion = [version]"2.39.4",
             $DisallowedVersions = @([version]"2.37.0")
         )
 
