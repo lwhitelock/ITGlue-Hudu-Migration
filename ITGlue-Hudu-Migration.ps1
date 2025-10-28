@@ -116,7 +116,7 @@ Write-Host "######################################################" -ForegroundC
 $backups=$(if ($true -eq $NonInteractive) {"Y"} else {Read-Host "Y/n"})
 $ScriptStartTime = $(Get-Date -Format "o")
 $CurrentVersion =  Set-ExternalModulesInitialized `
-                -RequiredHuduVersion ([version]"2.39.3") `
+                -RequiredHuduVersion ([version]"2.39.4") `
                 -DisallowedVersions @([version]"2.37.0")
 # Check if we have a logs folder
 
