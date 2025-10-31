@@ -1255,8 +1255,9 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\AssetLayouts.json")) 
                         $LayoutField.add("field_type", "Number")
                     }
                     "Select" {
-                        $ListName = "$($UpdateLayout.Name)$($label)"
-                        $ListObject = $($(Get-HuduLists -name $ListName | Select-Object -First 1) ?? $(New-HuduList -name "$(Get-UniqueListName -BaseName $ListName -allowReuse $false)"))
+                        $ListName = "$($UpdateLayout.HuduObject.Name)-$($ITGField.Attributes.name)"
+                        $ListItems = Get-NormalizedDropdownOptions -OptionsRaw "$($ITGField.Attributes."default-value")"
+                        $ListObject = $($(Get-HuduLists -name $ListName | Select-Object -First 1) ?? $(New-HuduList -Items $ListItems -Name "$(Get-UniqueListName -BaseName $ListName -allowReuse $false)"))
                         $LayoutField.add("list_id", $ListObject.Id)
                         $LayoutField.add("field_type", "ListSelect")
                     }

@@ -76,7 +76,7 @@ function Get-NormalizedDropdownOptions {
     $x = "$l".Trim()
     if ($x -ne "" -and $seen.Add($x)) { $out.Add($x) }
   }
-  if ($out.Count -eq 0) { @('None','N/A') } else { $out.ToArray() }
+  if ($out.Count -eq 0) { @('None','N/A') } elseif ($out.Count -eq 1) { @('None',$out[0] ?? "N/A") } else { $out.ToArray() }
 }
 function Normalize-Text {
     param([string]$s)
