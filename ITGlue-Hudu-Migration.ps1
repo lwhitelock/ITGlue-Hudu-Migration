@@ -1370,7 +1370,18 @@ $ITGPasswordsRaw = Import-CSV -Path "$ITGLueExportPath\passwords.csv"
                 if ($field) {
                     $supported = $true
 
-                    if ($field.FieldType -eq "Tag") {
+                    if ($field.FieldType -eq "Date") {
+                        $raw = ($ITGValues.values ?? $ITGValues) -as [string]
+                        $ReturnData = Get-CoercedDate -InputDate $raw -Cutoff '1000-01-01' -OutputFormat 'MM/DD/YYYY'
+                        if (-not $ReturnData) {
+                            if ($field.HuduLayoutField.required) {
+                                $ReturnData = (Get-Date).ToString('MM/dd/yyyy', [CultureInfo]::InvariantCulture)
+                            } else {
+                                continue
+                            }
+                        }
+                        $null = $AssetFields.add("$($field.HuduParsedName)", ("$ReturnData"))
+                    } elseif ($field.FieldType -eq "Tag") {
 				
                         switch ($field.FieldSubType) {
                             "AccountsUsers" { Write-Host "Tags to Account Users are not supported $($field.FieldName) in $($UpdateAsset.Name) will need to be manually migrated, Sorry!"; $supported = $false }
@@ -1463,7 +1474,7 @@ $ITGPasswordsRaw = Import-CSV -Path "$ITGLueExportPath\passwords.csv"
 
                             if ($field.FieldType -eq "Password") {
                                 $ITGPassword = (Get-ITGluePasswords -id $ITGValues -include related_items).data
-				$ITGPasswordValue = ($ITGPasswordsRaw |Where-Object {$_.id -eq $ITGPassword.id}).password
+				                $ITGPasswordValue = ($ITGPasswordsRaw |Where-Object {$_.id -eq $ITGPassword.id}).password
                                 try {
 					if ($ITGPasswordValue) {
 						$NewPasswordObject = [pscustomobject]@{
