@@ -11,6 +11,29 @@ function Get-ImageType {
         return $null
     }
 }
+function Get-SafeFilename {
+    param([string]$Name,
+        [int]$MaxLength=25
+    )
+
+    # If there's a '?', take only the part before it
+    $BaseName = $Name -split '\?' | Select-Object -First 1
+
+    # Extract extension (including the dot), if present
+    $Extension = [System.IO.Path]::GetExtension($BaseName)
+    $NameWithoutExt = [System.IO.Path]::GetFileNameWithoutExtension($BaseName)
+
+    # Sanitize name and extension
+    $SafeName = $NameWithoutExt -replace '[\\\/:*?"<>|]', '_'
+    $SafeExt = $Extension -replace '[\\\/:*?"<>|]', '_'
+
+    # Truncate base name to 25 chars
+    if ($SafeName.Length -gt $MaxLength) {
+        $SafeName = $SafeName.Substring(0, $MaxLength)
+    }
+
+    return "$SafeName$SafeExt"
+}
 function Normalize-And-ConvertImage {
     param (
         [string]$InputPath,

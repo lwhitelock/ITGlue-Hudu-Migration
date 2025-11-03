@@ -61,3 +61,58 @@ function Get-CoercedDate {
         'MM/DD/YYYY' { $dt.ToString('MM/dd/yyyy', $Inv) }
     }
 }
+
+function Get-NormalizedDropdownOptions {
+  param([Parameter(Mandatory)]$OptionsRaw)
+  $lines =
+    if ($null -eq $OptionsRaw) { @() }
+    elseif ($OptionsRaw -is [string]) { $OptionsRaw -split "`r?`n" }
+    elseif ($OptionsRaw -is [System.Collections.IEnumerable]) { @($OptionsRaw) }
+    else { @("$OptionsRaw") }
+
+  $seen = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+  $out = New-Object System.Collections.Generic.List[string]
+  foreach ($l in $lines) {
+    $x = "$l".Trim()
+    if ($x -ne "" -and $seen.Add($x)) { $out.Add($x) }
+  }
+  if ($out.Count -eq 0) { @('None','N/A') } elseif ($out.Count -eq 1) { @('None',$out[0] ?? "N/A") } else { $out.ToArray() }
+}
+function Normalize-Text {
+    param([string]$s)
+    if ([string]::IsNullOrWhiteSpace($s)) { return $null }
+    $s = $s.Trim().ToLowerInvariant()
+    $s = [regex]::Replace($s, '[\s_-]+', ' ')  # "primary_email" -> "primary email"
+    # strip diacritics (prénom -> prenom)
+    $formD = $s.Normalize([System.Text.NormalizationForm]::FormD)
+    $sb = New-Object System.Text.StringBuilder
+    foreach ($ch in $formD.ToCharArray()){
+        if ([System.Globalization.CharUnicodeInfo]::GetUnicodeCategory($ch) -ne
+            [System.Globalization.UnicodeCategory]::NonSpacingMark) { [void]$sb.Append($ch) }
+    }
+    ($sb.ToString()).Normalize([System.Text.NormalizationForm]::FormC)
+}
+function Test-Equiv {
+    param([string]$A, [string]$B)
+    $a = Normalize-Text $A; $b = Normalize-Text $B
+    if (-not $a -or -not $b) { return $false }
+    if ($a -eq $b) { return $true }
+    $reA = "(^| )$([regex]::Escape($a))( |$)"
+    $reB = "(^| )$([regex]::Escape($b))( |$)"
+    if ($b -match $reA -or $a -match $reB) { return $true } 
+    if ($a.Replace(' ', '') -eq $b.Replace(' ', '')) { return $true }
+    return $false
+}
+function Get-UniqueListName {
+  param([Parameter(Mandatory)][string]$BaseName,[bool]$allowReuse=$false)
+
+  $name = $BaseName.Trim()
+  $i = 0
+  while ($true) {
+    $existing = Get-HuduLists -name $name
+    if (-not $existing) { return $name }
+    if ($existing -and $true -eq $allowReuse) {return $existing}
+    $i++
+    $name = "{0}-{1}" -f $BaseName.Trim(), $i
+  }
+}
