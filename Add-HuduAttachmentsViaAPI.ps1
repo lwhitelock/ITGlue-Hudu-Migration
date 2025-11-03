@@ -197,12 +197,13 @@ $FoundLocationsToAttach = $MatchedLocations | Where-Object {$filesById.ContainsK
 $FoundPasswordsToAttach = $MatchedPasswords| Where-Object {$filesById.ContainsKey([string]$_.ITGID)}
 
 
-if ($FoundAssetsToAttach) {Add-HuduAttachment -FoundAssetsToAttach $FoundAssetsToAttach -UploadType "Asset"}
-if ($FoundConfigurationsToAttach) {Add-HuduAttachment -FoundAssetsToAttach $FoundConfigurationsToAttach -UploadType "Asset"}
-if ($FoundDocumentsToAttach) {Add-HuduAttachment -FoundAssetsToAttach $FoundDocumentsToAttach -UploadType "Article"}
-if ($FoundLocationsToAttach) {Add-HuduAttachment -FoundAssetsToAttach $FoundLocationsToAttach -UploadType "Asset"}
-if ($FoundWebsitesToAttach) {Add-HuduAttachment -FoundAssetsToAttach $FoundWebsitesToAttach -UploadType "Website"}
-if ($FoundPasswordsToAttach) {Add-HuduAttachment -FoundAssetsToAttach $FoundPasswordsToAttach -UploadType "AssetPassword"}
+if ($FoundAssetsToAttach -and $FoundAssetsToAttach.count -gt 0) {Add-HuduAttachment -FoundAssetsToAttach $FoundAssetsToAttach -UploadType "Asset"}
+if ($FoundConfigurationsToAttach -and $FoundConfigurationsToAttach.count -gt 0) {Add-HuduAttachment -FoundAssetsToAttach $FoundConfigurationsToAttach -UploadType "Asset"}
+if ($FoundDocumentsToAttach -and $FoundDocumentsToAttach.count -gt 0) {Add-HuduAttachment -FoundAssetsToAttach $FoundDocumentsToAttach -UploadType "Article"}
+if ($FoundLocationsToAttach -and $FoundLocationsToAttach.count -gt 0) {Add-HuduAttachment -FoundAssetsToAttach $FoundLocationsToAttach -UploadType "Asset"}
+if ($FoundWebsitesToAttach -and $FoundWebsitesToAttach.count -gt 0) {Add-HuduAttachment -FoundAssetsToAttach $FoundWebsitesToAttach -UploadType "Website"}
+if ($FoundPasswordsToAttach -and $FoundPasswordsToAttach.count -gt 0) {Add-HuduAttachment -FoundAssetsToAttach $FoundPasswordsToAttach -UploadType "AssetPassword"}
+
 
 $CSVMapPath = "$MigrationLogs\AttachmentFields-CSVMap.json"
 if (-not (Test-Path $CSVMapPath)) {write-host "no optional CSV map found at $CSVMapPath. Attachments complete!"; exit}
