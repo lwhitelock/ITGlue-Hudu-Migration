@@ -415,12 +415,19 @@ if ($InitType -eq 'Full') {
         "1" {$NonInteractive = $false}
         "2" {$NonInteractive = $true}
     }    
-    ############################### Unattended ###############################
+    ############################### Scoping ###############################
     while ($ScopedMigration -notin (1,2)) {$ScopedMigration = Read-Host "1) Run normally `n2) Perform migration scoped to certain companies `n(1/2)"}
     switch ($ScopedMigration) {
         "1" {$ScopedMigration = $false}
         "2" {$ScopedMigration = $true}
-    }        
+    }
+    ############################## Checklists ##############################
+    while ($importChecklists -notin (1,2)) {$ImportDomains = Read-Host "Would you like to import Checklists? (requires web access to ITGlue).`n 1) Yes`n 2) No, Skip Checklists`n(1/2)"}
+    switch ($importChecklists) {
+        "1" {$importChecklists = $true}
+        "2" {$importChecklists = $false}
+    }
+
 }
 ############################ Migration Logs Path ##############################
 $MigrationLogs = $environmentSettings.MigrationLogs

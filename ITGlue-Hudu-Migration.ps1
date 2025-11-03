@@ -57,6 +57,7 @@ $FontAwesomeUpgrade = Get-FontAwesomeMap
 
 # Add migration scope helper
 . $PSScriptRoot\Public\Set-MigrationScope.ps1
+. $PSScriptRoot\Public\Checklists.ps1
 
 # Add String/Filename Normalization Helper, image Normalization helper
 . $PSScriptRoot\Public\Normalize-String.ps1
@@ -485,10 +486,23 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Locations.json")) {
     }
     # Save the results to resume from if needed
     $MatchedLocations | ConvertTo-Json -depth 100 | Out-File "$MigrationLogs\Locations.json"
-    Write-TimedMessage -Timeout 3 -Message "Snapshot Point: Locations Migrated Continue?"  -DefaultResponse "continue to Websites, please."
+    Write-TimedMessage -Timeout 3 -Message "Snapshot Point: Locations Migrated Continue?"  -DefaultResponse "continue to $(if ($importChecklists) {"Checklists"} else {"Websites"}), please."
 
 }
 
+
+############################# Checklists ##############################
+
+$ITGLueChecklists = [System.Collections.ArrayList]@()
+if ($ResumeFound -eq $true -and $true -eq $importChecklists -and (Test-Path "$MigrationLogs\Checklists.json")) {
+    Write-Host "Loading Previous Checklists Migration"
+    $ITGLueChecklists = Get-Content "$MigrationLogs\Checklists.json" -raw | Out-String | ConvertFrom-Json
+    . .\Public\Process-Checklists.ps1
+    $ITGLueChecklists | ConvertTo-Json -depth 90 | Out-File "$MigrationLogs\Checklists.json"
+    Write-TimedMessage -Timeout 3 -Message  "Snapshot Point: Checklists Migrated Continue?"  -DefaultResponse "continue to Websites, please."
+} else {
+    Write-TimedMessage  -Timeout 3 -Message  "Checklists Skipped. Continue?"  -DefaultResponse "continue to Websites, please."
+}
 
 ############################### Websites ###############################
 
@@ -1274,7 +1288,12 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\AssetLayouts.json")) 
                     "Tag" {
                         switch (($ITGField.Attributes."tag-type").split(":")[0]) {
                             "AccountsUsers" { Write-Host "Tags to Account Users are not supported $($ITGField.Attributes.name) in $($UpdateLayout.name) will need to be manually migrated, Sorry!" ; $supported = $false }
-                            "Checklists" { Write-Host "Tags to Checklists are not supported $($ITGField.Attributes.name) in $($UpdateLayout.name) will need to be manually migrated, Sorry!"; $supported = $false }
+                            "Checklists" { 
+                                if ($true -eq $importChecklists -and $ITGLueChecklists.count -gt 0){
+
+                                }
+                                Write-Host "Tags to Checklists are not supported $($ITGField.Attributes.name) in $($UpdateLayout.name) will need to be manually migrated, Sorry!"; $supported = $false 
+                            }
                             "ChecklistTemplates" { Write-Host "Tags to Checklists Templates are not supported $($ITGField.Attributes.name) in $($UpdateLayout.name) will need to be manually migrated, Sorry!"; $supported = $false }
                             "Contacts" {
                                 $ContactLayout = Get-HuduAssetLayouts -name $ConImportAssetLayoutName
