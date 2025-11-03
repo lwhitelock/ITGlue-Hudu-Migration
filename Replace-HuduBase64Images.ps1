@@ -4,6 +4,9 @@ param(
     [parameter(ParameterSetName='RunSome')][int]$NumberofArticlesToLoop
 )
 
+# Convert Base64 Images into usable image file.
+
+
 # Main settings load
 . $PSScriptRoot\Initialize-Module.ps1 -InitType 'Lite'
 

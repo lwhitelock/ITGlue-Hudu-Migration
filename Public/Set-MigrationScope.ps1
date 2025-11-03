@@ -46,7 +46,7 @@ function Set-MigrationScope {
     $ScopedForCompanies = [System.Collections.ArrayList]@()
     while ($true) {
         $selection = Select-ObjectFromList -allowNull $true `
-            -message "Select a number corresponding to a company to add to migration list. Press Enter to finish." `
+            -message "Select a number corresponding to a company to add to migration list. enter 0 to finish." `
             -objects $AllITGCompanies
 
         if ($null -eq $selection) { break }
