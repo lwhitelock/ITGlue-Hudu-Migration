@@ -90,7 +90,7 @@ $NonInteractive             = 2
 $ScopedMigration            = 1
 $MergedOrganizationTypes    = 1
 $importChecklists           = 1
-
+$importPasswordFolders      = 1
 # pre-designated array/list of prescoped/preselected companies for scoped migration (typically for faster testing)
 # prescoped Companies
 # $Prescoped = @(

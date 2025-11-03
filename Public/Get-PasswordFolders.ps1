@@ -1,98 +1,155 @@
-<#
-.SYNOPSIS
-    Retrieves checklists from IT Glue using the Checklists API endpoint.
-
-.DESCRIPTION
-    This function queries the IT Glue Checklists endpoint, which requires a JWT token for authentication.
-    The token can be obtained from browser developer tools when logged into the IT Glue web interface.
-    Supports filtering, sorting, pagination, and including related resources.
-
-.PARAMETER JWTAuthToken
-    The JWT token required for authenticating to the Checklists endpoint.
-
-.PARAMETER organization_id
-    The ID of the organization to retrieve checklists for. If specified, uses the /organizations/{id}/relationships/checklists endpoint.
-
-.EXAMPLE
-    Get-ITGlueCheckLists -JWTAuthToken "your_jwt_token" -organization_id 12345
-    Retrieves all checklists for the specified organization.
-
-.NOTES
-    This endpoint requires a JWT token, not an API key. Ensure the token is valid and not expired.
-#>
-
 function Get-ITGPasswordFolders {
-    [CmdletBinding(DefaultParameterSetName = 'index')]
+    [CmdletBinding()]
     Param (
         [Parameter(Mandatory = $true)]
         [String]$JWTAuthToken,
 
-        [Parameter(ParameterSetName = 'index')]
+        [Parameter()]
         [Nullable[Int64]]$organization_id = $null,
 
-        [Parameter(ParameterSetName = 'index')]
-        [Nullable[Int64]]$filter_id = '',
+        [switch]$ComputePaths,
 
-        [Parameter(ParameterSetName = 'index')]
-        [Nullable[Int64]]$filter_organization_id = '',
-
-        [Parameter(ParameterSetName = 'index')]
-        [ValidateSet('created_at', 'updated_at')]
-        [String]$sort = '',
-
-        [Parameter(ParameterSetName = 'index')]
-        [Nullable[Int64]]$page_number = $null,
-
-        [Parameter(ParameterSetName = 'index')]
-        [Nullable[int]]$page_size = $null,
-
-        [Parameter(ParameterSetName = 'index')]
-        [ValidateSet('passwords', 'attachments', 'user_resource_accesses', 'group_resource_accesses')]
-        [String]$include = ''
+        [string]$Separator = '/'
     )
 
-    if (-not $ITGlue_Base_URI) {
-        $ITGlue_Base_URI = 'https://api.itglue.com'
-        Write-Warning "ITGlue_Base_URI not set. Using default: $ITGlue_Base_URI"
+    if (-not $script:ITGlue_Base_URI -or [string]::IsNullOrWhiteSpace($script:ITGlue_Base_URI)) {
+        $script:ITGlue_Base_URI = 'https://api.itglue.com'
+        Write-Warning "ITGlue_Base_URI not set. Using default: $script:ITGlue_Base_URI"
     }
 
-    $resource_uri = '/password_folders'
-    if ($organization_id) {
-        $resource_uri = ('/organizations/{0}/relationships/password_folders' -f $organization_id)
+    $resource_uri = if ($organization_id) {
+        "/organizations/$organization_id/relationships/password_folders"
+    } else {
+        '/password_folders'
     }
 
-    $body = @{}
+    $headers = @{ Authorization = "Bearer $JWTAuthToken" }
+    $uri = $script:ITGlue_Base_URI + $resource_uri
 
-    if ($PSCmdlet.ParameterSetName -eq 'index') {
-        if ($filter_id) {
-            $body += @{'filter[id]' = $filter_id}
-        }
-        if ($sort) {
-            $body += @{'sort' = $sort}
-        }
-        if ($page_number) {
-            $body += @{'page[number]' = $page_number}
-        }
-        if ($page_size) {
-            $body += @{'page[size]' = $page_size}
-        }
-    }
-
-    if($include) {
-        $body += @{'include' = $include}
-    }
-
+    $folders = @()
     try {
-        $ITGlueAuthHeaders = @{'Authorization' = "Bearer $JWTAuthToken"}
-        $rest_output = Invoke-RestMethod -method 'GET' -uri ($ITGlue_Base_URI + $resource_uri) -headers $ITGlueAuthHeaders -body $body
+        $resp = Invoke-RestMethod -Method GET -Uri $uri -Headers $headers
+        if ($resp -and $resp.data) { $folders = $resp.data }
     } catch {
-        Write-Error $_
-    } finally {
-        [void] $ITGlueAuthHeaders.Remove('Authorization') # Quietly clean up scope so the API key doesn't persist
+        Write-Error "Failed to retrieve ITGlue password folders: $($_.Exception.Message)"
+        return
     }
 
+    if (-not $ComputePaths) { return $folders }
 
-    $data = @{}
-    $data = $rest_output
-    return $data
+    # ------- Lookups -------
+    $lookup = @{}
+    foreach ($f in $folders) { $lookup[[int64]$f.id] = $f }
+
+    # Build parent -> children map
+    $childrenByParent = @{}
+    foreach ($f in $folders) {
+        $parentIdRaw = $f.attributes.'parent-id'
+        if ($parentIdRaw) {
+            [void][int64]::TryParse("$parentIdRaw", [ref]([ref]$null)) # no-op parse to normalize type
+            $parentId64 = [int64]$parentIdRaw
+            if (-not $childrenByParent.ContainsKey($parentId64)) { $childrenByParent[$parentId64] = New-Object System.Collections.Generic.List[long] }
+            $childrenByParent[$parentId64].Add([int64]$f.id)
+        }
+    }
+
+    $memoPath = @{}
+    $memoAnc  = @{}  # memo for ParentFolderIds
+
+    function Get-Ancestors {
+        param([object]$Folder, [hashtable]$Lkp, [hashtable]$MemoAnc)
+
+        $id64 = [int64]$Folder.id
+        if ($MemoAnc.ContainsKey($id64)) { return $MemoAnc[$id64] }
+
+        # Prefer provided ancestor-ids if present (assumed root->...->parent)
+        $ancRaw = $Folder.attributes.'ancestor-ids'
+        $anc = @()
+        if ($ancRaw) {
+            if ($ancRaw -is [System.Collections.IEnumerable] -and -not ($ancRaw -is [string])) {
+                $anc = @($ancRaw) | ForEach-Object { [int64]$_ } | Where-Object { $_ }
+            } elseif ($ancRaw -is [string]) {
+                $anc = ($ancRaw -split '[^\d]+' | Where-Object { $_ -match '^\d+$' }) | ForEach-Object { [int64]$_ }
+            }
+        }
+
+        if ($anc.Count -gt 0) {
+            $MemoAnc[$id64] = $anc
+            return $anc
+        }
+
+        # Fallback: walk parent-id up the chain and build ordered list
+        $stack = New-Object System.Collections.Generic.List[long]
+        $cur = $Folder
+        $seen = [System.Collections.Generic.HashSet[long]]::new()
+
+        while ($cur) {
+            $parentIdRaw = $cur.attributes.'parent-id'
+            if (-not $parentIdRaw) { break }
+            $parentId64 = 0
+            [void][int64]::TryParse("$parentIdRaw", [ref]$parentId64)
+            if (-not $parentId64) { break }
+            if ($seen.Contains($parentId64)) { break }
+            $seen.Add($parentId64) | Out-Null
+            $stack.Insert(0, $parentId64)
+            if ($Lkp.ContainsKey($parentId64)) {
+                $cur = $Lkp[$parentId64]
+            } else {
+                break
+            }
+        }
+
+        $MemoAnc[$id64] = [long[]]$stack.ToArray()
+        return $MemoAnc[$id64]
+    }
+
+    function Resolve-Path {
+        param([object]$Folder, [hashtable]$Lkp, [hashtable]$MemoPath, [hashtable]$MemoAnc, [string]$Sep)
+
+        $id = [int64]$Folder.id
+        if ($MemoPath.ContainsKey($id)) { return $MemoPath[$id] }
+
+        $name = "$($Folder.attributes.name)".Trim()
+
+        $anc = Get-Ancestors -Folder $Folder -Lkp $Lkp -MemoAnc $MemoAnc
+        if ($anc.Count -gt 0) {
+            $parts = foreach ($aid in $anc) {
+                if ($Lkp.ContainsKey($aid)) { "$($Lkp[$aid].attributes.name)".Trim() }
+            }
+            $parts += $name
+            $path = ($parts -join $Sep)
+            $MemoPath[$id] = $path
+            return $path
+        }
+
+        # No ancestors -> just name
+        $MemoPath[$id] = $name
+        return $name
+    }
+
+    $enriched = foreach ($f in $folders) {
+        $id64 = [int64]$f.id
+        $ancestors = Get-Ancestors -Folder $f -Lkp $lookup -MemoAnc $memoAnc
+        $path = Resolve-Path -Folder $f -Lkp $lookup -MemoPath $memoPath -MemoAnc $memoAnc -Sep $Separator
+
+        $childIds = @()
+        if ($childrenByParent.ContainsKey($id64)) {
+            $childIds = [long[]]$childrenByParent[$id64].ToArray()
+        }
+
+        [pscustomobject]@{
+            id                = $f.id
+            name              = $f.attributes.name
+            org_id            = $f.attributes.'organization-id'
+            org_name          = $f.attributes.'organization-name'
+            parent_id         = $f.attributes.'parent-id'
+            path              = $path
+            depth             = ($path -split [regex]::Escape($Separator)).Count
+            resource_url      = $f.attributes.'resource-url'
+            ParentFolderIds   = [long[]]$ancestors
+            ChildFolderIds    = [long[]]$childIds
+        }
+    }
+
+    return $enriched
 }

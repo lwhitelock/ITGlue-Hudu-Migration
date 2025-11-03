@@ -4,10 +4,24 @@ $huduUsers      = Get-HuduUsers
 $userIndex = @{}
 foreach ($u in $huduUsers) {$key = "$($u.first_name) $($u.last_name)".ToLower(); $userIndex[$key] = $u;}
 $PageSize = 1000
+$PageNum = 0
 
 $ITGlueJWT = $ITGlueJWT ?? $(read-host "Please enter your ITGlue JWT as retrieved from browser.")
 Clear-Host
-$PageNum = 0
+
+while ($true){
+    Write-Host "Testing provided JWT"
+    try {
+        $(Get-ITGlueCheckLists -JWTAuthToken $ITGlueJWT -page_size $PageSize -page_number $PageNum).data
+        break
+    } catch {
+        Write-Host "Issue getting checklists. $_; Re-enter a fresh JWT if possible"
+        $ITGlueJWT = $(read-host "Please enter your ITGlue JWT as retrieved from browser.")
+        Clear-Host
+
+    }
+}
+
 Write-Host "Retrieving all checklists from ITGlue"
 while ($true) {
     $checkListsResult = $(Get-ITGlueCheckLists -JWTAuthToken $ITGlueJWT -page_size $PageSize -page_number $PageNum).data

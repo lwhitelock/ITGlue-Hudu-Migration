@@ -428,6 +428,13 @@ if ($InitType -eq 'Full') {
         "2" {$importChecklists = $false}
     }
 
+    ############################ PasswordFolders ############################
+    while ($importPasswordFolders -notin (1,2)) {$importPasswordFolders = Read-Host "Would you like to import Password Folders? (requires web access to ITGlue).`n 1) Yes`n 2) No, Skip Checklists`n(1/2)"}
+    switch ($importPasswordFolders) {
+        "1" {$importPasswordFolders = $true}
+        "2" {$importPasswordFolders = $false}
+    }    
+
 }
 ############################ Migration Logs Path ##############################
 $MigrationLogs = $environmentSettings.MigrationLogs
