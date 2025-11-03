@@ -1,3 +1,18 @@
+$ITGlueJWT = $ITGlueJWT ?? (Read-Host "Please enter your ITGlue JWT as retrieved from browser.")
+while ($true){
+    Write-Host "Testing provided JWT"
+    try {
+        # just test the call; we don't need the result here
+        $null = Get-ITGPasswordFolders -JWTAuthToken $ITGlueJWT -organization_id $MatchedPasswords[0].ITGObject.attributes."organization-id" -ComputePaths -Separator "-"
+        break
+    } catch {
+        Write-Host "Issue getting password folders. $_; Re-enter a fresh JWT if possible"
+        $ITGlueJWT = Read-Host "Please enter your ITGlue JWT as retrieved from browser."
+        Clear-Host
+    }
+}
+
+$ITGPasswordFolders = @{}
 Write-Host "Please Wait, obtaining password folders"
 
 foreach ($itgcompanyID in ($matchedpasswords.ITGObject.attributes.'organization-id' | Select-Object -Unique)) {
