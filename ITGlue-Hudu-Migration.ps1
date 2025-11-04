@@ -2497,7 +2497,8 @@ foreach ($obj in @(
     $obj.Archived | ConvertTo-Json -depth 75 | Out-File $(join-path $settings.MigrationLogs "archived-$($obj.Name).json")
 }
 write-host "wrapup 6/8... Setting Standalone articles with attachments to filename..."
-foreach ($a in $(Get-HuduArticles | where-object {$_.content -eq "Empty Document in IT Glue Export - Please Check IT Glue" -and $_.name -ilike "*.*" -and -not $_.name -ilike "*.pdf"})){Set-HuduArticle -id $a.id -content "Please see attached file, $($a.name)"}
+foreach ($a in $(Get-HuduArticles | where-object {$_.content -eq "Empty Document in IT Glue Export - Please Check IT Glue" -and $_.name -ilike "*.*"})){Set-HuduArticle -id $a.id -content "Please see attached file, $($a.name)"}
+
 $global:SKIP_HAPI_ERROR_RETRY=$false
 
 write-host "wrapup 7/8... Placing password folders if user-configured to do so... $($importPasswordFolders)"
