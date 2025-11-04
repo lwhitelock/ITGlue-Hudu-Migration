@@ -29,8 +29,7 @@ You'll want to make sure your Hudu instance is prepared for migration and that y
 - * Password Folders [these are flattened into a single level of folders]*
 - * Checklists/Checklist Templates [add your users to Hudu first to persist user assignment]
 
-- * 
-Items with a double-bullet require JWT authentication and are generally for more-advanced users. Extracting JWT token requires web access and developer cosole in your web browser. If you're unsure, best to just skip these.
+`!` Items with a double-bullet require JWT authentication and are generally for more-advanced users. Extracting JWT token requires web access and developer cosole in your web browser. If you're unsure, best to just skip these.
 
 ## What the script cannot migrate:
 - Checklists - This is a limitation in the ITGlue API and export lacking functionality for checklists, so there currently is not a workaround.
