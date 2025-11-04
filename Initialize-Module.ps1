@@ -422,17 +422,17 @@ if ($InitType -eq 'Full') {
         "2" {$ScopedMigration = $true}
     }
     ############################## Checklists ##############################
-    while ($importChecklists -notin (1,2)) {$importChecklists = Read-Host "[ADVANCED, default $false] Would you like to import Checklists? (requires web access to ITGlue).`n 1) Yes`n 2) No, Skip Checklists`n(1/2)"}
+    while ($importChecklists -notin (1,2)) {$importChecklists = Read-Host "[ADVANCED, default 1/$false] Would you like to import Checklists? (requires web access to ITGlue).`n 1) Yes`n 2) No, Skip Checklists`n(1/2)"}
     switch ($importChecklists) {
-        "1" {$importChecklists = $true}
-        "2" {$importChecklists = $false}
+        "2" {$importChecklists = $true}
+        "1" {$importChecklists = $false}
     }
 
     ############################ PasswordFolders ############################
-    while ($importPasswordFolders -notin (1,2)) {$importPasswordFolders = Read-Host "[ADVANCED, default $false] Would you like to import Password Folders? (requires web access to ITGlue).`n 1) Yes`n 2) No, Skip Checklists`n(1/2)"}
+    while ($importPasswordFolders -notin (1,2)) {$importPasswordFolders = Read-Host "[ADVANCED, default 1/$false] Would you like to import Password Folders? (requires web access to ITGlue).`n 1) Yes`n 2) No, Skip Checklists`n(1/2)"}
     switch ($importPasswordFolders) {
-        "1" {$importPasswordFolders = $true}
-        "2" {$importPasswordFolders = $false}
+        "2" {$importPasswordFolders = $true}
+        "1" {$importPasswordFolders = $false}
     }    
 
 }
