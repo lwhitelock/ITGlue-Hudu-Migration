@@ -59,7 +59,7 @@ $FontAwesomeUpgrade = Get-FontAwesomeMap
 . $PSScriptRoot\Public\Set-MigrationScope.ps1
 
 # Other JWT-Auth / Advanced Post-Run Imports
-. $PSScriptRoot\Public\Checklists.ps1
+. $PSScriptRoot\Public\Get-Checklists.ps1
 . $PSScriptRoot\Public\Get-PasswordFolders.ps1
 
 # Add String/Filename Normalization Helper, image Normalization helper
