@@ -26,10 +26,10 @@ You'll want to make sure your Hudu instance is prepared for migration and that y
 - Documents with folder structure
 - Passwords (with OTP codes)
 - Document Links
-- **Password Folders [these are flattened into a single level of folders]*
-- **Checklists/Checklist Templates [add your users to Hudu first to persist user assignment]
+- * * Password Folders [these are flattened into a single level of folders]*
+- * * Checklists/Checklist Templates [add your users to Hudu first to persist user assignment]
 
-** 
+* * 
 Items with a double-asterik require JWT authentication and are generally for more-advanced users. Extracting JWT token requires web access and developer cosole in your web browser. If you're unsure, best to just skip these.
 
 ## What the script cannot migrate:
