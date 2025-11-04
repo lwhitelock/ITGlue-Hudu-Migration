@@ -2490,10 +2490,10 @@ $ctaresults = $ArchivedConfigurations |% {if ($_.huduid -and $_.huduid -gt 0) {S
 $ataresults = $ArchivedAssets |% {if ($_.huduid -and $_.huduid -gt 0) {Set-HuduAssetArchive -Id $_.huduid -CompanyId $_.huduobject.company_id -Archive $true}}
 $dtaresults = $ArchivedDocs |% {$i = $_; $A2D = $MatchedArticles |? {$A2D.itgid -eq $i.id}; if ($A2D.huduid -and $A2D.huduid -gt 0) {Set-HuduArticleArchive -Id $A2D.HuduId -Archive $true}} 
 foreach ($obj in @(
-    @{Name = "passwords";       Archived = $ptaresults},
-    @{Name = "configs";         Archived = $ctaresults},
-    @{Name = "assets";          Archived = $ataresults},
-    @{Name = "docs";            Archived = $dtaresults})) {
+    @{Name = "passwords";       Archived = $ptaresults ?? @() },
+    @{Name = "configs";         Archived = $ctaresults ?? @() },
+    @{Name = "assets";          Archived = $ataresults ?? @() },
+    @{Name = "docs";            Archived = $dtaresults ?? @() })) {
     $obj.Archived | ConvertTo-Json -depth 75 | Out-File $(join-path $settings.MigrationLogs "archived-$($obj.Name).json")
 }
 write-host "wrapup 6/8... Setting Standalone articles with attachments to filename..."
@@ -2501,10 +2501,14 @@ foreach ($a in $(Get-HuduArticles | where-object {$_.content -eq "Empty Document
 $global:SKIP_HAPI_ERROR_RETRY=$false
 
 write-host "wrapup 7/8... Placing password folders if user-configured to do so... $($importPasswordFolders)"
-if ($true -eq $importPasswordFolders){. .\public\Process-PasswordFolders.ps1}
+if ($true -eq $importPasswordFolders){
+    . .\public\Process-PasswordFolders.ps1
+}
 write-host "wrapup 8/8... Placing checklists / checklist templates if user-configured to do so... $($importChecklists)"
-if ($true -eq $importChecklists){. .\public\Process-Checklists.ps1}
-foreach ($auxilliaryObj in @(@{Name = "passwordfolders"; Created = $MatchedPasswordFolders}, @{Name = "checklists"; Created = $MatchedChecklists})) {
+if ($true -eq $importChecklists){
+    . .\public\Process-Checklists.ps1
+}
+foreach ($auxilliaryObj in @(@{Name = "passwordfolders"; Created = $MatchedPasswordFolders ?? @() }, @{Name = "checklists"; Created = $MatchedChecklists ?? @() })) {
     $auxilliaryObj.Created | ConvertTo-Json -depth 75 | Out-File $(join-path $settings.MigrationLogs "created-$($auxilliaryObj.Name).json")
 }
 ############################### End ###############################

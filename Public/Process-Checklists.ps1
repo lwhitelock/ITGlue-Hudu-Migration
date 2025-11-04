@@ -21,7 +21,7 @@ while ($true){
 
     }
 }
-
+$ITglueChecklists = [System.Collections.ArrayList]@()
 Write-Host "Retrieving all checklists from ITGlue"
 $PageSize = 1000
 $PageNum = 0
@@ -29,8 +29,8 @@ while ($true) {
     $checkListsResult = $(Get-ITGlueCheckLists -JWTAuthToken $ITGlueJWT -page_size $PageSize -page_number $PageNum).data
     foreach ($checklistEntry in $checkListsResult) {
         $ITGChecklistItems=$null
-        $checklistEntry | Add-Member -MemberType 'NoteProperty' -Name 'IsTemplate' -Value $false -Force
         try {
+            $checklistEntry | Add-Member -MemberType 'NoteProperty' -Name 'IsTemplate' -Value $false -Force
             $ITGChecklistItems=$(Get-ITGlueChecklistItems -JWTAuthToken $ITGlueJWT -filter_checklist_id $checklistEntry.id)
             $checklistEntry | Add-Member -MemberType 'NoteProperty' -Name 'ITGChecklistItems' -Value $ITGChecklistItems -Force
         }catch{
@@ -45,15 +45,16 @@ $PageNum = 0
 Write-Host "Retrieving all checklist templates from ITGlue"
 while ($true) {
     $checkListsResult = $(Get-ITGlueChecklistTemplates -JWTAuthToken $ITGlueJWT -page_size $PageSize -page_number $PageNum).data
-    foreach ($checklistTemplate in $checkListsResult) {
+    foreach ($checklistTemplate in $checkListsResult | Where-Object {$_}) {
         $ITGChecklistItems=$null
-        $checklistTemplate | Add-Member -MemberType 'NoteProperty' -Name 'IsTemplate' -Value $true -Force
         try {
+            $checklistTemplate | Add-Member -MemberType 'NoteProperty' -Name 'IsTemplate' -Value $true -Force
             $ITGChecklistItems=$(Get-ITGlueChecklistItems -JWTAuthToken $ITGlueJWT -filter_checklist_id $checklistTemplate.id)
             $checklistTemplate | Add-Member -MemberType 'NoteProperty' -Name 'ITGChecklistItems' -Value $ITGChecklistItems -Force
         }catch{
             Write-host "Error getting checklist template items $_"
         }
+
         $ITGLueChecklists.Add($checklistTemplate)
     }
     $PageNum = $PageNum +1
@@ -69,7 +70,7 @@ foreach ($checklist in $ITGLueChecklists) {
     $HuduProcedureTasks = @()
     $procedureRequest = @{
         Name = ($checklist.attributes.name ?? 'Unnamed Procedure') 
-        CompanyTemplate = $checklist.IsTemplate
+        CompanyTemplate = $checklist.IsTemplate ?? $false
         Description =  $($($checklist.attributes.description ?? "No description found for procedure.") + "`n" + 
             "Imported from ITGlue. <a href='$($checklist.attributes.'resource-url')'>itglue checklist url</a>")
     }
