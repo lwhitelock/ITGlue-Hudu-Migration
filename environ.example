@@ -88,9 +88,11 @@ $NonInteractive             = 2
 
 # If you want to scope migration to just come companies, select 2, otherwise leave at 1 for typical, full migration
 $ScopedMigration            = 1
-
-# If you want to merge certain organization types, Eg Vendor, Partner, Affiliate, etc, into one single company in Hudu, select 2
 $MergedOrganizationTypes    = 1
+
+# these require JWT authentication to perform [default is 1/false; 2 for true]
+$importChecklists           = 1
+$importPasswordFolders      = 1
 
 # pre-designated array/list of prescoped/preselected companies for scoped migration (typically for faster testing)
 # prescoped Companies
