@@ -139,9 +139,9 @@ function Get-ITGPasswordFolders {
 
         [pscustomobject]@{
             id                = $f.id
-            name              = $f.attributes.name
-            org_id            = $f.attributes.'organization-id'
-            org_name          = $f.attributes.'organization-name'
+            Name              = $f.attributes.name
+            ITGID             = $f.attributes.'organization-id'
+            organizatio      = $f.attributes.'organization-name'
             parent_id         = $f.attributes.'parent-id'
             path              = $path
             depth             = ($path -split [regex]::Escape($Separator)).Count

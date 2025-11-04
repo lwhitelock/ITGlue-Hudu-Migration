@@ -1,10 +1,9 @@
 
 $HuduCompanies  = $HuduCompanies ?? $(Get-HuduCompanies)
-$huduUsers      = Get-HuduUsers    
+$huduUsers      = $huduUsers ?? $(Get-HuduUsers)    
 $userIndex = @{}
 foreach ($u in $huduUsers) {$key = "$($u.first_name) $($u.last_name)".ToLower(); $userIndex[$key] = $u;}
-$PageSize = 1000
-$PageNum = 0
+
 
 $ITGlueJWT = $ITGlueJWT ?? $(read-host "Please enter your ITGlue JWT as retrieved from browser.")
 Clear-Host
@@ -12,17 +11,20 @@ Clear-Host
 while ($true){
     Write-Host "Testing provided JWT"
     try {
-        $(Get-ITGlueCheckLists -JWTAuthToken $ITGlueJWT -page_size $PageSize -page_number $PageNum).data
+        Get-ITGlueCheckLists -JWTAuthToken $ITGlueJWT -page_size $PageSize -page_number $PageNum
         break
     } catch {
-        Write-Host "Issue getting checklists. $_; Re-enter a fresh JWT if possible"
+        Write-Host "Issue getting checklists. $_; Re-enter a fresh JWT if possible or enter 0 to cancel checklists"
         $ITGlueJWT = $(read-host "Please enter your ITGlue JWT as retrieved from browser.")
         Clear-Host
+        if ("$ITGlueJWT".Trim() -eq "0"){break}
 
     }
 }
 
 Write-Host "Retrieving all checklists from ITGlue"
+$PageSize = 1000
+$PageNum = 0
 while ($true) {
     $checkListsResult = $(Get-ITGlueCheckLists -JWTAuthToken $ITGlueJWT -page_size $PageSize -page_number $PageNum).data
     foreach ($checklistEntry in $checkListsResult) {
@@ -58,8 +60,7 @@ while ($true) {
     if (-not $checkListsResult -or $checkListsResult.count -lt $PageSize) {break}
 }
 Write-Host "Got $($($ITGLueChecklists | where-object {$_.IsTemplate -eq $false}).count) and $($($ITGLueChecklists | where-object {$_.IsTemplate -eq $true}).count) checklist templates with $($checklistsResult.ITGChecklistItems.count) Checklist Items."
-
-
+$MatchedChecklists = $MatchedChecklists ?? @()
 # Match/Add Checklists/Items
 $ChecklistIDX=0
 foreach ($checklist in $ITGLueChecklists) {
@@ -141,6 +142,7 @@ foreach ($checklist in $ITGLueChecklists) {
             }
         }
         $checklist.HuduProcedure | Add-Member -MemberType 'NoteProperty' -Name 'HuduProcedureTasks' -Value $HuduProcedureTasks -Force
+        $MatchedChecklists+=$checklist
     }
 }
 

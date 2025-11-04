@@ -1,4 +1,6 @@
 $ITGlueJWT = $ITGlueJWT ?? (Read-Host "Please enter your ITGlue JWT as retrieved from browser.")
+Clear-Host
+
 while ($true){
     Write-Host "Testing provided JWT"
     try {
@@ -6,13 +8,16 @@ while ($true){
         $null = Get-ITGPasswordFolders -JWTAuthToken $ITGlueJWT -organization_id $MatchedPasswords[0].ITGObject.attributes."organization-id" -ComputePaths -Separator "-"
         break
     } catch {
-        Write-Host "Issue getting password folders. $_; Re-enter a fresh JWT if possible"
+        Write-Host "Issue getting password folders. $_; Re-enter a fresh JWT if possible or enter 0 to cancel PasswordFolders"
         $ITGlueJWT = Read-Host "Please enter your ITGlue JWT as retrieved from browser."
         Clear-Host
+        if ("$ITGlueJWT".Trim() -eq "0"){break}
+
     }
 }
 
-$ITGPasswordFolders = @{}
+$ITGPasswordFolders = $ITGPasswordFolders ?? @{}
+$MatchedPasswordFolders = $MatchedPasswordFolders ?? @()
 Write-Host "Please Wait, obtaining password folders"
 
 foreach ($itgcompanyID in ($matchedpasswords.ITGObject.attributes.'organization-id' | Select-Object -Unique)) {
@@ -46,7 +51,7 @@ foreach ($itgcompanyID in ($matchedpasswords.ITGObject.attributes.'organization-
     foreach ($passwordFolder in $foldersWithPasswords) {
         $FolderName = $passwordFolder.path
 
-        # 4) Get the passwords for THIS folder but only from THIS org
+    # 4) Get the passwords for THIS folder but only from THIS org
         $passwordsForFolder = $matchesForOrg | Where-Object {
             [string]$_.ITGObject.attributes.'password-folder-id' -eq [string]$passwordFolder.id
         }
@@ -55,7 +60,7 @@ foreach ($itgcompanyID in ($matchedpasswords.ITGObject.attributes.'organization-
             continue
         }
 
-        # 5) Derive the Hudu company id from those passwords; ensure they all agree
+    # 5) Derive the Hudu company id from those passwords; ensure they all agree
         $companyGroups = $passwordsForFolder | Group-Object { $_.HuduObject.company_id }
         if ($companyGroups.Count -ne 1) {
             Write-Warning ("Folder '{0}' (ITG org {1}) maps to multiple Hudu company_ids: {2}. " +
@@ -69,7 +74,7 @@ foreach ($itgcompanyID in ($matchedpasswords.ITGObject.attributes.'organization-
 
         Write-Host "$($passwordsForFolder.Count) passwords for '$FolderName' in Hudu company $HuduCompanyId"
 
-        # 6) Ensure the Hudu password folder exists for company
+    # 6) Ensure the Hudu password folder exists for company
         try {
             $existingFolder = Get-HuduPasswordFolders -CompanyId $HuduCompanyId -Name $FolderName | Select-Object -First 1
             if (-not $existingFolder) {
@@ -81,16 +86,26 @@ foreach ($itgcompanyID in ($matchedpasswords.ITGObject.attributes.'organization-
             continue
         }
 
-        # 7) Move/place each password
+    # 7) Move/place each password
+        $huduPasswordsChanged=@()
         foreach ($updatePass in $passwordsForFolder) {
             try {
-                Set-HuduPassword `
+                $passChanged=Set-HuduPassword `
                     -Id $updatePass.HuduObject.id `
                     -Company_Id $HuduCompanyId `
                     -Password_Folder_Id $existingFolder.id
+                $huduPasswordsChanged+=$($passChanged.asset_password ?? $passChanged)
             } catch {
                 Write-Warning "Error placing password id $($updatePass.HuduObject.id) in '$FolderName' (Company $HuduCompanyId): $_"
             }
         }
+        $MatchedPasswordFolders+=[PSCustomObject]@{
+            ITGCompanyID            = $itgcompanyID
+            HuduCompanyID           = $HuduCompanyId
+            ITGPasswordFolder       = $passwordFolder
+            HuduPasswordFolder      = $existingFolder
+            HuduPasswords           = $passwordsForFolder
+            FolderName              = $FolderName
+        }    
     }
 }
