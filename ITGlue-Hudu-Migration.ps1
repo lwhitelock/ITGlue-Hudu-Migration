@@ -7,10 +7,10 @@ $ErroredItemsFolder = $(Get-EnsuredPath -path $(join-path $(Resolve-Path .).path
 # Use this to set the context of the script runs
 $FirstTimeLoad = 1
 
-# if ((get-host).version.major -ne 7) {
-#     Write-Host "Powershell 7 Required" -foregroundcolor Red
-#     exit 1
-# }
+if ((get-host).version.major -ne 7) {
+    Write-Host "Powershell 7 Required" -foregroundcolor Red
+    exit 1
+}
 ############################### Functions ###############################
 # Import ImageMagick for Invoke-ImageTest Function (Disabled)
  . $PSScriptRoot\Private\Initialize-ImageMagik.ps1
