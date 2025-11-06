@@ -16,8 +16,8 @@ while ($true){
     }
 }
 
-$ITGPasswordFolders = $ITGPasswordFolders ?? @{}
-$MatchedPasswordFolders = $MatchedPasswordFolders ?? @()
+$ITGPasswordFolders =  @{}
+$MatchedPasswordFolders = @()
 Write-Host "Please Wait, obtaining password folders"
 
 foreach ($itgcompanyID in ($matchedpasswords.ITGObject.attributes.'organization-id' | Select-Object -Unique)) {
@@ -32,7 +32,7 @@ foreach ($itgcompanyID in ($matchedpasswords.ITGObject.attributes.'organization-
     }
 
     # 2) Get folders for this org (paths already computed)
-    $passwordFolderArray = Get-ITGPasswordFolders -JWTAuthToken $ITGlueJWT -organization_id $itgcompanyID -ComputePaths -Separator "-"
+    $passwordFolderArray = Get-ITGPasswordFolders -JWTAuthToken $ITGlueJWT -organization_id $itgcompanyID -ComputePaths -Separator "<FDELIM>"
     if (-not $passwordFolderArray -or $passwordFolderArray.Count -eq 0) {
         Write-Host "No password folders for $itgcompanyID — skipping."
         continue
@@ -49,63 +49,90 @@ foreach ($itgcompanyID in ($matchedpasswords.ITGObject.attributes.'organization-
     }
 
     foreach ($passwordFolder in $foldersWithPasswords) {
-        $FolderName = $passwordFolder.path
+        $companyError = $null; $folderError = $null; $passwordError = $null; $Modified = $false; $existingpass = $null;
+        
+        $FolderName = ($passwordFolder.path -split "<FDELIM>")[0]
+        write-host "folder name $foldername from path $($passwordFolder.path)" -ForegroundColor DarkCyan
+
 
     # 4) Get the passwords for THIS folder but only from THIS org
         $passwordsForFolder = $matchesForOrg | Where-Object {
             [string]$_.ITGObject.attributes.'password-folder-id' -eq [string]$passwordFolder.id
         }
         if (-not $passwordsForFolder -or $passwordsForFolder.Count -lt 1) {
-            Write-Host "Seemingly no passwords for folder: $FolderName"
+            $folderError= "Seemingly no MATCHED passwords for folder: $FolderName"
+            $MatchedPasswordFolders+=[PSCustomObject]@{FolderError=$FolderError; companyError=$companyError; ITGCompanyID= $itgcompanyID; HuduCompanyID=$($existingpass.company_id ?? $HuduCompanyId); ITGPasswordFolder= $passwordFolder; HuduPasswordFolder=$existingFolder; HuduPasswords=$passwordsForFolder; FolderName=$FolderName; PasswordError=$passwordError; Modified = $passChanged; existingFolderPresent=$existingFolderPresent}
             continue
         }
 
     # 5) Derive the Hudu company id from those passwords; ensure they all agree
-        $companyGroups = $passwordsForFolder | Group-Object { $_.HuduObject.company_id }
+        $companyGroups = $passwordsForFolder | where-object {$_.HuduObject.company_id -and $_.HuduObject.company_id -ge 1} | Group-Object { $_.HuduObject.company_id }
         if ($companyGroups.Count -ne 1) {
-            Write-Warning ("Folder '{0}' (ITG org {1}) maps to multiple Hudu company_ids: {2}. " +
-                           "Picking the largest group, but you should review.") -f $FolderName, $itgcompanyID, ($companyGroups.Name -join ', ')
             $dominant = $companyGroups | Sort-Object Count -Descending | Select-Object -First 1
             $HuduCompanyId = [int]$dominant.Name
             $passwordsForFolder = $dominant.Group
         } else {
             $HuduCompanyId = [int]$companyGroups[0].Name
+            if ($HuduCompanyId -lt 1) {
+                $HuduCompanyId = [int]$companyGroups[1].Name
+            }
+        }
+        Write-Host "$($passwordsForFolder.Count) passwords for '$FolderName' in Hudu company $HuduCompanyId"
+        if (-not $HuduCompanyId -or $HuduCompanyId -lt 1){
+            $companyError= "Company doesnt seem to exist?"
+            $MatchedPasswordFolders+=[PSCustomObject]@{FolderError=$FolderError; companyError=$companyError; ITGCompanyID= $itgcompanyID; HuduCompanyID=$($existingpass.company_id ?? $HuduCompanyId); ITGPasswordFolder= $passwordFolder; HuduPasswordFolder=$existingFolder; HuduPasswords=$passwordsForFolder; FolderName=$FolderName; PasswordError=$passwordError; Modified = $passChanged; existingFolderPresent=$existingFolderPresent}
+            continue
         }
 
-        Write-Host "$($passwordsForFolder.Count) passwords for '$FolderName' in Hudu company $HuduCompanyId"
-
-    # 6) Ensure the Hudu password folder exists for company
+        # 6) Ensure the Hudu password folder exists for company
         try {
             $existingFolder = Get-HuduPasswordFolders -CompanyId $HuduCompanyId -Name $FolderName | Select-Object -First 1
             if (-not $existingFolder) {
                 Write-Host "Creating Hudu password folder '$FolderName' for company $HuduCompanyId"
                 $existingFolder = New-HuduPasswordFolder -CompanyId $HuduCompanyId -Name $FolderName
+            } else {
+                $folderError = "No folder $FolderName for company $HuduCompanyId"
             }
         } catch {
-            Write-Warning "Error during password folder lookup/create for '$FolderName' (Company $HuduCompanyId): $_"
-            continue
+                $folderError = "folder error during fetch / create for $FolderName for company $HuduCompanyId"
         }
+        if ($null -ne $folderError){
+            $MatchedPasswordFolders+=[PSCustomObject]@{FolderError=$FolderError; companyError=$companyError; ITGCompanyID= $itgcompanyID; HuduCompanyID=$($existingpass.company_id ?? $HuduCompanyId); ITGPasswordFolder= $passwordFolder; HuduPasswordFolder=$existingFolder; HuduPasswords=$passwordsForFolder; FolderName=$FolderName; PasswordError=$passwordError; Modified = $passChanged; existingFolderPresent=$existingFolderPresent}
+            continue
+        } 
+            
 
     # 7) Move/place each password
-        $huduPasswordsChanged=@()
         foreach ($updatePass in $passwordsForFolder) {
             try {
-                $passChanged=Set-HuduPassword `
-                    -Id $updatePass.HuduObject.id `
-                    -Company_Id $HuduCompanyId `
-                    -Password_Folder_Id $existingFolder.id
-                $huduPasswordsChanged+=$($passChanged.asset_password ?? $passChanged)
+                $existingpass = get-hudupassword -id $updatePass.HuduObject.id; $existingpass = $existingpass.asset_password ?? $existingpass
+                if (-not $existingpass) {$passwordError =  "no pass can be retrieved"
+                    $passwordError =  "no pass can be retrieved without error $_"
+                }
             } catch {
-                Write-Warning "Error placing password id $($updatePass.HuduObject.id) in '$FolderName' (Company $HuduCompanyId): $_"
+                $passwordError = "Error encounted validating password $_"
             }
+            try {
+                if ($null -ne $passwordError){
+                    $MatchedPasswordFolders+=[PSCustomObject]@{FolderError=$FolderError; companyError=$companyError; ITGCompanyID= $itgcompanyID; HuduCompanyID=$($existingpass.company_id ?? $HuduCompanyId); ITGPasswordFolder= $passwordFolder; HuduPasswordFolder=$existingFolder; HuduPasswords=$passwordsForFolder; FolderName=$FolderName; PasswordError=$passwordError; Modified = $passChanged; existingFolderPresent=$existingFolderPresent}
+                    continue
+                }
+                $existingpassfolderPresent = [bool]$($null -ne $existingpass.password_folder_id)
+                if (-not $existingpassfolderPresent) {
+                    try {$passChanged=$null; $passChanged=Set-HuduPassword `
+                            -Id $updatePass.HuduObject.id `
+                            -Company_Id $($existingpass.company_id ?? $HuduCompanyId) `
+                            -Password_Folder_Id $existingFolder.id
+                        $Modified = [bool]$($passChanged -ne $null)
+                    } catch {
+                        $passwordError = "Error placing password id $($updatePass.HuduObject.id) in '$FolderName' (Company $HuduCompanyId): $_"
+                        $Modified = $false
+                    }
+                }
+            } catch {
+                $passwordError = "error encountered assigning folder $_"
+            }
+            $MatchedPasswordFolders+=[PSCustomObject]@{FolderError=$FolderError; companyError=$companyError; ITGCompanyID= $itgcompanyID; HuduCompanyID=$($existingpass.company_id ?? $HuduCompanyId); ITGPasswordFolder= $passwordFolder; HuduPasswordFolder=$existingFolder; HuduPasswords=$passwordsForFolder; FolderName=$FolderName; PasswordError=$passwordError; Modified = $passChanged; existingFolderPresent=$existingFolderPresent}
         }
-        $MatchedPasswordFolders+=[PSCustomObject]@{
-            ITGCompanyID            = $itgcompanyID
-            HuduCompanyID           = $HuduCompanyId
-            ITGPasswordFolder       = $passwordFolder
-            HuduPasswordFolder      = $existingFolder
-            HuduPasswords           = $passwordsForFolder
-            FolderName              = $FolderName
-        }    
     }
 }
