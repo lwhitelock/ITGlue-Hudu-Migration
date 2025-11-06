@@ -231,7 +231,6 @@ $includeLabelInSmooshedValues = $true
 - Prefer **matching dest types** when possible; otherwise map to `Text`/`RichText`.  
 - Use **constants** to prefill required dest fields when there’s no source.
 - For **plain text** targets, set `striphtml='True'` in the mapping and consider `excludeHTMLinSMOOSH=$true` when using SMOOSH.  
-- Keep file names in the repo consistent; on GitHub, `README.md` vs `README.MD` matters on some clones.
 
 ---
 
