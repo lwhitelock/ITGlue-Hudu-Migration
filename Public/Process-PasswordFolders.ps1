@@ -39,6 +39,7 @@ foreach ($itgcompanyID in ($matchedpasswords.ITGObject.attributes.'organization-
 
     # 1) Scope matches to this IT Glue org
     $matchesForOrg = $matchedpasswords | Where-Object {
+        [string]$_.ITGObject.attributes.'organization-id' -eq [string]$itgcompanyID    
     }
     if (-not $matchesForOrg -or $matchesForOrg.Count -eq 0) {
         Write-Host "No matched passwords for ITG org $itgcompanyID — skipping."
