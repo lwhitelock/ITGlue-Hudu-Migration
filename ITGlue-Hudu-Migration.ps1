@@ -2354,7 +2354,6 @@ Write-TimedMessage -Timeout 3 -Message "Snapshot Point: Company Notes URLs Repla
 if ($true -eq $importPasswordFolders){
     . .\public\Process-PasswordFolders.ps1
 }
-write-host "wrapup 8/8... Placing checklists / checklist templates if user-configured to do so... $($importChecklists)"
 if ($true -eq $importChecklists){
     . .\public\Process-Checklists.ps1
 }

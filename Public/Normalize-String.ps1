@@ -53,26 +53,6 @@ function Limit-FilenameLength {
         }
     }
 }
-
-function remove-hudupasswordfromfolder {
-    Param (
-        [Parameter(Mandatory = $true)]
-        [Int]$Id
-    )
-    $AssetPassword = [ordered]@{asset_password = $(Get-HuduPasswords -Id $Id) }
-    $AssetPassword.asset_password | Add-Member -MemberType NoteProperty -Name password_folder_id -Force -Value $null
-    Invoke-HuduRequest -Method put -Resource "/api/v1/asset_passwords/$Id" -Body $($AssetPassword | ConvertTo-Json -Depth 10)
-}
-
-function New-HuduGlobalPasswordFolder {
-    param ([Parameter(Mandatory)] [string]$Name)
-    try {
-        $res = Invoke-HuduRequest -Method POST -Resource "/api/v1/password_folders" -Body $(@{password_folder = @{name = $Name; security = "all_users"; allowed_groups  = @()}} | ConvertTo-Json -Depth 10)
-        return $res
-    } catch {
-        Write-Warning "Failed to create new password folder '$Name'- $_"; return $null;
-    }
-}
 function Normalize-Text {
     param([string]$s)
     if ([string]::IsNullOrWhiteSpace($s)) { return $null }

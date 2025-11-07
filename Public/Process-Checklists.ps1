@@ -8,6 +8,7 @@ foreach ($u in $huduUsers) {$key = "$($u.first_name) $($u.last_name)".ToLower();
 
 if (-not (Get-Command -Name Get-ITGlueCheckLists -ErrorAction SilentlyContinue)) { . $PSScriptRoot\Public\Get-Checklists.ps1 }
 if (-not (Get-Command -Name Get-ITGlueJWTAuth -ErrorAction SilentlyContinue)) { . $PSScriptRoot\Public\JWT-Auth.ps1 }
+$ITGlueJWT = $ITGlueJWT ?? (Read-Host "Please enter your ITGlue JWT as retrieved from browser.")
 $ITGlueJWT = Get-ITGlueJWTAuth -ITglueJWT $ITglueJWT
 $ITglueChecklists = [System.Collections.ArrayList]@()
 
