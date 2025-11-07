@@ -1,3 +1,13 @@
+function remove-hudupasswordfromfolder {
+    Param (
+        [Parameter(Mandatory = $true)]
+        [Int]$Id
+    )
+    $AssetPassword = [ordered]@{asset_password = $(Get-HuduPasswords -Id $Id) }
+    $AssetPassword.asset_password | Add-Member -MemberType NoteProperty -Name password_folder_id -Force -Value $null
+    Invoke-HuduRequest -Method put -Resource "/api/v1/asset_passwords/$Id" -Body $($AssetPassword | ConvertTo-Json -Depth 10)
+}
+
 function New-HuduGlobalPasswordFolder {
     <#
     .SYNOPSIS
@@ -158,14 +168,14 @@ function Get-Similarity {
 function Get-SimilaritySafe { param([string]$A,[string]$B)
     if ([string]::IsNullOrWhiteSpace($A) -or [string]::IsNullOrWhiteSpace($B)) { return 0.0 }
     $score = Get-Similarity $A $B
-    write-host "$a-$b SCORED $score"
+    write-host "$a ... $b SCORED $score"
     return $score
 }
 
 function ChoseBest-ByName {
     param ([string]$Name,[array]$choices)
 return $($choices | ForEach-Object {
-[pscustomobject]@{Choice = $_; Score  = $(Get-SimilaritySafe -a "$Name" -b $_.name);}} | where-object {$_.Score -ge 0.95} | Sort-Object Score -Descending | select-object -First 1).Choice
+[pscustomobject]@{Choice = $_; Score  = $(Get-SimilaritySafe -a "$Name" -b $_.name);}} | where-object {$_.Score -ge 0.97} | Sort-Object Score -Descending | select-object -First 1).Choice
 }
 
 $ITGlueJWT = $ITGlueJWT ?? (Read-Host "Please enter your ITGlue JWT as retrieved from browser.")
@@ -186,16 +196,36 @@ Clear-Host
 #     }
 # }
 
+$PFMappings =@{}
+$PFMappings["Software &"]="Software & Applications"
+$PFMappings["Software and"]="Software & Applications"
+$pfmappings["Future Tech"]="Future Tech"
+$PFMappings["Network Device"]="Network Devices"
+$PFMappings["Domain"]="Domain / DNS / SSL"
+$PFMappings["DNS"]="Domain / DNS / SSL"
+$PFMappings["SSL"]="Domain / DNS / SSL"
+$PFmappings["Voice"]="Voice / Phones / Conf Rooms"
+$PFmappings["Server"]="Server"
+$PFMappings["Break Glass"]="BreakGlass"
+$PFMappings["Future Tech"]="Future Tech"
+$PFMappings["Platform"]="Platform"
+$PFMappings["IPMI"]="IPMI / CIMC / IDRAC"
+$PFMappings["CIMC"]="IPMI / CIMC / IDRAC"
+$PFMappings["IDRAC"]="IPMI / CIMC / IDRAC"
+$PFMappings["Voice"]
+$PFMappings["Phone"]
+$PFMappings["Conf room"]
+
 $global_password_folders = @()
 $global_password_folders = $(get-hudupasswordfolders | where-object {-not $_.company_id -or $_.company_id -lt 1})
 
 $ITGPasswordFolders =  @{}
 $MatchedPasswordFolders = @()
 Write-Host "Please Wait, obtaining password folders"
-foreach ($itgcompanyID in ($MatchedPasswords.ITGObject.attributes.'organization-id' | Select-Object -Unique)) {
+foreach ($itgcompanyID in ($Matchedpasssubset.ITGObject.attributes.'organization-id' | Select-Object -Unique)) {
 
     # 1) Scope matches to this IT Glue org
-    $matchesForOrg = $MatchedPasswords | Where-Object {
+    $matchesForOrg = $Matchedpasssubset | Where-Object {
         [string]$_.ITGObject.attributes.'organization-id' -eq [string]$itgcompanyID
     }
     if (-not $matchesForOrg -or $matchesForOrg.Count -eq 0) {
@@ -224,6 +254,14 @@ foreach ($itgcompanyID in ($MatchedPasswords.ITGObject.attributes.'organization-
         $companyError = $null; $folderError = $null; $passwordError = $null; $Modified = $false; $existingpass = $null;
         
         $FolderName = ($passwordFolder.path -split "<FDELIM>")[0]
+        $match = $null
+        $match = $PFMappings.Keys | Sort-Object { $_.Length } -Descending | Where-Object { $FolderName.StartsWith($_, [System.StringComparison]::OrdinalIgnoreCase) } | Select-Object -First 1
+        if ($match) {
+            Write-Host "Matched map term $match"
+            $FolderName = $PFMappings[$match]
+        }
+
+
         write-host "folder name $foldername from path $($passwordFolder.path)" -ForegroundColor DarkCyan
 
 
