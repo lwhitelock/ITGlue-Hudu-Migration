@@ -1,3 +1,15 @@
+
+$global_password_folders = @()
+$ITGPasswordFolders =  @{}
+$MatchedPasswordFolders = @()
+
+if (-not (Get-Command -Name Get-ITGlueJWTAuth -ErrorAction SilentlyContinue)) { . $PSScriptRoot\Public\JWT-Auth.ps1 }
+$ITGlueJWT = Get-ITGlueJWTAuth -ITglueJWT $ITglueJWT
+
+$PFMappings = $PFMappings ?? @{}
+# $PFMappings["Software &"]="Software & Applications"
+# $PFMappings["Software and"]="Software & Applications"
+
 function remove-hudupasswordfromfolder {
     Param (
         [Parameter(Mandatory = $true)]
@@ -9,219 +21,18 @@ function remove-hudupasswordfromfolder {
 }
 
 function New-HuduGlobalPasswordFolder {
-    <#
-    .SYNOPSIS
-    Create a new password folder.
-
-    .DESCRIPTION
-    Calls the Hudu API to create a password folder for a given company.  
-    Supports configuring name, description, security settings, and allowed groups.
-
-    .PARAMETER Name
-    Name of the new folder (required).
-
-    .PARAMETER CompanyId
-    The company ID that owns the folder (required).
-
-    .PARAMETER Description
-    Description of the folder.
-
-    .PARAMETER Security
-    Security mode. Accepts "all_users" or "specific".
-
-    .PARAMETER AllowedGroups
-    Array of group IDs that should have access (if Security is "specific").
-
-    .EXAMPLE
-    New-HuduPasswordFolder -Name "Infrastructure" -CompanyId 2
-    Creates a folder named "Infrastructure" for company ID 2.
-
-    .EXAMPLE
-    New-HuduPasswordFolder -Name "Finance" -CompanyId 4 -Security specific -AllowedGroups @(10,12)
-    Creates a folder for company 4 restricted to groups 10 and 12.
-    #>
-    [CmdletBinding()]
-    param (
-        [Parameter(Mandatory)] [string]$Name,
-        [string]$Description,
-        [ValidateSet("all_users","specific")][String]$Security,
-        [array]$AllowedGroups)
-
-    $password_folder=@{
-        name             = $Name
-    }
-    $password_folder.company_id       = $null
-
-
-    if ($Description){
-        $password_folder["description"] = $Description
-    }
-    if ($security -and $security -eq "specific"){
-        $password_folder["security"] = $security
-        $allGroups = $(Get-HuduGroups).id
-        
-        if ($($AllowedGroups | where-object {$allGroups -contains $_}).count -gt 0) {
-            $password_folder["allowed_groups"]= $AllowedGroups | where-object {$allGroups -contains $_}
-        } else {
-            $password_folder["allowed_groups"]=@("0")
-        }
-    } else {
-        $password_folder["security"] = 'all_users'
-        $password_folder["allowed_groups"]= @()
-    }
-    $payload = @{password_folder = $password_folder} | ConvertTo-Json -Depth 10
+    param ([Parameter(Mandatory)] [string]$Name)
     try {
-        $res = Invoke-HuduRequest -Method POST -Resource "/api/v1/password_folders" -Body $payload
+        $res = Invoke-HuduRequest -Method POST -Resource "/api/v1/password_folders" -Body $(@{password_folder = @{name = $Name; security = "all_users"; allowed_groups  = @()}} | ConvertTo-Json -Depth 10)
         return $res
     } catch {
-        Write-Warning "Failed to create new password folder '$Name'"
-        return $null
+        Write-Warning "Failed to create new password folder '$Name'- $_"; return $null;
     }
 }
 
-
-function Normalize-Text {
-    param([string]$s)
-    if ([string]::IsNullOrWhiteSpace($s)) { return $null }
-    $s = $s.Trim().ToLowerInvariant()
-    $s = [regex]::Replace($s, '[\s_-]+', ' ')  # "primary_email" -> "primary email"
-    # strip diacritics (prénom -> prenom)
-    $formD = $s.Normalize([System.Text.NormalizationForm]::FormD)
-    $sb = New-Object System.Text.StringBuilder
-    foreach ($ch in $formD.ToCharArray()){
-        if ([System.Globalization.CharUnicodeInfo]::GetUnicodeCategory($ch) -ne
-            [System.Globalization.UnicodeCategory]::NonSpacingMark) { [void]$sb.Append($ch) }
-    }
-    ($sb.ToString()).Normalize([System.Text.NormalizationForm]::FormC)
-}
-function Compare-StringsIgnoring {
-    [CmdletBinding()]
-    param(
-        [Parameter(Mandatory)] [string]$A,
-        [Parameter(Mandatory)] [string]$B,
-        $ignore = @(
-            '\bthe\b','\borg\b','\binc\b','\bpc\b','\band\b','\bltd\b','[\.,/&'']'
-        )
-    )
-
-    if ([string]::IsNullOrWhiteSpace($A) -or [string]::IsNullOrWhiteSpace($B)) {
-        return $false
-    }
-
-    function _Normalize($s) {
-        $t = $s.ToLowerInvariant()
-        foreach ($pattern in $ignore) { $t = $t -replace $pattern, '' }
-        ($t -replace '\s+', ' ').Trim()
-    }
-
-    $normA = _Normalize $A
-    $normB = _Normalize $B
-    return ($normA -eq $normB)
-}
-function Test-Equiv {
-    param([string]$A, [string]$B)
-    $a = Normalize-Text $A; $b = Normalize-Text $B
-    if (-not $a -or -not $b) { return $false }
-    if ($a -eq $b) { return $true }
-    $reA = "(^| )$([regex]::Escape($a))( |$)"
-    $reB = "(^| )$([regex]::Escape($b))( |$)"
-    if ($b -match $reA -or $a -match $reB) { return $true } 
-    if ($a.Replace(' ', '') -eq $b.Replace(' ', '')) { return $true }
-    return $false
-}
-function Get-Similarity {
-    param([string]$A, [string]$B)
-
-    $a = [string](Normalize-Text $A)
-    $b = [string](Normalize-Text $B)
-    if ([string]::IsNullOrEmpty($a) -and [string]::IsNullOrEmpty($b)) { return 1.0 }
-    if ([string]::IsNullOrEmpty($a) -or  [string]::IsNullOrEmpty($b))  { return 0.0 }
-
-    $n = [int]$a.Length
-    $m = [int]$b.Length
-    if ($n -eq 0) { return [double]($m -eq 0) }
-    if ($m -eq 0) { return 0.0 }
-
-    $d = New-Object 'int[,]' ($n+1), ($m+1)
-    for ($i = 0; $i -le $n; $i++) { $d[$i,0] = $i }
-    for ($j = 0; $j -le $m; $j++) { $d[0,$j] = $j }
-
-    for ($i = 1; $i -le $n; $i++) {
-        $im1 = ([int]$i) - 1
-        $ai  = $a[$im1]
-        for ($j = 1; $j -le $m; $j++) {
-            $jm1 = ([int]$j) - 1
-            $cost = if ($ai -eq $b[$jm1]) { 0 } else { 1 }
-
-            $del = [int]$d[$i,  $j]   + 1
-            $ins = [int]$d[$i,  $jm1] + 1
-            $sub = [int]$d[$im1,$jm1] + $cost
-
-            $d[$i,$j] = [Math]::Min($del, [Math]::Min($ins, $sub))
-        }
-    }
-
-    $dist   = [double]$d[$n,$m]
-    $maxLen = [double][Math]::Max($n,$m)
-    return 1.0 - ($dist / $maxLen)
-}
-function Get-SimilaritySafe { param([string]$A,[string]$B)
-    if ([string]::IsNullOrWhiteSpace($A) -or [string]::IsNullOrWhiteSpace($B)) { return 0.0 }
-    $score = Get-Similarity $A $B
-    write-host "$a ... $b SCORED $score"
-    return $score
-}
-
-function ChoseBest-ByName {
-    param ([string]$Name,[array]$choices)
-return $($choices | ForEach-Object {
-[pscustomobject]@{Choice = $_; Score  = $(Get-SimilaritySafe -a "$Name" -b $_.name);}} | where-object {$_.Score -ge 0.97} | Sort-Object Score -Descending | select-object -First 1).Choice
-}
-
-$ITGlueJWT = $ITGlueJWT ?? (Read-Host "Please enter your ITGlue JWT as retrieved from browser.")
-Clear-Host
-
-# while ($true){
-#     Write-Host "Testing provided JWT"
-#     try {
-#         # just test the call; we don't need the result here
-#         $null = Get-ITGPasswordFolders -JWTAuthToken $ITGlueJWT -organization_id $PasswordMatchSet[0].ITGObject.attributes."organization-id" -ComputePaths -Separator "-"
-#         break
-#     } catch {
-#         Write-Host "Issue getting password folders. $_; Re-enter a fresh JWT if possible or enter 0 to cancel PasswordFolders"
-#         $ITGlueJWT = Read-Host "Please enter your ITGlue JWT as retrieved from browser."
-#         Clear-Host
-#         if ("$ITGlueJWT".Trim() -eq "0"){break}
-
-#     }
-# }
-
-$PFMappings =@{}
-$PFMappings["Software &"]="Software & Applications"
-$PFMappings["Software and"]="Software & Applications"
-$pfmappings["Future Tech"]="Future Tech"
-$PFMappings["Network Device"]="Network Devices"
-$PFMappings["Domain"]="Domain / DNS / SSL"
-$PFMappings["DNS"]="Domain / DNS / SSL"
-$PFMappings["SSL"]="Domain / DNS / SSL"
-$PFmappings["Voice"]="Voice / Phones / Conf Rooms"
-$PFmappings["Server"]="Server"
-$PFMappings["Break Glass"]="BreakGlass"
-$PFMappings["Future Tech"]="Future Tech"
-$PFMappings["Platform"]="Platform"
-$PFMappings["IPMI"]="IPMI / CIMC / IDRAC"
-$PFMappings["CIMC"]="IPMI / CIMC / IDRAC"
-$PFMappings["IDRAC"]="IPMI / CIMC / IDRAC"
-$PFMappings["Voice"]
-$PFMappings["Phone"]
-$PFMappings["Conf room"]
-
-$global_password_folders = @()
 $global_password_folders = $(get-hudupasswordfolders | where-object {-not $_.company_id -or $_.company_id -lt 1})
 
-$ITGPasswordFolders =  @{}
-$MatchedPasswordFolders = @()
-Write-Host "Please Wait, obtaining password folders"
+Write-Host "Please Wait, obtaining password folders from ITGlue"
 foreach ($itgcompanyID in ($Matchedpasssubset.ITGObject.attributes.'organization-id' | Select-Object -Unique)) {
 
     # 1) Scope matches to this IT Glue org
@@ -331,18 +142,18 @@ foreach ($itgcompanyID in ($Matchedpasssubset.ITGObject.attributes.'organization
                     $MatchedPasswordFolders+=[PSCustomObject]@{FolderError=$FolderError; companyError=$companyError; ITGCompanyID= $itgcompanyID; HuduCompanyID=$($existingpass.company_id ?? $HuduCompanyId); ITGPasswordFolder= $passwordFolder; HuduPasswordFolder=$existingFolder; HuduPasswords=$passwordsForFolder; FolderName=$FolderName; PasswordError=$passwordError; Modified = $passChanged; existingFolderPresent=$existingFolderPresent}
                     continue
                 }
-                $existingpassfolderPresent = [bool]$($null -ne $existingpass.password_folder_id)
-                if (-not $existingpassfolderPresent) {
-                    try {$passChanged=$null; $passChanged=Set-HuduPassword `
-                            -Id $updatePass.HuduObject.id `
-                            -Company_Id $($existingpass.company_id ?? $HuduCompanyId) `
-                            -Password_Folder_Id $existingFolder.id
-                        $Modified = [bool]$($passChanged -ne $null)
-                    } catch {
-                        $passwordError = "Error placing password id $($updatePass.HuduObject.id) in '$FolderName' (Company $HuduCompanyId): $_"
-                        $Modified = $false
-                    }
+                # $existingpassfolderPresent = [bool]$($null -ne $existingpass.password_folder_id)
+                # if (-not $existingpassfolderPresent) {
+                try {$passChanged=$null; $passChanged=Set-HuduPassword `
+                        -Id $updatePass.HuduObject.id `
+                        -Company_Id $($existingpass.company_id ?? $HuduCompanyId) `
+                        -Password_Folder_Id $existingFolder.id
+                    $Modified = [bool]$($passChanged -ne $null)
+                } catch {
+                    $passwordError = "Error placing password id $($updatePass.HuduObject.id) in '$FolderName' (Company $HuduCompanyId): $_"
+                    $Modified = $false
                 }
+                # }
             } catch {
                 $passwordError = "error encountered assigning folder $_"
             }

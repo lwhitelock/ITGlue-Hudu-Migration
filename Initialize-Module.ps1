@@ -434,6 +434,7 @@ if ($InitType -eq 'Full') {
         "2" {$importPasswordFolders = $true}
         "1" {$importPasswordFolders = $false}
     }    
+    if ($true -eq $importPasswordFolders){$GlobalPasswordFolderMode = [bool]$("global" -eq $(Select-ObjectFromList -message "Password folder import mode-" -objects @("global","per-company")))} else {$GlobalPasswordFolderMode = $null}
 
 }
 ############################ Migration Logs Path ##############################
