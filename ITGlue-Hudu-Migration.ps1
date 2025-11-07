@@ -67,6 +67,7 @@ $FontAwesomeUpgrade = Get-FontAwesomeMap
 . $PSScriptRoot\Public\Normalize-And-ConvertImage.ps1
 # initialization helper and field requirement helper, logging, selection helper
 . $PSScriptRoot\Public\Get-ITGFieldPopulated.ps1
+. $PSScriptRoot\Public\JWT-Auth.ps1
 
 ############################### End of Functions ###############################
 
