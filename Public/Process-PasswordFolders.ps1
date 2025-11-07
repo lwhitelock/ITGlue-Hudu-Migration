@@ -4,6 +4,7 @@ $ITGPasswordFolders =  @{}
 $MatchedPasswordFolders = @()
 $GlobalPasswordFolderMode = $GlobalPasswordFolderMode ?? $([bool]$("global" -eq $(Select-ObjectFromList -message "Password folder import mode-" -objects @("global","per-company"))))
 
+if (-not (Get-Command -Name Get-ITGPasswordFolders -ErrorAction SilentlyContinue)) { . $PSScriptRoot\Public\Get-PasswordFolders.ps1 }
 if (-not (Get-Command -Name Get-ITGlueJWTAuth -ErrorAction SilentlyContinue)) { . $PSScriptRoot\Public\JWT-Auth.ps1 }
 $ITGlueJWT = Get-ITGlueJWTAuth -ITglueJWT $ITglueJWT
 
@@ -34,11 +35,11 @@ function New-HuduGlobalPasswordFolder {
 $global_password_folders = $(get-hudupasswordfolders | where-object {-not $_.company_id -or $_.company_id -lt 1})
 
 Write-Host "Please Wait, obtaining password folders from ITGlue"
-foreach ($itgcompanyID in ($Matchedpasssubset.ITGObject.attributes.'organization-id' | Select-Object -Unique)) {
+foreach ($itgcompanyID in ($matchedpasswords.ITGObject.attributes.'organization-id' | Select-Object -Unique)) {
 
     # 1) Scope matches to this IT Glue org
-    $matchesForOrg = $Matchedpasssubset | Where-Object {
-        [string]$_.ITGObject.attributes.'organization-id' -eq [string]$itgcompanyID
+    $matchesForOrg = $matchedpasswords | Where-Object {
+        [string]$_.ITGObject.attributes.'organization-id' -eq [string]$itgcompanyID    
     }
     if (-not $matchesForOrg -or $matchesForOrg.Count -eq 0) {
         Write-Host "No matched passwords for ITG org $itgcompanyID — skipping."
@@ -138,6 +139,7 @@ foreach ($itgcompanyID in ($Matchedpasssubset.ITGObject.attributes.'organization
 
     # 7) Move/place each password
         foreach ($updatePass in $passwordsForFolder) {
+            $modified=$false
             try {
                 $existingpass = get-hudupasswords -id $updatePass.HuduObject.id; $existingpass = $existingpass.asset_password ?? $existingpass
                 if (-not $existingpass) {$passwordError =  "no pass can be retrieved"
