@@ -182,7 +182,8 @@ if (Test-Path -Path "$MigrationLogs") {
 # Setup some variables
 
 $ManualActions = [System.Collections.ArrayList]@()
-
+$MatchedPasswordFolders = @()
+$MatchedChecklists = @()
 
 ############################### Companies ###############################
 
