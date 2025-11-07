@@ -2,6 +2,7 @@
 $global_password_folders = @()
 $ITGPasswordFolders =  @{}
 $MatchedPasswordFolders = @()
+$GlobalPasswordFolderMode = $GlobalPasswordFolderMode ?? $([bool]$("global" -eq $(Select-ObjectFromList -message "Password folder import mode-" -objects @("global","per-company"))))
 
 if (-not (Get-Command -Name Get-ITGlueJWTAuth -ErrorAction SilentlyContinue)) { . $PSScriptRoot\Public\JWT-Auth.ps1 }
 $ITGlueJWT = Get-ITGlueJWTAuth -ITglueJWT $ITglueJWT
@@ -107,13 +108,21 @@ foreach ($itgcompanyID in ($Matchedpasssubset.ITGObject.attributes.'organization
 
         # 6) Ensure the Hudu password folder exists for company
         try {
-            # globals only
-
-            $existingFolder = ChoseBest-ByName -name "$FolderName" -choices $(get-hudupasswordfolders | where-object {-not $_.company_id -or $_.company_id -lt 1 -or $null -eq $_.company_id})
-            if (-not $existingFolder) {
-                Write-Host "Creating Hudu password folder '$FolderName' for company $HuduCompanyId"
-                $existingFolder = New-HuduGlobalPasswordFolder -Name $FolderName
-                # $global_password_folders = $(get-hudupasswordfolders | where-object {-not $_.company_id -or $_.company_id -lt 1 -or $null -eq $_.company_id})
+            if ($true -ne $GlobalPasswordFolderMode){
+            # company-specific 
+                $existingFolder = Get-HuduPasswordFolders -CompanyId $HuduCompanyId -Name $FolderName | Select-Object -First 1
+                if (-not $existingFolder) {
+                    Write-Host "Creating Hudu password folder '$FolderName' for company $HuduCompanyId"
+                    $existingFolder = New-HuduPasswordFolder -CompanyId $HuduCompanyId -Name $FolderName
+                }
+            } else {
+            # globals only - fuzzy-match for naming differences ohn source
+                $existingFolder = ChoseBest-ByName -name "$FolderName" -choices $(get-hudupasswordfolders | where-object {-not $_.company_id -or $_.company_id -lt 1 -or $null -eq $_.company_id})
+                if (-not $existingFolder) {
+                    Write-Host "Creating Hudu password folder '$FolderName' for company $HuduCompanyId"
+                    $existingFolder = New-HuduGlobalPasswordFolder -Name $FolderName
+                    # $global_password_folders = $(get-hudupasswordfolders | where-object {-not $_.company_id -or $_.company_id -lt 1 -or $null -eq $_.company_id})
+                }
             }
             if (-not $existingFolder) {
                 $folderError = "No folder $FolderName for company $HuduCompanyId"
@@ -142,9 +151,8 @@ foreach ($itgcompanyID in ($Matchedpasssubset.ITGObject.attributes.'organization
                     $MatchedPasswordFolders+=[PSCustomObject]@{FolderError=$FolderError; companyError=$companyError; ITGCompanyID= $itgcompanyID; HuduCompanyID=$($existingpass.company_id ?? $HuduCompanyId); ITGPasswordFolder= $passwordFolder; HuduPasswordFolder=$existingFolder; HuduPasswords=$passwordsForFolder; FolderName=$FolderName; PasswordError=$passwordError; Modified = $passChanged; existingFolderPresent=$existingFolderPresent}
                     continue
                 }
-                # $existingpassfolderPresent = [bool]$($null -ne $existingpass.password_folder_id)
-                # if (-not $existingpassfolderPresent) {
-                try {$passChanged=$null; $passChanged=Set-HuduPassword `
+                try {
+                    $passChanged=$null; $passChanged=Set-HuduPassword `
                         -Id $updatePass.HuduObject.id `
                         -Company_Id $($existingpass.company_id ?? $HuduCompanyId) `
                         -Password_Folder_Id $existingFolder.id
@@ -153,7 +161,6 @@ foreach ($itgcompanyID in ($Matchedpasssubset.ITGObject.attributes.'organization
                     $passwordError = "Error placing password id $($updatePass.HuduObject.id) in '$FolderName' (Company $HuduCompanyId): $_"
                     $Modified = $false
                 }
-                # }
             } catch {
                 $passwordError = "error encountered assigning folder $_"
             }

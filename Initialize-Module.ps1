@@ -431,10 +431,9 @@ if ($InitType -eq 'Full') {
     ############################ PasswordFolders ############################
     while ($importPasswordFolders -notin (1,2)) {$importPasswordFolders = Read-Host "[ADVANCED, default 1/$false] Would you like to import Password Folders? (requires web access to ITGlue).`n 1) Yes`n 2) No, Skip Checklists`n(1/2)"}
     switch ($importPasswordFolders) {
-        "2" {$importPasswordFolders = $true}
-        "1" {$importPasswordFolders = $false}
+        "2" {$importPasswordFolders = $true; $GlobalPasswordFolderMode = [bool]$("global" -eq $(Select-ObjectFromList -message "Password folder import mode-" -objects @("global","per-company")));}
+        "1" {$importPasswordFolders = $false; $GlobalPasswordFolderMode = $null}
     }    
-    if ($true -eq $importPasswordFolders){$GlobalPasswordFolderMode = [bool]$("global" -eq $(Select-ObjectFromList -message "Password folder import mode-" -objects @("global","per-company")))} else {$GlobalPasswordFolderMode = $null}
 
 }
 ############################ Migration Logs Path ##############################

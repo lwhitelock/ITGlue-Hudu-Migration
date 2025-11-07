@@ -93,7 +93,7 @@ $MergedOrganizationTypes    = 1
 # these require JWT authentication to perform [default is 1/false; 2 for true]
 $importChecklists           = 1
 $importPasswordFolders      = 1
-$GlobalPasswordFolderMode = 'global' # can do global or per-company
+$GlobalPasswordFolderMode = $true # or $false
 
 
 # pre-designated array/list of prescoped/preselected companies for scoped migration (typically for faster testing)
