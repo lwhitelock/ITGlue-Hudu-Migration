@@ -78,7 +78,6 @@ function Get-NormalizedDropdownOptions {
   }
   if ($out.Count -eq 0) { @('None','N/A') } elseif ($out.Count -eq 1) { @('None',$out[0] ?? "N/A") } else { $out.ToArray() }
 }
-
 function Get-UniqueListName {
   param([Parameter(Mandatory)][string]$BaseName,[bool]$allowReuse=$false)
 

@@ -1,15 +1,24 @@
-
 $project_workdir="$PSScriptRoot"
 $debug_folder=$(join-path "$project_workdir" "debug")
 $errors_folder=$(join-path $debug_folder "errors")
 $global:GLOBAL_ERRORS_DIRECTORY="$errors_folder"
+
+# This folder is for API-level errors to be written
 $global:HAPI_ERRORS_DIRECTORY=$(join-path "$errors_folder" "huduapi")
+
+# This folder is for migration-level errors to be written
 $global:ITG_ERRORS_DIRECTORY=$(join-path "$errors_folder" "itglue")
 
+# This is the settings folder for your migration preferences and secure-stringified secrets
 $settings_folder=$(join-path "$project_workdir" "debug\settings")
+
+# This is for your JSONified state-saving and records saving
 $logs_folder=$(join-path "$project_workdir" "debug\logs")
+
+# This is your main settings json
 $defaultSettingsPath=$(join-path "$settings_folder" "masond.json")
 
+# Clear paths during main run. Be sure to comment out below if subsequent actions being taken
 foreach ($folder in @($debug_folder, $errors_folder, $logs_folder, $settings_folder, $HAPI_ERRORS_DIRECTORY, $ITG_ERRORS_DIRECTORY)) {
     if (!(Test-Path -Path "$folder")) { New-Item "$folder" -ItemType Directory }
     Get-ChildItem -Path "$folder" -File -Recurse -Force | Remove-Item -Force
@@ -23,19 +32,46 @@ $settings = @{
     customBrandedDomain     = "n"
     ITGCustomDomains        = ""
     InternalCompany         = "changeme inc."
+
+    # Central folder KB articles
     GlobalKBFolder          = "y"
-    ConPromptPrefix         = "itg-"
-    FAPromptPrefix          = "itg-"
+
+    # Configs asset layout in Hudu Naming Prefix
+    ConPromptPrefix         = ""
+
+    # Flexible asset layout in Hudu Naming Prefix
+    FAPromptPrefix          = ""
+
+    # Absolute path to 7zip-extracted export
     ITGLueExportPath        = "c:\tmp\export"
+
+    # Alternative logs folder?
     MigrationLogs           = "$logs_folder"
-}   
+
+    # include ITGlue ID in Contacts, Websites, Locations
+    IncludeITGlueID            = $true
+
+    # Split configurations into individual asset layouts y/n
+    SplitConfigurations     = $true
+}
+
+# Primary Secrets
 $ITGKey                     = "ITG.key"
 $HuduApiKey                 = "HUDU.key"
-$reenterChoice              = "Continue"
+
 $choice                     = "N"
+
+# settings folder path
 $importChoice               = "$settings_folder"
+
+# Custom regex capture groups / url replacement
 $customBrandedDomain        = "n"
+
+# Resume if starting again
 $resumeQuestion             = "yes"
+$reenterChoice              = "Continue"
+
+Individual Import Options, below, (1-yes, 2-no)
 $ImportCompanies            = 1
 $ImportLocations            = 1
 $ImportDomains              = 1
@@ -46,16 +82,48 @@ $ImportFlexibleAssetLayouts = 1
 $ImportFlexibleAssets       = 1
 $ImportArticles             = 1
 $ImportPasswords            = 1
+
+# If you want to have script wait for user interaction between steps. Select 1 for yes, 2 for noninteractive/no
 $NonInteractive             = 2
-$ScopedMigration            = 2
+
+# If you want to scope migration to just come companies, select 2, otherwise leave at 1 for typical, full migration
+$ScopedMigration            = 1
+$MergedOrganizationTypes    = 1
+
+# these require JWT authentication to perform [default is 1/false; 2 for true]
+$importChecklists           = 1
+$importPasswordFolders      = 1
+$GlobalPasswordFolderMode = $true # or $false
+
+
+# pre-designated array/list of prescoped/preselected companies for scoped migration (typically for faster testing)
 # prescoped Companies
-$Prescoped = @(
-905
-859
-1387
-1152
-20
-1231
-932
-)
+# $Prescoped = @(
+# 905
+# 859
+# 1009
+# 1328
+# 1288
+# 2254
+# 2140
+# 99
+# 651
+# 1707
+# 1869
+# 1707
+# 2176
+# 1381
+# 1374
+# 1945
+# 739
+# 465
+# 936
+# 474
+# 1387
+# 1152
+# 20
+# 1231
+# 932
+# )
+
 . .\ITGlue-Hudu-Migration.ps1
