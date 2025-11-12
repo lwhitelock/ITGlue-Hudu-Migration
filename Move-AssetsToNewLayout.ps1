@@ -249,7 +249,7 @@ $mapEntries = foreach ($f in $destfields) {
     $req = ([string]$($f.required ?? $false)) -replace "'", "''"  # double single-quotes inside single-quoted PS strings
     if ($desttype -eq "ListSelect") {
         $ListItems = $(Get-HuduLists -id $f.list_id).list_items.name | Foreach-Object {"'$_'=@{whenvalues=@()}"}
-"@{to='$toEsc'; from=''; dest_type='ListSelect'; required='$req'; Mapping=@{
+"@{to='$toEsc'; from=''; add_listitems=$false; dest_type='ListSelect'; required='$req'; Mapping=@{
 $($listitems -join "`n")
 }}"
     } elseif ($desttype -eq "AddressData") {
@@ -321,6 +321,55 @@ function Get-FieldValueByLabel {
     if (-not $Label) { return $null }
     ($Fields | Where-Object { $_.label -eq $Label } | Select-Object -First 1).value
 }
+function Get-Similarity {
+    param([string]$A, [string]$B)
+
+    $a = [string](Normalize-Text $A)
+    $b = [string](Normalize-Text $B)
+    if ([string]::IsNullOrEmpty($a) -and [string]::IsNullOrEmpty($b)) { return 1.0 }
+    if ([string]::IsNullOrEmpty($a) -or  [string]::IsNullOrEmpty($b))  { return 0.0 }
+
+    $n = [int]$a.Length
+    $m = [int]$b.Length
+    if ($n -eq 0) { return [double]($m -eq 0) }
+    if ($m -eq 0) { return 0.0 }
+
+    $d = New-Object 'int[,]' ($n+1), ($m+1)
+    for ($i = 0; $i -le $n; $i++) { $d[$i,0] = $i }
+    for ($j = 0; $j -le $m; $j++) { $d[0,$j] = $j }
+
+    for ($i = 1; $i -le $n; $i++) {
+        $im1 = ([int]$i) - 1
+        $ai  = $a[$im1]
+        for ($j = 1; $j -le $m; $j++) {
+            $jm1 = ([int]$j) - 1
+            $cost = if ($ai -eq $b[$jm1]) { 0 } else { 1 }
+
+            $del = [int]$d[$i,  $j]   + 1
+            $ins = [int]$d[$i,  $jm1] + 1
+            $sub = [int]$d[$im1,$jm1] + $cost
+
+            $d[$i,$j] = [Math]::Min($del, [Math]::Min($ins, $sub))
+        }
+    }
+
+    $dist   = [double]$d[$n,$m]
+    $maxLen = [double][Math]::Max($n,$m)
+    return 1.0 - ($dist / $maxLen)
+}
+function Get-SimilaritySafe { param([string]$A,[string]$B)
+    if ([string]::IsNullOrWhiteSpace($A) -or [string]::IsNullOrWhiteSpace($B)) { return 0.0 }
+    $score = Get-Similarity $A $B
+    write-host "$a ... $b SCORED $score"
+    return $score
+}
+
+function ChoseBest-ByName {
+    param ([string]$Name,[array]$choices)
+return $($choices | ForEach-Object {
+[pscustomobject]@{Choice = $_; Score  = $(Get-SimilaritySafe -a "$Name" -b $_.name);}} | where-object {$_.Score -ge 0.97} | Sort-Object Score -Descending | select-object -First 1).Choice
+}
+
 
 
 function Normalize-Region {
@@ -424,6 +473,18 @@ function Write-InspectObject {
     }
     return $lines -join "`n"
 }
+function Test-Equiv {
+    param([string]$A, [string]$B)
+    $a = Normalize-Text $A; $b = Normalize-Text $B
+    if (-not $a -or -not $b) { return $false }
+    if ($a -eq $b) { return $true }
+    $reA = "(^| )$([regex]::Escape($a))( |$)"
+    $reB = "(^| )$([regex]::Escape($b))( |$)"
+    if ($b -match $reA -or $a -match $reB) { return $true } 
+    if ($a.Replace(' ', '') -eq $b.Replace(' ', '')) { return $true }
+    return $false
+}
+
 function Set-LayoutsForTransfer {
     param ($allLayouts)
     $layoutMap = @{}
@@ -583,16 +644,33 @@ read-host "press enter if you filled in your mapfile, $mapfile"
 if (-not $(test-path "$mapfile")) {
     exit
 }
-. .\$mapfile
+while ($true) {
+    try {
+        . .\$mapfile
+        break
+    } catch {
+        read-host "your mapfile has error: $_ please update, save, and press enter to try again."
+    }
+}
 
 $sourcedestlabels = @{}
 $sourcedestrequired = @{}
 $sourcedestStripHTML = @{}
 $sourceDestDataType = @{}
 $addressMapsByDest    = @{} 
-
+$ListSelectEquivilencyMaps = @{}
 foreach ($entry in $mapping) {
-    if ($entry.dest_type -eq 'AddressData') {
+    if ($entry.dest_type -eq 'ListSelect' -and -not ([string]::IsNullOrWhiteSpace($entry.from))) {
+        $parsedMap = @{}
+        $entry.Mapping.GetEnumerator().Where({$_.Value.whenvalues?.Count -gt 0}).ForEach({
+            $parsedMap[$_.Key] = $_.Value.whenvalues
+        })
+        $ListSelectEquivilencyMaps[$entry.to]=@{Mapping = $parsedMap; add_listitems=$("$($entry.add_listitems)" -ilike "t*" ?? $false)}
+        $sourcedestlabels[$entry.from] = $entry.to
+        $sourcedestStripHTML[$entry.from] = [bool]$(@('t','true','y','yes') -contains "$($entry.striphtml ?? "true")".ToLower())
+        $sourceDestDataType[$entry.from] = 'ListSelect'
+        continue
+    } elseif ($entry.dest_type -eq 'AddressData') {
         $addressMapsByDest[$entry.to] = $entry.address
         $sourcedestrequired[$entry.from] = $false
         $sourceDestDataType[$entry.from] = 'AddressData'
@@ -674,7 +752,8 @@ foreach ($originalasset in $sourceassets) {
         $destTranslationFieldRequired = $("$($sourcedestrequired[$field.label])".ToLower() -eq 'true') ?? $false
         $stripHTML = $($sourcedestStripHTML["$($field.label)"] ?? $false)
         $destFieldType = $sourceDestDataType["$($field.label)"] ?? 'Text'
-        
+
+
         if (-not $transformedlabel -or $null -eq $transformedlabel) {continue}
         if (-not $field.value -or $null -eq $field.value) {
                 write-host "no translate for $($field.label)";
@@ -685,6 +764,22 @@ foreach ($originalasset in $sourceassets) {
                     write-host "no value for optional $($field.label) => $transformedlabel"
                     continue
                 }
+        }
+        if ($ListSelectEquivilencyMaps[$transformedlabel]?.whenvalues?.Count -gt 0) {
+            $valueEquivilencies = $ListSelectEquivilencyMaps[$transformedlabel]
+            Write-Host "Source field maps to listselect for $($valueEquivilencies.mapping.keys.count) list items mapped from various source values; Creating new list items for unmatched values is $(if ($true -eq $ListSelectEquivilencyMaps[$transformedlabel].add_listitems ?? $false) {'not allowed'} else {'allowed'})"
+            $MappedListItem = $null
+            foreach ($key in $valueEquivilencies.mapping){
+                if ($null -ne $MappedListItem){continue}
+                if (test-equiv -A $key -B $field.value -or $(Test-Equiv -A $key -B "$(Remove-HtmlTags -InputString "$($field.value)")")){
+                    $mappedListItem = $key
+                }
+            }
+            if ($null -ne $MappedListItem){
+                Write-Host "$transformedFields Value $($field.value) mapped to listselect item $($MappedListItem)"
+                $transformedFields += @{$transformedlabel = $MappedListItem}
+            }
+            continue
         }
         
         if ($true -eq $stripHTML) {

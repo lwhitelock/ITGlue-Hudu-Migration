@@ -156,8 +156,8 @@ function Get-SimilaritySafe { param([string]$A,[string]$B)
 }
 
 function ChoseBest-ByName {
-    param ([string]$Name,[array]$choices)
+    param ([string]$Name,[array]$choices,[string]$prop='name')
 return $($choices | ForEach-Object {
-[pscustomobject]@{Choice = $_; Score  = $(Get-SimilaritySafe -a "$Name" -b $_.name);}} | where-object {$_.Score -ge 0.97} | Sort-Object Score -Descending | select-object -First 1).Choice
+[pscustomobject]@{Choice = $_; Score  = $(Get-SimilaritySafe -a "$Name" -b $(if ([string]::IsNullOrEmpty){$_} else {$_.$prop}))}} | where-object {$_.Score -ge 0.97} | Sort-Object Score -Descending | select-object -First 1).Choice
 }
 
