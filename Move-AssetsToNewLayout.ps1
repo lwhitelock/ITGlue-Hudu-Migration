@@ -242,12 +242,17 @@ function build-templatemap {
 param ([array]$destfields,[string]$mapfile)
 # Build entries like: @{from='';to='Some Label'}
 $mapEntries = foreach ($f in $destfields) {
-    if ($f.field_type -eq "AssetTag") {write-host "Skipping asset tag for $($f.label), those will be relinked."; continue}
+    if ($f.field_type -eq "AssetTag") {write-host "Skipping asset tag for $($f.label), those will be relinked as relations"; continue}
 
     $toEsc = ([string]$f.label) -replace "'", "''"  # double single-quotes inside single-quoted PS strings
     $desttype = ([string]$($f.field_type ?? $f.type)) -replace "'", "''"  # double single-quotes inside single-quoted PS strings
     $req = ([string]$($f.required ?? $false)) -replace "'", "''"  # double single-quotes inside single-quoted PS strings
-    if ($desttype -eq "AddressData") {
+    if ($desttype -eq "ListSelect") {
+        $ListItems = $(Get-HuduLists -id $f.list_id).list_items.name | Foreach-Object {"@{to='$_'; whenvalue='';}"}
+        "@{to='$toEsc'; from=''; dest_type='ListSelect'; required='$req'; Mapping=@{
+                $($listitems -join ",`n")
+        }}"
+    } elseif ($desttype -eq "AddressData") {
         "@{to='$toEsc'; from='Meta'; dest_type='AddressData'; required='$req'; address=@{
                 address_line_1=@{from=''}
                 address_line_2=@{from=''}
@@ -558,12 +563,16 @@ if ($(test-path "$mapfile")) {
 
 # get fields mapped and ready
 $srcfields=@()
-foreach ($field in $sourceassetlayout.fields | Where-Object {$_.field_type -ne "AssetTag"}) {
+foreach ($field in $sourceassetlayout.fields | Where-Object {$_.field_type -ne "AssetTag"}) { # assettag fields are carried over as relationships
     $srcfields+=@{label = $field.label; type = $field.field_type; required = $($field.required ?? $false)}
 }
 $dstfields=@()
-foreach ($field in $destassetlayout.fields | Where-Object {$_.field_type -ne "ListSelect"}) {
-    $dstfields+=@{label = $field.label; field_type = $field.field_type; required = $($field.required ?? $false)}
+foreach ($field in $destassetlayout.fields) {
+    if ($field.field_type -eq "ListSelect" -and $null -ne $field.list_id){
+        $dstfields+=@{label = $field.label; field_type = $field.field_type; list_id=$field.list_id; required = $($field.required ?? $false)}
+    } else {
+        $dstfields+=@{label = $field.label; field_type = $field.field_type; required = $($field.required ?? $false)}
+    }
 }
 foreach ($fields in @(@{name="source"; value=$srcfields}, @{name="dest"; value=$dstfields})) {
     $fields.value | convertto-json -depth 66 | out-file "$($fields.name)-fields.json"
