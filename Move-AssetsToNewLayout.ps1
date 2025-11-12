@@ -316,6 +316,22 @@ function Select-ObjectFromList($objects, $message, $inspectObjects = $false, $al
         }
     }
 }
+function Get-NormalizedDropdownOptions {
+  param([Parameter(Mandatory)]$OptionsRaw)
+  $lines =
+    if ($null -eq $OptionsRaw) { @() }
+    elseif ($OptionsRaw -is [string]) { $OptionsRaw -split "`r?`n" }
+    elseif ($OptionsRaw -is [System.Collections.IEnumerable]) { @($OptionsRaw) }
+    else { @("$OptionsRaw") }
+
+  $seen = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+  $out = New-Object System.Collections.Generic.List[string]
+  foreach ($l in $lines) {
+    $x = "$l".Trim()
+    if ($x -ne "" -and $seen.Add($x)) { $out.Add($x) }
+  }
+  if ($out.Count -eq 0) { @('None','N/A') } elseif ($out.Count -eq 1) { @('None',$out[0] ?? "N/A") } else { $out.ToArray() }
+}
 function Get-FieldValueByLabel {
     param([array]$Fields, [string]$Label)
     if (-not $Label) { return $null }
@@ -625,7 +641,15 @@ if ($(test-path "$mapfile")) {
 # get fields mapped and ready
 $srcfields=@()
 foreach ($field in $sourceassetlayout.fields | Where-Object {$_.field_type -ne "AssetTag"}) { # assettag fields are carried over as relationships
-    $srcfields+=@{label = $field.label; type = $field.field_type; required = $($field.required ?? $false)}
+    if ($field.field_type -eq "ListSelect" -and $null -ne $field.list_id){
+        $typicalValues = $(Get-HuduLists -id $field.list_id).list_items.name ?? @()
+        $srcfields+=@{label = $field.label; field_type = $field.field_type; list_id=$field.list_id; typicalValues=$typicalValues; required = $($field.required ?? $false)}
+    } elseif ($field.field_type -eq 'DropDown' -and -not ([string]::IsNullOrEmpty($field.options))){
+        $typicalValues = Get-NormalizedDropdownOptions $field.options
+        $srcfields+=@{label = $field.label; field_type = $field.field_type; typicalValues=$typicalValues; required = $($field.required ?? $false)}
+    } else {
+        $srcfields+=@{label = $field.label; type = $field.field_type; required = $($field.required ?? $false)}
+    }
 }
 $dstfields=@()
 foreach ($field in $destassetlayout.fields) {
@@ -635,16 +659,19 @@ foreach ($field in $destassetlayout.fields) {
         $dstfields+=@{label = $field.label; field_type = $field.field_type; required = $($field.required ?? $false)}
     }
 }
+
+
 foreach ($fields in @(@{name="source"; value=$srcfields}, @{name="dest"; value=$dstfields})) {
     $fields.value | convertto-json -depth 66 | out-file "$($fields.name)-fields.json"
 }
 build-templatemap -destfields $dstfields -mapfile $mapfile
 
+
 read-host "press enter if you filled in your mapfile, $mapfile"
-if (-not $(test-path "$mapfile")) {
-    exit
-}
 while ($true) {
+    if (-not $(test-path "$mapfile")) {
+        read-host "mapfile not found, please ensure it is in working directory, $mapfile, and press enter to continue"
+    }    
     try {
         . .\$mapfile
         break
