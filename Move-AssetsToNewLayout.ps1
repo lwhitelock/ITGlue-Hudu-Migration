@@ -251,7 +251,7 @@ $mapEntries = foreach ($f in $destfields) {
     $req = ([string]$($f.required ?? $false)) -replace "'", "''"  # double single-quotes inside single-quoted PS strings
     if ($desttype -eq "ListSelect") {
         $ListItems = $(Get-HuduLists -id $f.list_id).list_items.name | Foreach-Object {"'$_'=@{whenvalues=@()}"}
-"@{to='$toEsc'; from=''; add_listitems=$false; dest_type='ListSelect'; required='$req'; Mapping=@{
+"@{to='$toEsc'; from=''; add_listitems='false'; list_id=$($f.list_id); dest_type='ListSelect'; required='$req'; Mapping=@{
 $($listitems -join "`n")
 }}"
     } elseif ($desttype -eq "AddressData") {
@@ -631,7 +631,7 @@ foreach ($entry in $mapping) {
         $entry.Mapping.GetEnumerator().Where({$_.Value.whenvalues?.Count -gt 0}).ForEach({
             $parsedMap[$_.Key] = $_.Value.whenvalues
         })
-        $ListSelectEquivilencyMaps[$entry.to]=@{Mapping = $parsedMap; add_listitems=$("$($entry.add_listitems)" -ilike "t*" ?? $false)}
+        $ListSelectEquivilencyMaps[$entry.to]=@{Mapping = $parsedMap; list_options=$($entry.Mapping.Keys); list_id=$entry.list_id; add_listitems=$("$($entry.add_listitems)" -ilike "t*" ?? $false)}
         $sourcedestlabels[$entry.from] = $entry.to
         $sourcedestStripHTML[$entry.from] = [bool]$(@('t','true','y','yes') -contains "$($entry.striphtml ?? "true")".ToLower())
         $sourceDestDataType[$entry.from] = 'ListSelect'
@@ -738,18 +738,30 @@ foreach ($originalasset in $sourceassets) {
         }
         if ($ListSelectEquivilencyMaps[$transformedlabel]?.whenvalues?.Count -gt 0) {
             $valueEquivilencies = $ListSelectEquivilencyMaps[$transformedlabel]
+
             Write-Host "Source field maps to listselect for $($valueEquivilencies.mapping.keys.count) list items mapped from various source values; Creating new list items for unmatched values is $(if ($true -eq $ListSelectEquivilencyMaps[$transformedlabel].add_listitems ?? $false) {'not allowed'} else {'allowed'})"
             $MappedListItem = $null
             foreach ($key in $valueEquivilencies.mapping){
                 if ($null -ne $MappedListItem){continue}
-                if (test-equiv -A $key -B $field.value -or $(Test-Equiv -A $key -B "$(Remove-HtmlTags -InputString "$($field.value)")")){
-                    $mappedListItem = $key
-                }
+                foreach ($potentialMatch in $valueEquivilencies.mapping["$key"].whenvalues){
+                    if (test-equiv -A $potentialMatch -B $field.value -or $(Test-Equiv -A $potentialMatch -B "$(Remove-HtmlTags -InputString "$($field.value)")")){
+                        $mappedListItem = $key
+                        Write-Host "$potentialMatch matched for list item $key from value $($field.value)"
+                    }
+                    }
             }
+
+
+
             if ($null -ne $MappedListItem){
                 Write-Host "$transformedFields Value $($field.value) mapped to listselect item $($MappedListItem)"
                 $transformedFields += @{$transformedlabel = $MappedListItem}
-            }
+            } elseif ($true -eq $valueEquivilencies.add_listitems -or $valueEquivilencies.add_listitems -ilike "*t*"){
+                Write-Host "$($field.value) not found in list item matches, adding to list items for $($valueEquivilencies.list_id)"
+                $NewOptions = @($valueEquivilencies.list_options) + @("$($field.value)")
+                Set-HuduList -id $valueEquivilencies.list_id -ListItems $NewOptions
+                $transformedFields += @{$transformedlabel = $field.value}
+            } else {write-host "no value matches for list id $($valueEquivilencies.list_id) from value $($field.value); not configured to add list items, so leaving empty."}
             continue
         }
         
