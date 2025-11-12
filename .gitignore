@@ -11,3 +11,7 @@ completed-checklists.json
 Locations.json
 .\*.json
 passfolderset*.json
+dest-fields.json
+mapping.ps1
+source-fields.json
+mapping.ps1.old

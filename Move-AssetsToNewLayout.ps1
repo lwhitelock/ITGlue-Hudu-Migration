@@ -248,10 +248,10 @@ $mapEntries = foreach ($f in $destfields) {
     $desttype = ([string]$($f.field_type ?? $f.type)) -replace "'", "''"  # double single-quotes inside single-quoted PS strings
     $req = ([string]$($f.required ?? $false)) -replace "'", "''"  # double single-quotes inside single-quoted PS strings
     if ($desttype -eq "ListSelect") {
-        $ListItems = $(Get-HuduLists -id $f.list_id).list_items.name | Foreach-Object {"@{to='$_'; whenvalue='';}"}
-        "@{to='$toEsc'; from=''; dest_type='ListSelect'; required='$req'; Mapping=@{
-                $($listitems -join ",`n")
-        }}"
+        $ListItems = $(Get-HuduLists -id $f.list_id).list_items.name | Foreach-Object {"'$_'=@{whenvalues=@()}"}
+"@{to='$toEsc'; from=''; dest_type='ListSelect'; required='$req'; Mapping=@{
+$($listitems -join "`n")
+}}"
     } elseif ($desttype -eq "AddressData") {
         "@{to='$toEsc'; from='Meta'; dest_type='AddressData'; required='$req'; address=@{
                 address_line_1=@{from=''}
