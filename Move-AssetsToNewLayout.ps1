@@ -8,6 +8,8 @@ if ($currentPSVersion -lt $RequiredPSversion) {
 } else {
     Write-Host "PowerShell version $currentPSVersion is compatible." -ForegroundColor Green
 }
+if (-not (Get-Command -Name test-equiv -ErrorAction SilentlyContinue)) { . $PSScriptRoot\Public\Normalize-String.ps1 }
+if (-not (Get-Command -Name Get-NormalizedDropdownOptions -ErrorAction SilentlyContinue)) { . $PSScriptRoot\Public\Get-CastIfNumeric.ps1 }
 
 function Set-SmooshAssetFieldsToField {
     param (
@@ -337,57 +339,6 @@ function Get-FieldValueByLabel {
     if (-not $Label) { return $null }
     ($Fields | Where-Object { $_.label -eq $Label } | Select-Object -First 1).value
 }
-function Get-Similarity {
-    param([string]$A, [string]$B)
-
-    $a = [string](Normalize-Text $A)
-    $b = [string](Normalize-Text $B)
-    if ([string]::IsNullOrEmpty($a) -and [string]::IsNullOrEmpty($b)) { return 1.0 }
-    if ([string]::IsNullOrEmpty($a) -or  [string]::IsNullOrEmpty($b))  { return 0.0 }
-
-    $n = [int]$a.Length
-    $m = [int]$b.Length
-    if ($n -eq 0) { return [double]($m -eq 0) }
-    if ($m -eq 0) { return 0.0 }
-
-    $d = New-Object 'int[,]' ($n+1), ($m+1)
-    for ($i = 0; $i -le $n; $i++) { $d[$i,0] = $i }
-    for ($j = 0; $j -le $m; $j++) { $d[0,$j] = $j }
-
-    for ($i = 1; $i -le $n; $i++) {
-        $im1 = ([int]$i) - 1
-        $ai  = $a[$im1]
-        for ($j = 1; $j -le $m; $j++) {
-            $jm1 = ([int]$j) - 1
-            $cost = if ($ai -eq $b[$jm1]) { 0 } else { 1 }
-
-            $del = [int]$d[$i,  $j]   + 1
-            $ins = [int]$d[$i,  $jm1] + 1
-            $sub = [int]$d[$im1,$jm1] + $cost
-
-            $d[$i,$j] = [Math]::Min($del, [Math]::Min($ins, $sub))
-        }
-    }
-
-    $dist   = [double]$d[$n,$m]
-    $maxLen = [double][Math]::Max($n,$m)
-    return 1.0 - ($dist / $maxLen)
-}
-function Get-SimilaritySafe { param([string]$A,[string]$B)
-    if ([string]::IsNullOrWhiteSpace($A) -or [string]::IsNullOrWhiteSpace($B)) { return 0.0 }
-    $score = Get-Similarity $A $B
-    write-host "$a ... $b SCORED $score"
-    return $score
-}
-
-function ChoseBest-ByName {
-    param ([string]$Name,[array]$choices)
-return $($choices | ForEach-Object {
-[pscustomobject]@{Choice = $_; Score  = $(Get-SimilaritySafe -a "$Name" -b $_.name);}} | where-object {$_.Score -ge 0.97} | Sort-Object Score -Descending | select-object -First 1).Choice
-}
-
-
-
 function Normalize-Region {
     param([string]$State)
     if (-not $State) { return $null }
@@ -489,18 +440,6 @@ function Write-InspectObject {
     }
     return $lines -join "`n"
 }
-function Test-Equiv {
-    param([string]$A, [string]$B)
-    $a = Normalize-Text $A; $b = Normalize-Text $B
-    if (-not $a -or -not $b) { return $false }
-    if ($a -eq $b) { return $true }
-    $reA = "(^| )$([regex]::Escape($a))( |$)"
-    $reB = "(^| )$([regex]::Escape($b))( |$)"
-    if ($b -match $reA -or $a -match $reB) { return $true } 
-    if ($a.Replace(' ', '') -eq $b.Replace(' ', '')) { return $true }
-    return $false
-}
-
 function Set-LayoutsForTransfer {
     param ($allLayouts)
     $layoutMap = @{}
@@ -645,7 +584,7 @@ foreach ($field in $sourceassetlayout.fields | Where-Object {$_.field_type -ne "
         $typicalValues = $(Get-HuduLists -id $field.list_id).list_items.name ?? @()
         $srcfields+=@{label = $field.label; field_type = $field.field_type; list_id=$field.list_id; typicalValues=$typicalValues; required = $($field.required ?? $false)}
     } elseif ($field.field_type -eq 'DropDown' -and -not ([string]::IsNullOrEmpty($field.options))){
-        $typicalValues = Get-NormalizedDropdownOptions $field.options
+        $typicalValues = $(Get-NormalizedDropdownOptions $field.options) ?? @()
         $srcfields+=@{label = $field.label; field_type = $field.field_type; typicalValues=$typicalValues; required = $($field.required ?? $false)}
     } else {
         $srcfields+=@{label = $field.label; type = $field.field_type; required = $($field.required ?? $false)}
@@ -729,6 +668,11 @@ if ($CONSTANTS) {
         write-host "Dest Labels containing $($c.to_label) will be given static value from literal $($c.literal) as literal value!"
     }
 } else {write-host "No constants mapped"}
+
+if ($ListSelectEquivilencyMaps.Keys.count -gt 0){
+    Write-host "$($ListSelectEquivilencyMaps.Keys.count) listselect target items mapped for $($ListSelectEquivilencyMaps.Keys -join ",")"
+}
+
 $totalcounts = @{
     fromablescreated=0
     toablescreated=0
