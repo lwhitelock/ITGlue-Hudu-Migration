@@ -579,9 +579,11 @@ if ($(test-path "$mapfile")) {
 
 # get fields mapped and ready
 $srcfields=@()
+$sourceListItemMap = @{}
 foreach ($field in $sourceassetlayout.fields | Where-Object {$_.field_type -ne "AssetTag"}) { # assettag fields are carried over as relationships
     if ($field.field_type -eq "ListSelect" -and $null -ne $field.list_id){
-        $typicalValues = $(Get-HuduLists -id $field.list_id).list_items.name ?? @()
+        $typicalValues = $(Get-HuduLists -id $field.list_id).list_items ?? @()
+        $sourceListItemMap["$($field.label)"]=$typicalValues.name
         $srcfields+=@{label = $field.label; field_type = $field.field_type; list_id=$field.list_id; typicalValues=$typicalValues; required = $($field.required ?? $false)}
     } elseif ($field.field_type -eq 'DropDown' -and -not ([string]::IsNullOrEmpty($field.options))){
         $typicalValues = $(Get-NormalizedDropdownOptions $field.options) ?? @()
@@ -723,7 +725,14 @@ foreach ($originalasset in $sourceassets) {
         $destTranslationFieldRequired = $("$($sourcedestrequired[$field.label])".ToLower() -eq 'true') ?? $false
         $stripHTML = $($sourcedestStripHTML["$($field.label)"] ?? $false)
         $destFieldType = $sourceDestDataType["$($field.label)"] ?? 'Text'
-
+        
+        # get human-readable source value if source field is listselect
+        if ("$($field.value)" -ilike '*{"list_ids":[*'){
+            try {
+            $listItemId = $("$($field.value)" | convertFrom-json).list_ids[0];
+            $field.value = $sourceListItemMap[$field.label] | where-object {$_.id -eq $listItemId} ?? $($(Get-HuduLists -Name $field.label).list_items | Where-Object {$_.id -eq $listItemId}).name ?? $field.value
+            } catch {Write-Host "error transforming source listitem value for $($field.value)"}
+        }
 
         if (-not $transformedlabel -or $null -eq $transformedlabel) {continue}
         if (-not $field.value -or $null -eq $field.value) {
