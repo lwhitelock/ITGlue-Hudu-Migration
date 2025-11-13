@@ -17,6 +17,12 @@ param($UpdateAsset)
                     $supported = $true
 
                     switch ($field.FieldType) {
+						'Select' {
+							$HuduListId = $field.HuduLayoutField.list_id
+							$HuduListValue = (Get-HuduLists -Id $field.HuduLayoutField.list_id).list_items |? {$_.name -eq $ITGValues}
+							
+
+						}
                         'Tag' {
                             switch ($field.FieldSubType) {
                                 'AccountsUsers'      { Write-Host "Tags to Account Users are not supported $($field.FieldName) in $($UpdateAsset.Name) will need to be manually migrated, Sorry!"; $supported = $false }
@@ -393,5 +399,6 @@ param($UpdateAsset)
     #$UpdateAsset.Imported = "Created-By-Script"
     return $AssetFields
 }
+
 
 
