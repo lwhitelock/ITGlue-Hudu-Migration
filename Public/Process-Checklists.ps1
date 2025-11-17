@@ -64,8 +64,7 @@ foreach ($checklist in $ITGLueChecklists) {
             "Imported from ITGlue. <a href='$($checklist.attributes.'resource-url')'>itglue checklist url</a>")
     }
     
-    $matchedCompany = $($($MatchedCompanies | Where-Object {[int]$checklist.attributes.'organization-id' -eq [int]$_.ITGID} | Select-Object -First 1) ??
-                        $(Select-ObjectFromList -objects $HuduCompanies -message "Which company to attribute checklist, named $($checklist.attributes.name), was for org $($checklist.attributes.'organization-name') to? $($($checklist | ConvertTo-Json).ToString())" -allowNull $true))
+    $matchedCompany = $($($MatchedCompanies | Where-Object {[string]$checklist.attributes.'organization-id' -eq [string]$_.ITGID} | Select-Object -First 1))
 
     if ($matchedCompany -and $matchedCompany.HuduID -and $matchedCompany.HuduID -gt 0){
         $procedureRequest["CompanyID"] = $matchedCompany.HuduID
