@@ -829,30 +829,28 @@ foreach ($originalasset in $sourceassets) {
         }
 
         if (-not $valueEquivilencies -or -not $mapping) {
-            # No mapping configured for this field
-            continue
-        }
-
-        $result = Get-MappedListSelectItem `
-            -Mapping $mapping `
-            -RawValue $field.value `
-            -SourceListItemMap $sourceListItemMap `
-            -FieldLabel $field.label
-
-        if ($result.MatchFound) {
-            Write-Host "$transformedlabel value '$($field.value)' mapped to listselect item '$($result.Key)'"
-            $transformedFields += @{ $transformedlabel = $result.Key }
-
-        } elseif ($valueEquivilencies.add_listitems -eq $true -or
-                $valueEquivilencies.add_listitems -ilike '*t*') {
-
-            Write-Host "'$($field.value)' not found in list item matches, adding to list items for list id $($valueEquivilencies.list_id)"
-            $NewOptions = @($valueEquivilencies.list_options) + @("$($field.value)")
-            Set-HuduList -Id $valueEquivilencies.list_id -ListItems $NewOptions
-            $transformedFields += @{ $transformedlabel = $field.value }
-
+            write-host "No list mapping for $($field.label) => $transformedlabel, continuing normal mapping"
         } else {
-            Write-Host "No value matches for list id $($valueEquivilencies.list_id) from '$($field.value)' / '$($result.Normalized)'; not configured to add list items, so leaving empty."
+            $result = Get-MappedListSelectItem `
+                -Mapping $mapping `
+                -RawValue $field.value `
+                -SourceListItemMap $sourceListItemMap `
+                -FieldLabel $field.label
+
+            if ($result.MatchFound) {
+                Write-Host "$transformedlabel value '$($field.value)' mapped to listselect item '$($result.Key)'"
+                $transformedFields += @{ $transformedlabel = $result.Key }
+
+            } elseif ($valueEquivilencies.add_listitems -eq $true -or $valueEquivilencies.add_listitems -ilike '*t*') {
+
+                Write-Host "'$($field.value)' not found in list item matches, adding to list items for list id $($valueEquivilencies.list_id)"
+                $NewOptions = @($valueEquivilencies.list_options) + @("$($field.value)")
+                Set-HuduList -Id $valueEquivilencies.list_id -ListItems $NewOptions
+                $transformedFields += @{ $transformedlabel = $field.value }
+
+            } else {
+                Write-Host "No value matches for list id $($valueEquivilencies.list_id) from '$($field.value)' / '$($result.Normalized)'; not configured to add list items, so leaving empty."
+            }
         }
         
         if ($true -eq $stripHTML) {
