@@ -126,9 +126,51 @@ $mapping = @(
 ---
 
 ## ListSelect Item-Mapping
-ListSelec
+
+ListSelect destination fields support fuzzy value mapping—a way to translate many different source values into the correct ListSelect option in the target layout.
+
+This works by defining, for each destination list item, an array of possible source values that should map to that item. During migration, if the source field’s value matches any entry in that list, the destination field is assigned that list item.
+
+This allows text fields, dropdowns, richtext (with HTML-stripping), or any loosely structured source input to be normalized into consistent ListSelect values in Hudu.
 
 
+In the example below, the source field "Weather Information" may contain arbitrary text like “floor”, “wind”, “sunshine” etc.
+
+We map it to the ListSelect field WeatherType in the target layout, and specify which possible source values should correspond to each destination list item:
+```powershell
+@{
+  to            = 'WeatherType'
+  from          = 'Weather Information'
+  dest_type     = 'ListSelect'
+  add_listitems = 'false'
+  required      = 'False'
+  Mapping       = @{
+    'ground stuff'  = @{ whenvalues = @("floor","ground","dirt") }
+    'water stuff' = @{ whenvalues = @("cloud","precipitation") }
+    'solar stuff' = @{ whenvalues = @("sunny","sunshine") }
+    'sky stuff'  = @{ whenvalues = @("windy","wind","windspeed") }
+  }
+}
+```
+
+Example: Mapping “Weather Information” to a ListSelect field
+
+
+During migration, the script examines the value of the "Weather Information" field on the source asset.
+
+If the value is "floor", "ground", or "dirt" in source-field 'Weather Information"
+→ the destination "WeatherType" will be set to "ground stuff"
+
+If the value is "cloud" or "precipitation" in source-field 'Weather Information"
+→ "WeatherType" becomes "water stuff"
+
+If the value is "sunny" or "sunshine" in source-field 'Weather Information"
+→ "WeatherType" becomes "solar stuff"
+
+If the value is "windy", "wind", or "windspeed" in source-field 'Weather Information"
+→ "WeatherType" becomes "sky stuff"
+
+The match is case-insensitive and honors first-match-first
 
 ## Address Mapping (`AddressData`)
 Use the built-in template to map structured address lines. The generator will emit a scaffold like:
