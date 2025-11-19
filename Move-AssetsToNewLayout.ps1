@@ -1,13 +1,13 @@
-# [version]$RequiredPSversion = [version]"7.5.1"
-# $currentPSVersion = (Get-Host).Version
-# Write-Host "Required PowerShell version: $RequiredPSversion" -ForegroundColor Blue
+[version]$RequiredPSversion = [version]"7.5.1"
+$currentPSVersion = (Get-Host).Version
+Write-Host "Required PowerShell version: $RequiredPSversion" -ForegroundColor Blue
 
-# if ($currentPSVersion -lt $RequiredPSversion) {
-#     Write-Host "PowerShell $RequiredPSversion or higher is required. You have $currentPSVersion." -ForegroundColor Red
-#     exit 1
-# } else {
-#     Write-Host "PowerShell version $currentPSVersion is compatible." -ForegroundColor Green
-# }
+if ($currentPSVersion -lt $RequiredPSversion) {
+    Write-Host "PowerShell $RequiredPSversion or higher is required. You have $currentPSVersion." -ForegroundColor Red
+    exit 1
+} else {
+    Write-Host "PowerShell version $currentPSVersion is compatible." -ForegroundColor Green
+}
 if (-not (Get-Command -Name test-equiv -ErrorAction SilentlyContinue)) { . $PSScriptRoot\Public\Normalize-String.ps1 }
 if (-not (Get-Command -Name Get-NormalizedDropdownOptions -ErrorAction SilentlyContinue)) { . $PSScriptRoot\Public\Get-CastIfNumeric.ps1 }
 
