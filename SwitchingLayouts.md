@@ -125,6 +125,12 @@ $mapping = @(
 
 ---
 
+## Dropdown (legacy/deprecated field-type) Option-Mapping
+
+
+## ListSelect Item-Mapping
+
+
 ## Address Mapping (`AddressData`)
 Use the built-in template to map structured address lines. The generator will emit a scaffold like:
 
