@@ -725,14 +725,6 @@ foreach ($originalasset in $sourceassets) {
         $destTranslationFieldRequired = $("$($sourcedestrequired[$field.label])".ToLower() -eq 'true') ?? $false
         $stripHTML = $($sourcedestStripHTML["$($field.label)"] ?? $false)
         $destFieldType = $sourceDestDataType["$($field.label)"] ?? 'Text'
-        
-        # get human-readable source value if source field is listselect
-        if ("$($field.value)" -ilike '*{"list_ids":[*'){
-            try {
-            $listItemId = $("$($field.value)" | convertFrom-json).list_ids[0];
-            $field.value = $sourceListItemMap[$field.label] | where-object {$_.id -eq $listItemId} ?? $($(Get-HuduLists -Name $field.label).list_items | Where-Object {$_.id -eq $listItemId}).name ?? $field.value
-            } catch {Write-Host "error transforming source listitem value for $($field.value)"}
-        }
 
         if (-not $transformedlabel -or $null -eq $transformedlabel) {continue}
         if (-not $field.value -or $null -eq $field.value) {
@@ -750,18 +742,27 @@ foreach ($originalasset in $sourceassets) {
 
             Write-Host "Source field maps to listselect for $($valueEquivilencies.mapping.keys.count) list items mapped from various source values; Creating new list items for unmatched values is $(if ($true -eq $ListSelectEquivilencyMaps[$transformedlabel].add_listitems ?? $false) {'not allowed'} else {'allowed'})"
             $MappedListItem = $null
+            # coerce list_ids if present to a human-readable value for matching
             foreach ($key in $valueEquivilencies.mapping){
                 if ($null -ne $MappedListItem){continue}
+                $listItemValue = if ("$($field.value)" -ilike "*list_id*") {
+                    try {
+                        $listItemId = $("$($field.value)" | convertFrom-json).list_ids[0];
+                        $sourceListItemMap[$field.label] | where-object {$_.id -eq $listItemId} ?? $($(Get-HuduLists -Name $field.label).list_items | Where-Object {$_.id -eq $listItemId}).name ?? $field.value
+                    } catch {
+                        Write-Host "error transforming source listitem value for $($field.value)- $_"
+                        $field.value
+                    }
+                } else {
+                    $field.value
+                }
+            # map list item to values from dropdown or listselect per-user
                 foreach ($potentialMatch in $valueEquivilencies.mapping["$key"].whenvalues){
-                    if (test-equiv -A $potentialMatch -B $field.value -or $(Test-Equiv -A $potentialMatch -B "$(Remove-HtmlTags -InputString "$($field.value)")")){
-                        $mappedListItem = $key
-                        Write-Host "$potentialMatch matched for list item $key from value $($field.value)"
+                    if (test-equiv -A $potentialMatch -B $listItemValue -or $(Test-Equiv -A $potentialMatch -B "$(Remove-HtmlTags -InputString "$($listItemValue)")")){
+                        $mappedListItem = $key; Write-Host "$potentialMatch matched for list item $key from value $($field.value)/$listItemValue"
                     }
-                    }
+                }
             }
-
-
-
             if ($null -ne $MappedListItem){
                 Write-Host "$transformedFields Value $($field.value) mapped to listselect item $($MappedListItem)"
                 $transformedFields += @{$transformedlabel = $MappedListItem}
@@ -770,7 +771,7 @@ foreach ($originalasset in $sourceassets) {
                 $NewOptions = @($valueEquivilencies.list_options) + @("$($field.value)")
                 Set-HuduList -id $valueEquivilencies.list_id -ListItems $NewOptions
                 $transformedFields += @{$transformedlabel = $field.value}
-            } else {write-host "no value matches for list id $($valueEquivilencies.list_id) from value $($field.value); not configured to add list items, so leaving empty."}
+            } else {write-host "no value matches for list id $($valueEquivilencies.list_id) from value $($field.value)/$listItemValue; not configured to add list items, so leaving empty for this asset."}
             continue
         }
         
