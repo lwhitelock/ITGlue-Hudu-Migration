@@ -476,6 +476,88 @@ function Set-LayoutsForTransfer {
         }
     }
 }
+function Set-MappedListSelectItemFromuserMapping {
+    [OutputType([hashtable])]
+    param(
+        [Parameter(Mandatory)]
+        [hashtable]$Mapping,
+
+        # Raw field value (field.value)
+        [Parameter(Mandatory)]
+        $RawValue,
+
+        # For coercing list_id → readable name
+        [Parameter()]
+        [hashtable]$SourceListItemMap,
+
+        [Parameter()]
+        [string]$FieldLabel
+    )
+
+    $result = @{
+        MatchFound   = $false
+        Key          = $null
+        Normalized   = $RawValue
+        NeedsNewItem = $true
+    }
+
+    # 1. Normalize / coerce listselect JSON values → readable values
+    $listItemValue = $RawValue
+    if ("$RawValue" -ilike '*list_id*') {
+        try {
+            $listItemId = ($RawValue | ConvertFrom-Json).list_ids[0]
+
+            $mapped = $null
+            if ($SourceListItemMap -and $FieldLabel) {
+                $mapped = $SourceListItemMap[$FieldLabel] |
+                          Where-Object { $_.id -eq $listItemId }
+            }
+
+            if (-not $mapped -and $FieldLabel) {
+                $mapped = (Get-HuduLists -Name $FieldLabel).list_items |
+                          Where-Object { $_.id -eq $listItemId } |
+                          Select-Object -ExpandProperty name -ErrorAction SilentlyContinue
+            }
+
+            if ($mapped) { $listItemValue = $mapped }
+        }
+        catch {
+            Write-Host "Error transforming list_id source value '$RawValue' — $_"
+        }
+    }
+
+    $result.Normalized = $listItemValue
+    $normalizedListItemValue = Remove-HtmlTags -InputString "$listItemValue"
+
+    # 2. Filter out mappings whose whenvalues are empty/null
+    $nonEmptyMappings = $Mapping.GetEnumerator() | Where-Object {
+        $_.Value.whenvalues -and ($_.Value.whenvalues | Where-Object { $_ })
+    }
+
+    if ($nonEmptyMappings.Count -eq 0) {
+        return $result
+    }
+
+    # 3. Try to match normalized value against whenvalues
+    foreach ($entry in $nonEmptyMappings) {
+        $keyName    = $entry.Key
+        $whenvalues = $entry.Value.whenvalues
+
+        foreach ($potentialMatch in $whenvalues) {
+            if (Test-Equiv -A $potentialMatch -B $listItemValue -or Test-Equiv -A $potentialMatch -B $normalizedListItemValue) {
+
+                $result.MatchFound   = $true
+                $result.Key          = $keyName
+                $result.NeedsNewItem = $false
+                return $result
+            }
+        }
+    }
+
+    return $result
+}
+
+
 function Write-ErrorObjectsToFile {
     param (
         [Parameter(Mandatory)]
@@ -738,43 +820,39 @@ foreach ($originalasset in $sourceassets) {
                     continue
                 }
         }
-        # handle listselect/dropdown mappings
-        if ($ListSelectEquivilencyMaps[$transformedlabel]?.whenvalues?.Count -gt 0) {
+        # handle listselect/dropdown mappings if present
+        if ($ListSelectEquivilencyMaps.Keys -contains $transformedlabel) {
             $valueEquivilencies = $ListSelectEquivilencyMaps[$transformedlabel]
+            $mapping            = $valueEquivilencies.Mapping
+        } else {
+            $valueEquivilencies = $null
+        }
 
-            Write-Host "Source field maps to listselect for $($valueEquivilencies.mapping.keys.count) list items mapped from various source values; Creating new list items for unmatched values is $(if ($true -eq $ListSelectEquivilencyMaps[$transformedlabel].add_listitems ?? $false) {'not allowed'} else {'allowed'})"
-            $MappedListItem = $null
-            # coerce list_ids if present to a human-readable value for matching
-            foreach ($key in $valueEquivilencies.mapping){
-                if ($null -ne $MappedListItem){continue}
-                $listItemValue = if ("$($field.value)" -ilike "*list_id*") {
-                    try {
-                        $listItemId = $("$($field.value)" | convertFrom-json).list_ids[0];
-                        $sourceListItemMap[$field.label] | where-object {$_.id -eq $listItemId} ?? $($(Get-HuduLists -Name $field.label).list_items | Where-Object {$_.id -eq $listItemId}).name ?? $field.value
-                    } catch {
-                        Write-Host "error transforming source listitem value for $($field.value)- $_"
-                        $field.value
-                    }
-                } else {
-                    $field.value
-                }
-            # map list item to values from dropdown or listselect per-user
-                foreach ($potentialMatch in $valueEquivilencies.mapping["$key"].whenvalues){
-                    if (test-equiv -A $potentialMatch -B $listItemValue -or $(Test-Equiv -A $potentialMatch -B "$(Remove-HtmlTags -InputString "$($listItemValue)")")){
-                        $mappedListItem = $key; Write-Host "$potentialMatch matched for list item $key from value $($field.value)/$listItemValue"
-                    }
-                }
-            }
-            if ($null -ne $MappedListItem){
-                Write-Host "$transformedFields Value $($field.value) mapped to listselect item $($MappedListItem)"
-                $transformedFields += @{$transformedlabel = $MappedListItem}
-            } elseif ($true -eq $valueEquivilencies.add_listitems -or $valueEquivilencies.add_listitems -ilike "*t*"){
-                Write-Host "$($field.value) not found in list item matches, adding to list items for $($valueEquivilencies.list_id)"
-                $NewOptions = @($valueEquivilencies.list_options) + @("$($field.value)")
-                Set-HuduList -id $valueEquivilencies.list_id -ListItems $NewOptions
-                $transformedFields += @{$transformedlabel = $field.value}
-            } else {write-host "no value matches for list id $($valueEquivilencies.list_id) from value $($field.value)/$listItemValue; not configured to add list items, so leaving empty for this asset."}
+        if (-not $valueEquivilencies -or -not $mapping) {
+            # No mapping configured for this field
             continue
+        }
+
+        $result = Get-MappedListSelectItem `
+            -Mapping $mapping `
+            -RawValue $field.value `
+            -SourceListItemMap $sourceListItemMap `
+            -FieldLabel $field.label
+
+        if ($result.MatchFound) {
+            Write-Host "$transformedlabel value '$($field.value)' mapped to listselect item '$($result.Key)'"
+            $transformedFields += @{ $transformedlabel = $result.Key }
+
+        } elseif ($valueEquivilencies.add_listitems -eq $true -or
+                $valueEquivilencies.add_listitems -ilike '*t*') {
+
+            Write-Host "'$($field.value)' not found in list item matches, adding to list items for list id $($valueEquivilencies.list_id)"
+            $NewOptions = @($valueEquivilencies.list_options) + @("$($field.value)")
+            Set-HuduList -Id $valueEquivilencies.list_id -ListItems $NewOptions
+            $transformedFields += @{ $transformedlabel = $field.value }
+
+        } else {
+            Write-Host "No value matches for list id $($valueEquivilencies.list_id) from '$($field.value)' / '$($result.Normalized)'; not configured to add list items, so leaving empty."
         }
         
         if ($true -eq $stripHTML) {
