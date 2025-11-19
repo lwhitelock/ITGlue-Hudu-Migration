@@ -1,5 +1,8 @@
 # Hudu Asset Layout Transfer
 
+[original community post, Sep 2025](https://community.hudu.com/script-library-awpwerdu/post/migrating-assets-between-layouts-with-ease-xY9nzqtWj6X9wSL)
+
+
 Migrate assets between **Hudu** layouts while flexibly mapping fields, concatenating (“SMOOSH”) values, translating data types, and optionally relinking related objects.
 
 > **TL;DR**  
