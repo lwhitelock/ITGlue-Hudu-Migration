@@ -1,4 +1,4 @@
-xf$ErroredItemsFolder = $(Get-EnsuredPath -path $(join-path $(Resolve-Path .).path "debug"))
+$ErroredItemsFolder = $(Get-EnsuredPath -path $(join-path $(Resolve-Path .).path "debug"))
 
 # Main settings load
 . $PSScriptRoot\Initialize-Module.ps1 -InitType 'Full'

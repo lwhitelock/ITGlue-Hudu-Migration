@@ -62,7 +62,7 @@ function Get-CoercedDate {
     }
 }
 
-function x {
+function Get-NormalizedDropdownOptions {
   param([Parameter(Mandatory)]$OptionsRaw)
   $lines =
     if ($null -eq $OptionsRaw) { @() }

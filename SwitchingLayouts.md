@@ -125,10 +125,9 @@ $mapping = @(
 
 ---
 
-## Dropdown (legacy/deprecated field-type) Option-Mapping
-
-
 ## ListSelect Item-Mapping
+ListSelec
+
 
 
 ## Address Mapping (`AddressData`)
@@ -241,4 +240,4 @@ $includeLabelInSmooshedValues = $true
 ---
 
 ## Changelog
-- **v0.1** – Initial public draft of SwitchingLayouts.MD, 9, Sept 2025
+- **v0.3** – Initial public draft of SwitchingLayouts.MD, 19, Nov 2025
