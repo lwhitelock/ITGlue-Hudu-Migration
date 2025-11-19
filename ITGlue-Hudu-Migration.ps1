@@ -1,3 +1,4 @@
+if (-not (Get-Command -Name Get-EnsuredPath -ErrorAction SilentlyContinue)) { . $PSScriptRoot\Public\Init-OptionsAndLogs.ps1 }
 $ErroredItemsFolder = $(Get-EnsuredPath -path $(join-path $(Resolve-Path .).path "debug"))
 
 # Main settings load
