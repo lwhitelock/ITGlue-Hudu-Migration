@@ -478,15 +478,17 @@ function Set-LayoutsForTransfer {
 }
 function Set-MappedListSelectItemFromuserMapping {
     [OutputType([hashtable])]
+    [CmdletBinding()]
     param(
+        # Hashtable of key → string[] (whenvalues)
         [Parameter(Mandatory)]
         [hashtable]$Mapping,
 
-        # Raw field value (field.value)
+        # Raw field value (field.value from the source asset)
         [Parameter(Mandatory)]
         $RawValue,
 
-        # For coercing list_id → readable name
+        # Optional: for list_id → label resolution (if needed later)
         [Parameter()]
         [hashtable]$SourceListItemMap,
 
@@ -496,24 +498,21 @@ function Set-MappedListSelectItemFromuserMapping {
 
     $result = @{
         MatchFound   = $false
-        Key          = $null
-        Normalized   = $RawValue
+        Key          = $null        # destination list item label, e.g. 'these options'
+        Normalized   = $RawValue    # coerced/clean value used for comparison
         NeedsNewItem = $true
     }
 
-    # 1. Normalize / coerce listselect JSON values → readable values
+    # --- 1. Normalize / coerce list_id JSON if present ---
     $listItemValue = $RawValue
     if ("$RawValue" -ilike '*list_id*') {
         try {
             $listItemId = ($RawValue | ConvertFrom-Json).list_ids[0]
 
-            $mapped = $null
-            if ($SourceListItemMap -and $FieldLabel) {
-                $mapped = $SourceListItemMap[$FieldLabel] |
-                          Where-Object { $_.id -eq $listItemId }
-            }
 
-            if (-not $mapped -and $FieldLabel) {
+            $mapped = $null
+
+            if ($FieldLabel) {
                 $mapped = (Get-HuduLists -Name $FieldLabel).list_items |
                           Where-Object { $_.id -eq $listItemId } |
                           Select-Object -ExpandProperty name -ErrorAction SilentlyContinue
@@ -529,35 +528,34 @@ function Set-MappedListSelectItemFromuserMapping {
     $result.Normalized = $listItemValue
     $normalizedListItemValue = Remove-HtmlTags -InputString "$listItemValue"
 
-    # 2. Filter out mappings whose whenvalues are empty/null
+    # --- 2. Filter mappings to only non-empty whenvalues arrays ---
     $nonEmptyMappings = $Mapping.GetEnumerator() | Where-Object {
-        $_.Value.whenvalues -and ($_.Value.whenvalues | Where-Object { $_ })
+        $_.Value -and ($_.Value | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
     }
 
     if ($nonEmptyMappings.Count -eq 0) {
         return $result
     }
 
-    # 3. Try to match normalized value against whenvalues
+    # --- 3. Try to match: find key whose whenvalues contains our value ---
     foreach ($entry in $nonEmptyMappings) {
-        $keyName    = $entry.Key
-        $whenvalues = $entry.Value.whenvalues
+        $keyName   = $entry.Key          # e.g. 'these options' / 'milk'
+        $whenvalues = $entry.Value       # string[] like @('cloud','cloud service')
 
         foreach ($potentialMatch in $whenvalues) {
-            if (Test-Equiv -A $potentialMatch -B $listItemValue -or Test-Equiv -A $potentialMatch -B $normalizedListItemValue) {
+            if ($(Test-Equiv -A "$potentialMatch" -B "$listItemValue") -or $(Test-Equiv -A "$potentialMatch" -B "$normalizedListItemValue")) {
 
                 $result.MatchFound   = $true
-                $result.Key          = $keyName
+                $result.Key          = $keyName   # <- THIS is what Hudu wants
                 $result.NeedsNewItem = $false
                 return $result
             }
         }
     }
 
+    # No match
     return $result
 }
-
-
 function Write-ErrorObjectsToFile {
     param (
         [Parameter(Mandatory)]
@@ -831,7 +829,9 @@ foreach ($originalasset in $sourceassets) {
         if (-not $valueEquivilencies -or -not $mapping) {
             write-host "No list mapping for $($field.label) => $transformedlabel, continuing normal mapping"
         } else {
-            $result = Get-MappedListSelectItem `
+
+
+            $result = Set-MappedListSelectItemFromuserMapping `
                 -Mapping $mapping `
                 -RawValue $field.value `
                 -SourceListItemMap $sourceListItemMap `
@@ -851,6 +851,7 @@ foreach ($originalasset in $sourceassets) {
             } else {
                 Write-Host "No value matches for list id $($valueEquivilencies.list_id) from '$($field.value)' / '$($result.Normalized)'; not configured to add list items, so leaving empty."
             }
+            continue
         }
         
         if ($true -eq $stripHTML) {
