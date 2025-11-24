@@ -94,7 +94,7 @@ function Get-ITGFieldUniqueValues {
         & $add $raw
     }
 
-    return $($set.ToArray() | Sort-Object -Unique)
+    return @($set) | Sort-Object { $_.ToLowerInvariant() }
 }
 
 function Get-ITGFieldPopulated {

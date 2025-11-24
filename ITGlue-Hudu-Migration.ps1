@@ -1265,8 +1265,10 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\AssetLayouts.json")) 
                         $ListItems = Get-NormalizedDropdownOptions -OptionsRaw "$($ITGField.Attributes.'default-value')"
 
                         $fieldKey = $ITGField.Attributes.'name-key'
-                        $ListItems = $ListItems + (Get-ITGFieldUniqueValues -FlexAssets $FlexAssets -FieldKey $fieldKey) | Select-Object -Unique
-                                                    
+                        $ListItems = @(
+                            $ListItems
+                            Get-ITGFieldUniqueValues -FlexAssets $FlexAssets -FieldKey $fieldKey
+                        ) | Where-Object { -not [string]::IsNullOrWhiteSpace($_) } | Sort-Object { $_.ToLowerInvariant().Trim() } -Unique                                                    
                         $ListObject = $($(Get-HuduLists -name $ListName | Select-Object -First 1) ?? $(New-HuduList -Items $ListItems -Name "$(Get-UniqueListName -BaseName $ListName -allowReuse $false)"))
                         $LayoutField.add("list_id", $ListObject.Id)
                         $LayoutField.add("field_type", "ListSelect")
