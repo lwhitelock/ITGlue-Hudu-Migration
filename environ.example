@@ -68,7 +68,7 @@ $customBrandedDomain        = "n"
 $resumeQuestion             = "yes"
 $reenterChoice              = "Continue"
 
-Individual Import Options, below, (1-yes, 2-no)
+# Individual Import Options, below, (1-yes, 2-no)
 $ImportCompanies            = 1
 $ImportLocations            = 1
 $ImportDomains              = 1
