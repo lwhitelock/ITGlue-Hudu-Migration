@@ -1263,12 +1263,14 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\AssetLayouts.json")) 
                     "Select" {
                         $ListName = "$($UpdateLayout.HuduObject.Name)-$($ITGField.Attributes.name)"
                         $ListItems = Get-NormalizedDropdownOptions -OptionsRaw "$($ITGField.Attributes.'default-value')"
-
                         $fieldKey = $ITGField.Attributes.'name-key'
-                        $ListItems = @(
-                            $ListItems
-                            Get-ITGFieldUniqueValues -FlexAssets $FlexAssets -FieldKey $fieldKey
-                        ) | Where-Object { -not [string]::IsNullOrWhiteSpace($_) } | Sort-Object { $_.ToLowerInvariant().Trim() } -Unique                                                    
+                        # if there are other values than the list items ITG advertises, collect those for listselect as well.
+                        if ($null -ne $FlexAssets -and $FlexAssets.count -gt 0) {
+                            $ListItems = @(
+                                $ListItems
+                                Get-ITGFieldUniqueValues -FlexAssets $FlexAssets -FieldKey $fieldKey
+                            ) | Where-Object { -not [string]::IsNullOrWhiteSpace($_) } | Sort-Object { $_.ToLowerInvariant().Trim() } -Unique                                                    
+                        }
                         $ListObject = $($(Get-HuduLists -name $ListName | Select-Object -First 1) ?? $(New-HuduList -Items $ListItems -Name "$(Get-UniqueListName -BaseName $ListName -allowReuse $false)"))
                         $LayoutField.add("list_id", $ListObject.Id)
                         $LayoutField.add("field_type", "ListSelect")
