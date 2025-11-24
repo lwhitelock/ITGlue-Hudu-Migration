@@ -1160,21 +1160,24 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\AssetLayouts.json")) 
             Write-Host "Fetching Flexible Assets from IT Glue (This may take a while)"
             $FlexAssetsSelect = { (Get-ITGlueFlexibleAssets -page_size 1000 -page_number $i -filter_flexible_asset_type_id $UpdateLayout.ITGID -include related_items).data }
             $FlexAssets = Import-ITGlueItems -ItemSelect $FlexAssetsSelect
-		
-				
-		
+            $fullyPopulated = if ($FlexLayoutFields -and $FlexLayoutFields.count -gt 1 -and $FlexAssets -and $FlexAssets.count -gt 1) {Get-ITGFieldPopulated -FlexLayoutFields $FlexLayoutFields -FlexAssets $FlexAssets} else {@{}}
+
             $UpdateLayoutFields = foreach ($ITGField in $FlexLayoutFields) {
+                $ITGFieldRequired = [bool]$ITGField.Attributes.required
+                if ($ITGField.attributes.kind -eq "Tag"){
+                    $requiredForHudu = $false
+                } else {
+                    $requiredForHudu = $ITGFieldRequired -and ($($fullyPopulated[$ITGField.Attributes.name] ?? $false) -eq $true)
+                }
                 $LayoutField = @{
                     label        = $ITGField.Attributes.name
                     show_in_list = $ITGField.Attributes."show-in-list"
                     position     = $ITGField.Attributes.order
-                    required     = $ITGField.Attributes.required
+                    required     = $requiredForHudu
                     hint         = $ITGField.Attributes.hint
                 }
 
                 $supported = $true
-		
-
                 switch ($ITGField.Attributes.kind) {
                     "Checkbox" {
                         $LayoutField.add("field_type", "CheckBox")
