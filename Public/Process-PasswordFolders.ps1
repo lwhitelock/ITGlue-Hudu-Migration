@@ -66,7 +66,7 @@ foreach ($itgcompanyID in ($matchedpasswords.ITGObject.attributes.'organization-
     foreach ($passwordFolder in $foldersWithPasswords) {
         $companyError = $null; $folderError = $null; $passwordError = $null; $Modified = $false; $existingpass = $null;
         
-        $FolderName = ($passwordFolder.path -split "<FDELIM>")[0]
+        $FolderName = ($passwordFolder.path -replace "<FDELIM>",'-')
         $match = $null
         $match = $PFMappings.Keys | Sort-Object { $_.Length } -Descending | Where-Object { $FolderName.StartsWith($_, [System.StringComparison]::OrdinalIgnoreCase) } | Select-Object -First 1
         if ($match) {
