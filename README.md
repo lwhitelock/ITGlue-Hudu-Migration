@@ -82,8 +82,6 @@ It's highly encouraged to perform a clean up of you IT Glue environment, such as
 
 Check that your Flexible Layouts don’t have any fields named the same thing on the same layout. For example, if you have two fields called Pre-Shared Key on the "Wireless" asset (One for primary one for guest), rename one of them to prevent script errors. 
 
-The ITGlue API doesn't support the use of commas "(,)". To prevent issues, rename any organizations with commas.
-
 ITGlue allows for more than one client to exist with the same Name but Hudu does not. This will cause issues during the migration as the first client will succeed and subsequent clients with the same name will fail with "Name Already Taken" error from Hudu's API. Make sure any client is at least named with a unique name so that the migration can complete successfully.
 
 Blank passwords in ITGlue will cause issues on import and cause the entire password to fail. 
