@@ -27,6 +27,76 @@ function Test-ValuePresent {
     return $true
 }
 
+function Get-ITGFieldUniqueValues {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)] [array]$FlexAssets,
+        [Parameter(Mandatory)] [string]$FieldKey,
+        [bool]$ExcludeEmpty = $true,
+        [scriptblock]$Normalize = {
+            param($s)
+            if ($null -eq $s) { return $null }
+            return ($s.ToString().Trim().ToLowerInvariant())
+        }
+    )
+
+    $set = [System.Collections.Generic.HashSet[string]]::new(
+        [System.StringComparer]::OrdinalIgnoreCase
+    )
+
+    foreach ($asset in $FlexAssets) {
+        $traits = $asset.Attributes.traits
+        if (-not $traits) { continue }
+
+        $prop = $traits.PSObject.Properties[$FieldKey]
+        if (-not $prop) { continue }
+
+        $raw = $prop.Value
+        if ($ExcludeEmpty -and -not (Test-ValuePresent $raw)) { continue }
+
+        # Helper to add a single atomic value
+        $add = {
+            param($value)
+
+            if ($null -eq $value) { return }
+
+            # If PSCustomObject / hashtable → use common fields or JSON
+            if ($value -is [pscustomobject] -or $value -is [hashtable]) {
+                $props = $value.PSObject.Properties
+                if ($props['name']) { $value = $props['name'].Value }
+                elseif ($props['value']) { $value = $props['value'].Value }
+                elseif ($props['id']) { $value = $props['id'].Value }
+                else { $value = ($value | ConvertTo-Json -Compress -Depth 6) }
+            }
+
+            $s = & $Normalize ([string]$value)
+            if (-not [string]::IsNullOrWhiteSpace($s)) {
+                [void]$set.Add($s)
+            }
+        }
+
+        if ($raw -is [pscustomobject] -or $raw -is [hashtable]) {
+            if ($raw.PSObject.Properties['values']) {
+                foreach ($v in $raw.values) {
+                    & $add $v
+                }
+                continue
+            }
+        }
+
+        # Collections (but not strings)
+        if ($raw -is [System.Collections.IEnumerable] -and -not ($raw -is [string])) {
+            foreach ($v in $raw) {
+                & $add $v
+            }
+            continue
+        }
+        & $add $raw
+    }
+
+    return @($set) | Sort-Object { $_.ToLowerInvariant() }
+}
+
 function Get-ITGFieldPopulated {
     [CmdletBinding()]
     param(
