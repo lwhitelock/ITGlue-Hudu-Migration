@@ -13,12 +13,13 @@ $settings_folder=$(join-path "$project_workdir" "debug\settings")
 $logs_folder=$(join-path "$project_workdir" "debug\logs")
 
 # This is your main settings json
-$defaultSettingsPath=$(join-path "$settings_folder" "masond.json")
+$defaultSettingsPath=$(join-path "$settings_folder" "settings.json")
 
 # Clear paths during main run. Be sure to comment out below if subsequent actions being taken
 foreach ($folder in @($debug_folder, $errors_folder, $logs_folder, $settings_folder, $ITG_ERRORS_DIRECTORY)) {
+    if ([string]::IsNullOrWhiteSpace($folder)){continue}
     if (!(Test-Path -Path "$folder")) { New-Item "$folder" -ItemType Directory }
-    Get-ChildItem -Path "$folder" -File -Recurse -Force | Remove-Item -Force
+#    Get-ChildItem -Path "$folder" -File -Recurse -Force | Remove-Item -Force
 }
 
 $InitType = "full"
