@@ -45,8 +45,9 @@ $FontAwesomeUpgrade = Get-FontAwesomeMap
 # Add Timed (Noninteractive) Messages Helper
 . $PSScriptRoot\Public\Write-TimedMessage.ps1
 
-# Add numeral casting helper method
+# Add numeral casting helper method, populated items helper
 . $PSScriptRoot\Public\Get-CastIfNumeric.ps1
+. $PSScriptRoot\Public\Get-ITGFieldPopulated.ps1
 
 # Add migration scope helper
 . $PSScriptRoot\Public\Set-MigrationScope.ps1
@@ -1190,7 +1191,13 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\AssetLayouts.json")) 
                     }
                     "Select" {
                         $ListName = "$($UpdateLayout.HuduObject.Name)-$($ITGField.Attributes.name)"
-                        $ListItems = Get-NormalizedDropdownOptions -OptionsRaw "$($ITGField.Attributes."default-value")"
+                        $ListItems = Get-NormalizedDropdownOptions -OptionsRaw "$($ITGField.Attributes.'default-value')"
+
+                        $fieldKey = $ITGField.Attributes.'name-key'
+                        $ListItems = @(
+                            $ListItems
+                            Get-ITGFieldUniqueValues -FlexAssets $FlexAssets -FieldKey $fieldKey
+                        ) | Where-Object { -not [string]::IsNullOrWhiteSpace($_) } | Sort-Object { $_.ToLowerInvariant().Trim() } -Unique                                                    
                         $ListObject = $($(Get-HuduLists -name $ListName | Select-Object -First 1) ?? $(New-HuduList -Items $ListItems -Name "$(Get-UniqueListName -BaseName $ListName -allowReuse $false)"))
                         $LayoutField.add("list_id", $ListObject.Id)
                         $LayoutField.add("field_type", "ListSelect")
