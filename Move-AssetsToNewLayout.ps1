@@ -950,9 +950,9 @@ foreach ($originalasset in $sourceassets) {
             if ($true -eq $stripHTML) {
                 $field.value="$(Remove-HtmlTags -InputString "$($field.value)")"
             }
-            if ($destFieldType -eq "Email" -or ($($destFieldType -eq "Text" -and $transformedlabel -like "*Email*"))){
-                $field.value="$(Get-CleansedEmailAddresses -InputString "$($field.value)")".Trim()
-            }
+            # if ($destFieldType -eq "Email" -or ($($destFieldType -eq "Text" -and $transformedlabel -like "*Email*"))){
+            #     $field.value="$(Get-CleansedEmailAddresses -InputString "$($field.value)")".Trim()
+            # }
             if ($destFieldType -eq "Number"){
                 $precastValue=$field.value; $field.value = $(Get-CastIfNumeric $field.value) ?? $(Get-CastIfNumeric $($field.value -replace '\D+', ''));
                 Write-Host "non-empty source val on Number target; Casting '$($precastValue)' as int...$($field.value)"
