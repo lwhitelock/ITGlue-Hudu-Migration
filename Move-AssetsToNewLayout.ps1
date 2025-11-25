@@ -920,21 +920,10 @@ foreach ($originalasset in $sourceassets) {
         $stripHTML = $($sourcedestStripHTML["$($field.label)"] ?? $false)
         $destFieldType = $sourceDestDataType["$($field.label)"] ?? 'Text'
 
+        # checking basic validity
         if (-not $transformedlabel -or $null -eq $transformedlabel) {continue}
-        # basic type parsing for field types with limited allowable values
-        if ($field.value -ilike '*list_id*'){
-            $field.value = $(Get-SourceListItemNameFieldFromID $field.value) ?? $null
-        }
-        if ($destFieldType -eq "Number" -and -not ([string]::IsNullOrWhiteSpace($field.value))){
-            $field.value = $(Get-CastIfNumeric $field.value) ?? $null
-        } elseif ($destFieldType -eq "CheckBox" -and -not ([string]::IsNullOrWhiteSpace($field.value))){
-            $field.value = $(Get-CastIfBoolean $field.value -allowFuzzy $true) ?? $null
-        } elseif ($destFieldType -eq "Date" -and -not ([string]::IsNullOrWhiteSpace($field.value))){
-            $field.value = Get-CoercedDate -InputDate $field.value -Cutoff '1500-01-01' -OutputFormat 'MM/DD/YYYY'
-        }
-
-        if (-not $field.value -or $null -eq $field.value) {
-                write-host "no translate for $($field.label)";
+        if (-not $field.value -or $null -eq $field.value -or ([string]::IsNullOrWhiteSpace($field.value))) {
+                write-host "no source value for $($field.label)";
                 if ($true -eq $destTranslationFieldRequired) {
                     write-host "no value for REQUIRED $($field.label) => $transformedlabel"
                     $field.value = $($(read-host "target field $($field.label) => $transformedlabel is required but null, enter value") ?? "None")
@@ -942,8 +931,13 @@ foreach ($originalasset in $sourceassets) {
                     write-host "no value for optional $($field.label) => $transformedlabel"
                     continue
                 }
+        # pre-process listselect source values as huyman-readable
+        } elseif ($field.value -ilike '*list_id*'){
+            $precastValue=$field.value; $field.value = $(Get-SourceListItemNameFieldFromID $field.value) ?? $null;
+            Write-Host "non-empty source val appears to contain listIDs; Raw val '$($precastValue)' as $destFieldType... $($field.value)"
         }
-        # handle listselect/dropdown mappings if present
+
+        # handle listselect item-level mappings if present
         if ($ListSelectEquivilencyMaps.Keys -contains $transformedlabel) {
             $valueEquivilencies = $ListSelectEquivilencyMaps[$transformedlabel]
             $mapping            = $valueEquivilencies.Mapping
@@ -962,27 +956,33 @@ foreach ($originalasset in $sourceassets) {
             if ($result.MatchFound) {
                 Write-Host "$transformedlabel value '$($field.value)' mapped to listselect item '$($result.Key)'"
                 $transformedFields += @{ $transformedlabel = $result.Key }
-
             } elseif (Get-CastIfBoolean $valueEquivilencies.add_listitems) {
-
                 Write-Host "'$($field.value)' not found in list item matches, adding to list items for list id $($valueEquivilencies.list_id)"
                 $NewOptions = @($valueEquivilencies.list_options) + @("$($field.value)")
                 Set-HuduList -Id $valueEquivilencies.list_id -ListItems $NewOptions
                 $transformedFields += @{ $transformedlabel = $field.value }
-
-            } else {
-                Write-Host "No value matches for list id $($valueEquivilencies.list_id) from '$($field.value)' / '$($result.Normalized)'; not configured to add list items, so leaving empty."
-            }
+            } else {Write-Host "No value matches for list id $($valueEquivilencies.list_id) from '$($field.value)' / '$($result.Normalized)'; not configured to add list items, so leaving empty."}
             continue
         }
         
+        # destination field-type validation and post-processing
         if ($true -eq $stripHTML) {
             $field.value="$(Remove-HtmlTags -InputString "$($field.value)")"
         }
-
         if ($destFieldType -eq "Email" -or ($($destFieldType -eq "Text" -and $transformedlabel -like "*Email*"))){
             $field.value="$(Get-CleansedEmailAddresses -InputString "$($field.value)")".Trim()
         }
+        if ($destFieldType -eq "Number"){
+            $precastValue=$field.value; $field.value = $(Get-CastIfNumeric $field.value) ?? $null;
+            Write-Host "non-empty source val on Number target; Casting '$($precastValue)' as int...$($field.value)"
+        } elseif ($destFieldType -eq "CheckBox"){
+            $precastValue=$field.value; $field.value = $(Get-CastIfBoolean $field.value -allowFuzzy $true) ?? $null
+            Write-Host "non-empty source val on CheckBox/Boolean target; Casting '$($precastValue)' as bool...$($field.value)"
+        } elseif ($destFieldType -eq "Date"){
+            $precastValue=$field.value; $field.value = Get-CoercedDate -InputDate $field.value -Cutoff '1500-01-01' -OutputFormat 'MM/DD/YYYY' ?? $null;
+            Write-Host "non-empty source val on Date target; Casting '$($precastValue)' as date...$($field.value)"
+        }
+
         $transformedFields += @{$transformedlabel = $field.value}
         write-host "$($field.label) => $transformedlabel for value $($field.value)"
     }
