@@ -25,6 +25,57 @@ function Get-CastIfNumeric {
     }
     return $Value
 }
+function Get-CastIfBoolean {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [object]$Value,
+
+        [array]$trueVals  = @("true","t","yes","y","1","on"),# Accepted truthy keyword mappings
+        [array]$falseVals = @("false","f","no","n","0","off"), # Accepted falsey keyword mappings
+        [bool]$allowFuzzy=$true
+    )
+    if ($Value -is [string]) {
+        $Value = $Value.Trim()
+        if ([string]::IsNullOrWhiteSpace($Value)) { return $null }
+    }
+
+    # Already a real boolean? return it
+    if ($Value -is [bool]) {
+        return $Value
+    }
+
+    if ($Value -is [int] -or $Value -is [long] -or $Value -is [double] -or $Value -is [decimal]) {
+        if ([int]$Value -eq 1) { return $true }
+        if ([int]$Value -eq 0) { return $false }
+        return $null
+    }
+    if ($Value -is [string]) {
+        $lower = $Value.ToLowerInvariant()
+
+        if ($trueVals  -contains $lower) { return $true }
+        if ($falseVals -contains $lower) { return $false }
+        if ($true -eq $allowFuzzy){
+            foreach ($t in $truevals){
+                if ($value -ilike "*$t" -or $value -ilike "$t*") {return $true}
+            }
+            foreach ($f in $falseVals){
+                if ($value -ilike "*$f" -or $value -ilike "$f*") {return $false}
+            }
+            foreach ($t in $truevals){
+                if ($value -ilike "*$t*") {return $true}
+            }
+            foreach ($f in $falseVals){
+                if ($value -ilike "*$f*") {return $false}
+            }            
+        }
+
+
+        return $null
+    }
+    return $null
+}
+
 function Set-SmooshAssetFieldsToField {
     param (
         [PSCustomObject]$sourceAsset,
@@ -727,9 +778,9 @@ foreach ($entry in $mapping) {
         $entry.Mapping.GetEnumerator().Where({$_.Value.whenvalues?.Count -gt 0}).ForEach({
             $parsedMap[$_.Key] = $_.Value.whenvalues
         })
-        $ListSelectEquivilencyMaps[$entry.to]=@{Mapping = $parsedMap; list_options=$($entry.Mapping.Keys); list_id=$entry.list_id; add_listitems=$("$($entry.add_listitems)" -ilike "t*" ?? $false)}
+        $ListSelectEquivilencyMaps[$entry.to]=@{Mapping = $parsedMap; list_options=$($entry.Mapping.Keys); list_id=$entry.list_id; add_listitems=$(Get-CastIfBoolean $entry.add_listitems ?? $false)}
         $sourcedestlabels[$entry.from] = $entry.to
-        $sourcedestStripHTML[$entry.from] = [bool]$(@('t','true','y','yes') -contains "$($entry.striphtml ?? "true")".ToLower())
+        $sourcedestStripHTML[$entry.from] = (Get-CastIfBoolean $entry.striphtml) ?? $false
         $sourceDestDataType[$entry.from] = 'ListSelect'
         continue
     } elseif ($entry.dest_type -eq 'AddressData') {
@@ -739,10 +790,10 @@ foreach ($entry in $mapping) {
         $sourcedestlabels[$entry.from] = 'Meta'
         continue
     }
-    $sourcedestStripHTML[$entry.from] = [bool]$(@('t','true','y','yes') -contains "$($entry.striphtml ?? "False")".ToLower())
-    write-host "mapping $($entry.from) to $($entry.to) $(if ($true -eq $sourcedestStripHTML[$entry.from]) {"destination field of $($entry.to) will have HTML stripped."} else {'as-is'})"
+    $sourcedestStripHTML[$entry.from] = (Get-CastIfBoolean $entry.striphtml) ?? $false
+    write-host "mapping $($entry.from) to $($entry.to) $(if (Get-CastIfBoolean $sourcedestStripHTML[$entry.from]) {"destination field of $($entry.to) will have HTML stripped."} else {'as-is'})"
     $sourcedestlabels[$entry.from] = $entry.to
-    $sourcedestrequired[$entry.from] = $($entry.to ?? $false)
+    $sourcedestrequired[$entry.from] = ($(Get-CastIfBoolean $entry).to ?? $false)
     $sourceDestDataType[$entry.from] = $($entry.dest_type ?? 'Text')
 
 }
@@ -817,14 +868,18 @@ foreach ($originalasset in $sourceassets) {
     foreach ($field in $originalasset.fields) {
         # acquire destination information
         $transformedlabel = $sourcedestlabels[$field.label] ?? $null
-        $destTranslationFieldRequired = $("$($sourcedestrequired[$field.label])".ToLower() -eq 'true') ?? $false
+        $destTranslationFieldRequired = $(Get-CastIfBoolean $($sourcedestrequired[$field.label])) ?? $false
         $stripHTML = $($sourcedestStripHTML["$($field.label)"] ?? $false)
         $destFieldType = $sourceDestDataType["$($field.label)"] ?? 'Text'
 
         if (-not $transformedlabel -or $null -eq $transformedlabel) {continue}
+        # basic type parsing for field types with limited allowable values
         if ($destFieldType -eq "Number"){
             $field.value = $(Get-CastIfNumeric $field.value) ?? $null
+        } elseif ($destFieldType -eq "CheckBox") {
+            $field.value = $(Get-CastIfBoolean $field.value -allowFuzzy $true) ?? $null
         }
+
         if (-not $field.value -or $null -eq $field.value) {
                 write-host "no translate for $($field.label)";
                 if ($true -eq $destTranslationFieldRequired) {
@@ -855,7 +910,7 @@ foreach ($originalasset in $sourceassets) {
                 Write-Host "$transformedlabel value '$($field.value)' mapped to listselect item '$($result.Key)'"
                 $transformedFields += @{ $transformedlabel = $result.Key }
 
-            } elseif ($valueEquivilencies.add_listitems -eq $true -or $valueEquivilencies.add_listitems -ilike '*t*') {
+            } elseif (Get-CastIfBoolean $valueEquivilencies.add_listitems) {
 
                 Write-Host "'$($field.value)' not found in list item matches, adding to list items for list id $($valueEquivilencies.list_id)"
                 $NewOptions = @($valueEquivilencies.list_options) + @("$($field.value)")
