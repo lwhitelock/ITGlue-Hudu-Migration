@@ -505,6 +505,51 @@ function Write-InspectObject {
     }
     return $lines -join "`n"
 }
+function Test-DateAfter {
+    param(
+        [Parameter(Mandatory)][string]$DateString,
+        [datetime]$Cutoff = [datetime]'1000-01-01'
+    )
+    $dt = $null
+    $ok = [datetime]::TryParseExact(
+        $DateString,
+        'yyyy-MM-dd',
+        [System.Globalization.CultureInfo]::InvariantCulture,
+        [System.Globalization.DateTimeStyles]::AssumeUniversal,
+        [ref]$dt
+    )
+    if (-not $ok) { return $false }   # invalid format → fail
+    return ($dt -ge $Cutoff)
+}
+
+function Get-CoercedDate {
+    param(
+        [Parameter(Mandatory)][string]$InputDate,
+        [datetime]$Cutoff = [datetime]'1000-01-01',
+        [ValidateSet('DD.MM.YYYY','YYYY.MM.DD','MM/DD/YYYY')]
+        [string]$OutputFormat = 'MM/DD/YYYY'
+    )
+
+    $Inv    = [System.Globalization.CultureInfo]::InvariantCulture
+    $Styles = [System.Globalization.DateTimeStyles]::AllowWhiteSpaces -bor `
+              [System.Globalization.DateTimeStyles]::AssumeLocal
+    $Accepted = [string[]]@('MM/dd/yyyy HH:mm:ss','MM/dd/yyyy hh:mm:ss tt')
+
+    $dt = $null
+    try {
+        if (-not [datetime]::TryParseExact($InputDate, $Accepted, $Inv, $Styles, [ref]$dt)) {
+            return $null
+        }
+    } catch { return $null }
+    if ($dt -lt $Cutoff) { return $null }
+
+    switch ($OutputFormat) {
+        'DD.MM.YYYY' { $dt.ToString('dd.MM.yyyy', $Inv) }
+        'YYYY.MM.DD' { $dt.ToString('yyyy.MM.dd', $Inv) }
+        'MM/DD/YYYY' { $dt.ToString('MM/dd/yyyy', $Inv) }
+    }
+}
+
 function Set-LayoutsForTransfer {
     param ($allLayouts)
     $layoutMap = @{}
@@ -853,6 +898,8 @@ foreach ($originalasset in $sourceassets) {
             $field.value = $(Get-CastIfNumeric $field.value) ?? $null
         } elseif ($destFieldType -eq "CheckBox") {
             $field.value = $(Get-CastIfBoolean $field.value -allowFuzzy $true) ?? $null
+        } elseif ($destFieldType -eq "Date"){
+            $field.value = Get-CoercedDate -InputDate $field.value -Cutoff '1500-01-01' -OutputFormat 'MM/DD/YYYY'
         }
 
         if (-not $field.value -or $null -eq $field.value) {
