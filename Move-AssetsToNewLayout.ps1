@@ -20,10 +20,10 @@ function Get-CastIfNumeric {
         try {
             return [int][double]$Value
         } catch {
-            return 0
+            return $null
         }
     }
-    return $Value
+    return $null
 }
 function Get-CastIfBoolean {
     [CmdletBinding()]
@@ -586,6 +586,30 @@ function Set-LayoutsForTransfer {
         }
     }
 }
+
+function Get-SourceListItemNameFieldFromID {
+    param ([string]$RawValue)
+    if ([string]::IsNullOrWhiteSpace($RawValue)){return $null}
+    $mapped = $null
+    if ("$RawValue" -ilike '*list_id*') {
+        try {
+            $listItemId = ($RawValue | ConvertFrom-Json).list_ids[0]
+            if ($FieldLabel) {
+                $mapped = (Get-HuduLists -Name $FieldLabel).list_items |
+                          Where-Object { $_.id -eq $listItemId } |
+                          Select-Object -ExpandProperty name -ErrorAction SilentlyContinue
+            }
+            if ($mapped) { return $mapped }
+        }
+        catch {
+            Write-Host "Error transforming list_id source value '$RawValue' — $_"
+            return $mapped
+        }
+    } else {
+        Write-Host "list item is presumed human-readable"
+        return $RawValue
+    }
+}
 function Set-MappedListSelectItemFromuserMapping {
     [OutputType([hashtable])]
     [CmdletBinding()]
@@ -814,26 +838,30 @@ while ($true) {
 $sourcedestlabels       = @{};        $sourcedestrequired      = @{};
 $sourcedestStripHTML    = @{};     $sourceDestDataType         = @{};
 $addressMapsByDest      = @{};    $ListSelectEquivilencyMaps   = @{};
-foreach ($entry in $mapping) {
-    $sourcedestStripHTML[$entry.from] = (Get-CastIfBoolean $entry.striphtml) ?? $false
-    $sourcedestrequired[$entry.from] = (Get-CastIfBoolean $entry.required) ?? $false
-    $sourcedestlabels[$entry.from] = $entry.to
-    $sourceDestDataType[$entry.from] = $($entry.dest_type ?? 'Text')
 
+foreach ($entry in $mapping) {
     if ($entry.dest_type -eq 'ListSelect' -and -not ([string]::IsNullOrWhiteSpace($entry.from))) {
         $parsedMap = @{}
         $entry.Mapping.GetEnumerator().Where({$_.Value.whenvalues?.Count -gt 0}).ForEach({
             $parsedMap[$_.Key] = $_.Value.whenvalues
         })
-        $ListSelectEquivilencyMaps[$entry.to]=@{Mapping = $parsedMap; list_options=$($entry.Mapping.Keys); list_id=$entry.list_id; add_listitems=$(Get-CastIfBoolean $entry.add_listitems ?? $false)}
+        $ListSelectEquivilencyMaps[$entry.to]=@{Mapping = $parsedMap; list_options=$($entry.Mapping.Keys); list_id=$entry.list_id; add_listitems=$("$($entry.add_listitems)" -ilike "t*" ?? $false)}
+        $sourcedestlabels[$entry.from] = $entry.to
+        $sourcedestStripHTML[$entry.from] = [bool]$(@('t','true','y','yes') -contains "$($entry.striphtml ?? "true")".ToLower())
         $sourceDestDataType[$entry.from] = 'ListSelect'
         continue
     } elseif ($entry.dest_type -eq 'AddressData') {
         $addressMapsByDest[$entry.to] = $entry.address
-        $sourcedestrequired[$entry.from] = $false; $sourcedestlabels[$entry.from] = 'Meta';
+        $sourcedestrequired[$entry.from] = $false
+        $sourceDestDataType[$entry.from] = 'AddressData'
+        $sourcedestlabels[$entry.from] = 'Meta'
         continue
     }
-    write-host "mapping $($entry.from) to $($entry.to) $(if (Get-CastIfBoolean $sourcedestStripHTML[$entry.from]) {"destination field of $($entry.to) will have HTML stripped."} else {'as-is'})"
+    $sourcedestStripHTML[$entry.from] = [bool]$(@('t','true','y','yes') -contains "$($entry.striphtml ?? "False")".ToLower())
+    write-host "mapping $($entry.from) to $($entry.to) $(if ($true -eq $sourcedestStripHTML[$entry.from]) {"destination field of $($entry.to) will have HTML stripped."} else {'as-is'})"
+    $sourcedestlabels[$entry.from] = $entry.to
+    $sourcedestrequired[$entry.from] = $((Get-CastIfBoolean ($entry.required ?? $false)) ?? $false)
+    $sourceDestDataType[$entry.from] = $($entry.dest_type ?? 'Text')
 }
 
 $mappingtosmooshed = [bool]$($SMOOSHLABELS.count -gt 0)
@@ -888,17 +916,20 @@ foreach ($originalasset in $sourceassets) {
     foreach ($field in $originalasset.fields) {
         # acquire destination information
         $transformedlabel = $sourcedestlabels[$field.label] ?? $null
-        $destTranslationFieldRequired = $(Get-CastIfBoolean $($sourcedestrequired[$field.label])) ?? $false
+        $destTranslationFieldRequired = $(Get-CastIfBoolean $($sourcedestrequired[$field.label] ?? $false)) ?? $false
         $stripHTML = $($sourcedestStripHTML["$($field.label)"] ?? $false)
         $destFieldType = $sourceDestDataType["$($field.label)"] ?? 'Text'
 
         if (-not $transformedlabel -or $null -eq $transformedlabel) {continue}
         # basic type parsing for field types with limited allowable values
-        if ($destFieldType -eq "Number"){
+        if ($field.value -ilike '*list_id*'){
+            $field.value = $(Get-SourceListItemNameFieldFromID $field.value) ?? $null
+        }
+        if ($destFieldType -eq "Number" -and -not ([string]::IsNullOrWhiteSpace($field.value))){
             $field.value = $(Get-CastIfNumeric $field.value) ?? $null
-        } elseif ($destFieldType -eq "CheckBox") {
+        } elseif ($destFieldType -eq "CheckBox" -and -not ([string]::IsNullOrWhiteSpace($field.value))){
             $field.value = $(Get-CastIfBoolean $field.value -allowFuzzy $true) ?? $null
-        } elseif ($destFieldType -eq "Date"){
+        } elseif ($destFieldType -eq "Date" -and -not ([string]::IsNullOrWhiteSpace($field.value))){
             $field.value = Get-CoercedDate -InputDate $field.value -Cutoff '1500-01-01' -OutputFormat 'MM/DD/YYYY'
         }
 
