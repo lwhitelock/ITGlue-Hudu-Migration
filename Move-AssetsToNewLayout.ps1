@@ -524,23 +524,54 @@ function Test-DateAfter {
 
 function Get-CoercedDate {
     param(
-        [Parameter(Mandatory)][string]$InputDate,
+        [Parameter(Mandatory)]
+        [object]$InputDate,  # allow string or [datetime]
+
         [datetime]$Cutoff = [datetime]'1000-01-01',
+
         [ValidateSet('DD.MM.YYYY','YYYY.MM.DD','MM/DD/YYYY')]
         [string]$OutputFormat = 'MM/DD/YYYY'
     )
 
-    $Inv    = [System.Globalization.CultureInfo]::InvariantCulture
-    $Styles = [System.Globalization.DateTimeStyles]::AllowWhiteSpaces -bor `
-              [System.Globalization.DateTimeStyles]::AssumeLocal
-    $Accepted = [string[]]@('MM/dd/yyyy HH:mm:ss','MM/dd/yyyy hh:mm:ss tt')
+    $Inv = [System.Globalization.CultureInfo]::InvariantCulture
 
-    $dt = $null
-    try {
-        if (-not [datetime]::TryParseExact($InputDate, $Accepted, $Inv, $Styles, [ref]$dt)) {
-            return $null
+    if ($InputDate -is [datetime]) {
+        $dt = [datetime]$InputDate
+    }
+    else {
+        $text = "$InputDate".Trim()
+        if ([string]::IsNullOrWhiteSpace($text)) { return $null }
+
+        # 2) Try strict formats first via ParseExact
+        $formats = @(
+            'MM/dd/yyyy HH:mm:ss'
+            'MM/dd/yyyy hh:mm:ss tt'
+            'MM/dd/yyyy'
+        )
+
+        $dt   = $null
+        $ok   = $false
+
+        foreach ($fmt in $formats) {
+            try {
+                $dt = [System.DateTime]::ParseExact($text, $fmt, $Inv)
+                $ok = $true
+                break
+            } catch {
+                # ignore and try next format
+            }
         }
-    } catch { return $null }
+
+        # 3) Fallback: general Parse (handles lots of “normal” date strings)
+        if (-not $ok) {
+            try {
+                $dt = [System.DateTime]::Parse($text, $Inv)
+            } catch {
+                return $null
+            }
+        }
+    }
+
     if ($dt -lt $Cutoff) { return $null }
 
     switch ($OutputFormat) {
@@ -549,6 +580,7 @@ function Get-CoercedDate {
         'MM/DD/YYYY' { $dt.ToString('MM/dd/yyyy', $Inv) }
     }
 }
+
 
 function Set-LayoutsForTransfer {
     param ($allLayouts)
@@ -960,7 +992,7 @@ foreach ($originalasset in $sourceassets) {
                 $precastValue=$field.value; $field.value = $(Get-CastIfBoolean $field.value -allowFuzzy $true) ?? $null
                 Write-Host "non-empty source val on CheckBox/Boolean target; Casting '$($precastValue)' as bool...$($field.value)"
             } elseif ($destFieldType -eq "Date"){
-                $precastValue=$field.value; $field.value = $(Get-CoercedDate -InputDate $field.value -Cutoff '1500-01-01' -OutputFormat 'MM/DD/YYYY') ?? $null;
+                $precastValue=$field.value; $field.value = $(Get-CoercedDate -InputDate "$($field.value)" -OutputFormat 'MM/DD/YYYY') ?? $null;
                 Write-Host "non-empty source val on Date target; Casting '$($precastValue)' as date...$($field.value)"
             }
             $transformedFields += @{$transformedlabel = $field.value}
