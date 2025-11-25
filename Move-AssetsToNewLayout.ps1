@@ -766,73 +766,48 @@ while ($true) {
     }
 }
 
-$sourcedestlabels = @{}
-$sourcedestrequired = @{}
-$sourcedestStripHTML = @{}
-$sourceDestDataType = @{}
-$addressMapsByDest    = @{} 
-$ListSelectEquivilencyMaps = @{}
+$sourcedestlabels       = @{};        $sourcedestrequired      = @{};
+$sourcedestStripHTML    = @{};     $sourceDestDataType         = @{};
+$addressMapsByDest      = @{};    $ListSelectEquivilencyMaps   = @{};
 foreach ($entry in $mapping) {
+    $sourcedestStripHTML[$entry.from] = (Get-CastIfBoolean $entry.striphtml) ?? $false
+    $sourcedestrequired[$entry.from] = (Get-CastIfBoolean $entry.required) ?? $false
+    $sourcedestlabels[$entry.from] = $entry.to
+    $sourceDestDataType[$entry.from] = $($entry.dest_type ?? 'Text')
+
     if ($entry.dest_type -eq 'ListSelect' -and -not ([string]::IsNullOrWhiteSpace($entry.from))) {
         $parsedMap = @{}
         $entry.Mapping.GetEnumerator().Where({$_.Value.whenvalues?.Count -gt 0}).ForEach({
             $parsedMap[$_.Key] = $_.Value.whenvalues
         })
         $ListSelectEquivilencyMaps[$entry.to]=@{Mapping = $parsedMap; list_options=$($entry.Mapping.Keys); list_id=$entry.list_id; add_listitems=$(Get-CastIfBoolean $entry.add_listitems ?? $false)}
-        $sourcedestlabels[$entry.from] = $entry.to
-        $sourcedestStripHTML[$entry.from] = (Get-CastIfBoolean $entry.striphtml) ?? $false
         $sourceDestDataType[$entry.from] = 'ListSelect'
         continue
     } elseif ($entry.dest_type -eq 'AddressData') {
         $addressMapsByDest[$entry.to] = $entry.address
-        $sourcedestrequired[$entry.from] = $false
-        $sourceDestDataType[$entry.from] = 'AddressData'
-        $sourcedestlabels[$entry.from] = 'Meta'
+        $sourcedestrequired[$entry.from] = $false; $sourcedestlabels[$entry.from] = 'Meta';
         continue
     }
-    $sourcedestStripHTML[$entry.from] = (Get-CastIfBoolean $entry.striphtml) ?? $false
     write-host "mapping $($entry.from) to $($entry.to) $(if (Get-CastIfBoolean $sourcedestStripHTML[$entry.from]) {"destination field of $($entry.to) will have HTML stripped."} else {'as-is'})"
-    $sourcedestlabels[$entry.from] = $entry.to
-    $sourcedestrequired[$entry.from] = ($(Get-CastIfBoolean $entry).to ?? $false)
-    $sourceDestDataType[$entry.from] = $($entry.dest_type ?? 'Text')
-
 }
 
-read-host "$($($addressMapsByDest.GetEnumerator()).count) Location Types in Target press enter to proceed"
-
-
-
+$mappingtosmooshed = [bool]$($SMOOSHLABELS.count -gt 0)
 $sourceassets = $($allAssets | Where-Object {$_.asset_layout_id -eq $sourceassetlayout.id}) 
 $destassets = $($allAssets | Where-Object {$_.asset_layout_id -eq $destassetlayout.id}) 
 if ($sourceassets.count -lt 1) { write-host "NO SOURCE ASSETS!"; exit}
-$mappingtosmooshed = [bool]$($SMOOSHLABELS.count -gt 0)
-if ($mappingtosmooshed) {
-    $smooshmappingto = ($mapping | Where-Object { $_.from -eq 'SMOOSH' }).to
-    write-host "Smooshing $SMOOSHLABELS => $mappingtosmooshed; $smooshmappingto"
-}
+read-host "$($($addressMapsByDest.GetEnumerator()).count) Location Types in Target press enter to proceed"
+
+
+$totalcounts = @{fromablescreated=0; toablescreated=0; assetsarchived=0; assetsmoved=0;
+                 assetsskipped=0; assetsmatched=0; errored=0; sourceassetcount=$sourceassets.count;}
+
+# write-out user-defined infos before start
+if ($mappingtosmooshed) {write-host "Smooshing $SMOOSHLABELS => $mappingtosmooshed; $(($mapping | Where-Object { $_.from -eq 'SMOOSH' }).to)"}
 if ($CONSTANTS) {
-    foreach ($c in $CONSTANTS){
-        write-host "Dest Labels containing $($c.to_label) will be given static value from literal $($c.literal) as literal value!"
-    }
+    foreach ($c in $CONSTANTS){write-host "Dest Labels containing $($c.to_label) will be given static value from literal $($c.literal) as literal value!"}
 } else {write-host "No constants mapped"}
-
-if ($ListSelectEquivilencyMaps.Keys.count -gt 0){
-    Write-host "$($ListSelectEquivilencyMaps.Keys.count) listselect target items mapped for $($ListSelectEquivilencyMaps.Keys -join ",")"
-}
-
-$totalcounts = @{
-    fromablescreated=0
-    toablescreated=0
-    assetsarchived=0
-    assetsmoved=0
-    assetsskipped=0
-    assetsmatched=0
-    errored=0
-    sourceassetcount=$sourceassets.count
-}
-
+if ($ListSelectEquivilencyMaps.Keys.count -gt 0){Write-host "$($ListSelectEquivilencyMaps.Keys.count) listselect target items mapped for $($ListSelectEquivilencyMaps.Keys -join ",")"}
 Write-Host "Smooshing $(if ($excludeHTMLinSMOOSH -and $true -eq $excludeHTMLinSMOOSH) {'using plaintext value-joining'} else {'using traditional HTML value joining'})"
-
 read-host "$($sourceassets.count) source assets and $($destassets.count) dest assets. press enter to proceed"
 
 
