@@ -960,7 +960,7 @@ foreach ($originalasset in $sourceassets) {
                 $precastValue=$field.value; $field.value = $(Get-CastIfBoolean $field.value -allowFuzzy $true) ?? $null
                 Write-Host "non-empty source val on CheckBox/Boolean target; Casting '$($precastValue)' as bool...$($field.value)"
             } elseif ($destFieldType -eq "Date"){
-                $precastValue=$field.value; $field.value = Get-CoercedDate -InputDate $field.value -Cutoff '1500-01-01' -OutputFormat 'MM/DD/YYYY' ?? $null;
+                $precastValue=$field.value; $field.value = $(Get-CoercedDate -InputDate $field.value -Cutoff '1500-01-01' -OutputFormat 'MM/DD/YYYY') ?? $null;
                 Write-Host "non-empty source val on Date target; Casting '$($precastValue)' as date...$($field.value)"
             }
             $transformedFields += @{$transformedlabel = $field.value}
