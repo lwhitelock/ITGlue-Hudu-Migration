@@ -728,7 +728,7 @@ foreach ($entry in $mapping) {
     $sourcedestStripHTML[$entry.from] = [bool]$(@('t','true','y','yes') -contains "$($entry.striphtml ?? "False")".ToLower())
     write-host "mapping $($entry.from) to $($entry.to) $(if ($true -eq $sourcedestStripHTML[$entry.from]) {"destination field of $($entry.to) will have HTML stripped."} else {'as-is'})"
     $sourcedestlabels[$entry.from] = $entry.to
-    $sourcedestrequired[$entry.from] = $($entry.to ?? $false)
+    $sourcedestrequired[$entry.from] = $([bool]$(@('t','true','y','yes') -contains "$($entry.required ?? 'f')".ToLower()))
     $sourceDestDataType[$entry.from] = $($entry.dest_type ?? 'Text')
 
 }
