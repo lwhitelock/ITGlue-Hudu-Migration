@@ -559,9 +559,7 @@ function Set-LayoutsForTransfer {
     $layoutSummaries = $allLayouts  | ForEach-Object {
         [PSCustomObject]@{
             ID          = $_.id
-            Description = "$( ($_.fields | Where-Object { $_.required }).Count ) required fields, " +
-              "$( ($_.fields | Where-Object { -not $_.required }).Count ) optional fields and " +
-              "$($_.assetsInLayoutCount) assets present, originally created at $($_.created_at)"
+            OptionMessage = "$($_.name): $( ($_.fields).Count ) fields with $($_.assetsInLayoutCount) assets present"
             Name        = $_.name
     }}
     write-host "$(if ($layoutSummaries.count -ne $allLayouts.count) {
@@ -572,7 +570,7 @@ function Set-LayoutsForTransfer {
     $sourceLayout = $null
     $destLayout = $null
     while ($true) {
-        $sourceSummary = Select-ObjectFromList -objects $layoutSummaries -message "Which source / origin asset layout? [layouts without assets omitted for source]" -allowNull $false -inspectObjects $inspectlayouts
+        $sourceSummary = Select-ObjectFromList -objects $layoutSummaries -message "Which source / origin asset layout?" -allowNull $false -inspectObjects $inspectlayouts
         $sourceLayout  = $layoutMap[$sourceSummary.ID]
 
         $destSummaries = $layoutSummaries | Where-Object { $_.ID -ne $sourceLayout.id }
