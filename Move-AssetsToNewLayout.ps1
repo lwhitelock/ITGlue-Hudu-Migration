@@ -11,6 +11,20 @@ if ($currentPSVersion -lt $RequiredPSversion) {
 if (-not (Get-Command -Name test-equiv -ErrorAction SilentlyContinue)) { . $PSScriptRoot\Public\Normalize-String.ps1 }
 if (-not (Get-Command -Name Get-NormalizedDropdownOptions -ErrorAction SilentlyContinue)) { . $PSScriptRoot\Public\Get-CastIfNumeric.ps1 }
 
+function Get-CastIfNumeric {
+    param([Parameter(Mandatory)][object]$Value)
+    if ($Value -is [string]) {
+        $Value = $Value.Trim()
+    }
+    if ($Value -match '^[+-]?\d+(\.\d+)?$') {
+        try {
+            return [int][double]$Value
+        } catch {
+            return 0
+        }
+    }
+    return $Value
+}
 function Set-SmooshAssetFieldsToField {
     param (
         [PSCustomObject]$sourceAsset,
@@ -808,6 +822,9 @@ foreach ($originalasset in $sourceassets) {
         $destFieldType = $sourceDestDataType["$($field.label)"] ?? 'Text'
 
         if (-not $transformedlabel -or $null -eq $transformedlabel) {continue}
+        if ($destFieldType -eq "Number"){
+            $field.value = $(Get-CastIfNumeric $field.value) ?? $null
+        }
         if (-not $field.value -or $null -eq $field.value) {
                 write-host "no translate for $($field.label)";
                 if ($true -eq $destTranslationFieldRequired) {
@@ -825,12 +842,9 @@ foreach ($originalasset in $sourceassets) {
         } else {
             $valueEquivilencies = $null
         }
-
         if (-not $valueEquivilencies -or -not $mapping) {
             write-host "No list mapping for $($field.label) => $transformedlabel, continuing normal mapping"
         } else {
-
-
             $result = Set-MappedListSelectItemFromuserMapping `
                 -Mapping $mapping `
                 -RawValue $field.value `
@@ -857,6 +871,7 @@ foreach ($originalasset in $sourceassets) {
         if ($true -eq $stripHTML) {
             $field.value="$(Remove-HtmlTags -InputString "$($field.value)")"
         }
+
         if ($destFieldType -eq "Email" -or ($($destFieldType -eq "Text" -and $transformedlabel -like "*Email*"))){
             $field.value="$(Get-CleansedEmailAddresses -InputString "$($field.value)")".Trim()
         }
