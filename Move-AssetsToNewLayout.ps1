@@ -559,7 +559,9 @@ function Set-LayoutsForTransfer {
     $layoutSummaries = $allLayouts  | ForEach-Object {
         [PSCustomObject]@{
             ID          = $_.id
-            Description = "$($($_.fields | where-object {$_.required -and $required -eq $true}).Count) required fields, $($($_.fields | where-object {-not $_.required -or $required -eq $false}).Count) optional fields and $($_.assetsInLayoutCount) assets present, originally created at $($_.created_at)"
+            Description = "$( ($_.fields | Where-Object { $_.required }).Count ) required fields, " +
+              "$( ($_.fields | Where-Object { -not $_.required }).Count ) optional fields and " +
+              "$($_.assetsInLayoutCount) assets present, originally created at $($_.created_at)"
             Name        = $_.name
     }}
     write-host "$(if ($layoutSummaries.count -ne $allLayouts.count) {
