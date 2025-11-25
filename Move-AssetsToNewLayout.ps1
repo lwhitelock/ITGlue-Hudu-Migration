@@ -588,7 +588,7 @@ function Set-LayoutsForTransfer {
 }
 
 function Get-SourceListItemNameFieldFromID {
-    param ([string]$RawValue)
+    param ([string]$RawValue,[string]$FieldLabel)
     if ([string]::IsNullOrWhiteSpace($RawValue)){return $null}
     $mapped = $null
     if ("$RawValue" -ilike '*list_id*') {
@@ -860,7 +860,7 @@ foreach ($entry in $mapping) {
     $sourcedestStripHTML[$entry.from] = [bool]$(@('t','true','y','yes') -contains "$($entry.striphtml ?? "False")".ToLower())
     write-host "mapping $($entry.from) to $($entry.to) $(if ($true -eq $sourcedestStripHTML[$entry.from]) {"destination field of $($entry.to) will have HTML stripped."} else {'as-is'})"
     $sourcedestlabels[$entry.from] = $entry.to
-    $sourcedestrequired[$entry.from] = $((Get-CastIfBoolean ($entry.required ?? $false)) ?? $false)
+    $sourcedestrequired[$entry.from] = $((Get-CastIfBoolean ($entry.required ?? $false) -allowFuzzy $false) ?? $false)
     $sourceDestDataType[$entry.from] = $($entry.dest_type ?? 'Text')
 }
 
@@ -933,7 +933,7 @@ foreach ($originalasset in $sourceassets) {
                 }
         # pre-process listselect source values as huyman-readable
         } elseif ($field.value -ilike '*list_id*'){
-            $precastValue=$field.value; $field.value = $(Get-SourceListItemNameFieldFromID $field.value) ?? $null;
+            $precastValue=$field.value; $field.value = $(Get-SourceListItemNameFieldFromID $field.value -FieldLabel $field.label) ?? $null;
             Write-Host "non-empty source val appears to contain listIDs; Raw val '$($precastValue)' as $destFieldType... $($field.value)"
         }
 
@@ -1040,20 +1040,19 @@ foreach ($originalasset in $sourceassets) {
         $newAssetRequest["Fields"]=$transformedFields
         write-host $($($transformedFields | convertto-json -depth 5).ToString())
      }
+    $propPairs = @(
+        @{ Dest = 'PrimarySerial';       Source = 'primary_serial' }
+        @{ Dest = 'PrimaryMail';         Source = 'primary_mail' }
+        @{ Dest = 'PrimaryModel';        Source = 'primary_model' }
+        @{ Dest = 'PrimaryManufacturer'; Source = 'primary_manufacturer' }
+    )
 
-     if ($originalAsset.primary_serial){
-                $newAssetRequest["PrimarySerial"]=$originalAsset.primary_serial
-     }
-     if ($originalAsset.primary_mail){
-                $newAssetRequest["PrimaryMail"]=$originalAsset.primary_mail
-     }
-     if ($originalAsset.primary_model){
-                $newAssetRequest["PrimaryModel"]=$originalAsset.primary_model
-     }
-     if ($originalAsset.primary_manufacturer){
-                $newAssetRequest["PrimaryManufacturer"]=$originalAsset.primary_manufacturer
-     }
-
+    foreach ($pairing in $propPairs) {
+        $commonPropValue = $originalAsset.($pairing.Source)
+        if (-not [string]::IsNullOrEmpty("$commonPropValue")) {
+            $newAssetRequest[$pairing.Dest] = $commonPropValue
+        }
+    }
     try {
         write-host "$($($newAssetRequest | ConvertTo-Json -depth 66).ToString())"
         $newAsset = $(new-huduasset @newAssetRequest).asset
