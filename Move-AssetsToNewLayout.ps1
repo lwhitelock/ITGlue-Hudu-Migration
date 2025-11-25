@@ -773,7 +773,7 @@ foreach ($layout in $assetlayouts) {$layout | Add-Member -NotePropertyName asset
 #     write-host "archiving emtpy layout $($layout.name)"
 #     Set-HuduAssetLayout -id $layout.id -Active $false
 # }
-$assetlayouts=$assetlayouts | where-object {$_.assetsInLayoutCount -gt 0}
+$assetlayouts=$assetlayouts # | where-object {$_.assetsInLayoutCount -gt 0}
 $assetlayouts = $assetlayouts | Sort-Object Name
 $usablelayouts = $assetlayouts.count
 write-host "$($totallayouts - $usablelayouts) omitted and marked inactive. $totallayouts available layouts."
@@ -921,7 +921,7 @@ foreach ($originalasset in $sourceassets) {
         $destFieldType = $sourceDestDataType["$($field.label)"] ?? 'Text'
 
         # checking basic validity
-        if (-not $transformedlabel -or $null -eq $transformedlabel) {continue}
+        if (-not $transformedlabel -or $null -eq $transformedlabel) {write-host "no destination mapping for source field $($field.label)"; continue;}
         if (-not $field.value -or $null -eq $field.value -or ([string]::IsNullOrWhiteSpace($field.value))) {
                 write-host "no source value for $($field.label)";
                 if ($true -eq $destTranslationFieldRequired) {
@@ -945,8 +945,27 @@ foreach ($originalasset in $sourceassets) {
             $valueEquivilencies = $null
         }
         if (-not $valueEquivilencies -or -not $mapping) {
-            write-host "No list mapping for $($field.label) => $transformedlabel, continuing normal mapping"
+        # destination field-type validation and post-processing
+            write-host "No list mapping for $($field.label) => $transformedlabel, continuing onto destination-specific ($destFieldType) validation and casting."
+            if ($true -eq $stripHTML) {
+                $field.value="$(Remove-HtmlTags -InputString "$($field.value)")"
+            }
+            if ($destFieldType -eq "Email" -or ($($destFieldType -eq "Text" -and $transformedlabel -like "*Email*"))){
+                $field.value="$(Get-CleansedEmailAddresses -InputString "$($field.value)")".Trim()
+            }
+            if ($destFieldType -eq "Number"){
+                $precastValue=$field.value; $field.value = $(Get-CastIfNumeric $field.value) ?? $(Get-CastIfNumeric $($field.value -replace '\D+', ''));
+                Write-Host "non-empty source val on Number target; Casting '$($precastValue)' as int...$($field.value)"
+            } elseif ($destFieldType -eq "CheckBox"){
+                $precastValue=$field.value; $field.value = $(Get-CastIfBoolean $field.value -allowFuzzy $true) ?? $null
+                Write-Host "non-empty source val on CheckBox/Boolean target; Casting '$($precastValue)' as bool...$($field.value)"
+            } elseif ($destFieldType -eq "Date"){
+                $precastValue=$field.value; $field.value = Get-CoercedDate -InputDate $field.value -Cutoff '1500-01-01' -OutputFormat 'MM/DD/YYYY' ?? $null;
+                Write-Host "non-empty source val on Date target; Casting '$($precastValue)' as date...$($field.value)"
+            }
+            $transformedFields += @{$transformedlabel = $field.value}
         } else {
+        # mapping for individual listitems
             $result = Set-MappedListSelectItemFromuserMapping `
                 -Mapping $mapping `
                 -RawValue $field.value `
@@ -962,30 +981,16 @@ foreach ($originalasset in $sourceassets) {
                 Set-HuduList -Id $valueEquivilencies.list_id -ListItems $NewOptions
                 $transformedFields += @{ $transformedlabel = $field.value }
             } else {Write-Host "No value matches for list id $($valueEquivilencies.list_id) from '$($field.value)' / '$($result.Normalized)'; not configured to add list items, so leaving empty."}
-            continue
         }
         
-        # destination field-type validation and post-processing
-        if ($true -eq $stripHTML) {
-            $field.value="$(Remove-HtmlTags -InputString "$($field.value)")"
+        if ($destFieldType -ilike "Password"){
+            write-host "$($field.label) => *** [masked password] for value"
+        } else {
+            write-host "$($field.label) => $transformedlabel for value $($field.value)"
         }
-        if ($destFieldType -eq "Email" -or ($($destFieldType -eq "Text" -and $transformedlabel -like "*Email*"))){
-            $field.value="$(Get-CleansedEmailAddresses -InputString "$($field.value)")".Trim()
-        }
-        if ($destFieldType -eq "Number"){
-            $precastValue=$field.value; $field.value = $(Get-CastIfNumeric $field.value) ?? $null;
-            Write-Host "non-empty source val on Number target; Casting '$($precastValue)' as int...$($field.value)"
-        } elseif ($destFieldType -eq "CheckBox"){
-            $precastValue=$field.value; $field.value = $(Get-CastIfBoolean $field.value -allowFuzzy $true) ?? $null
-            Write-Host "non-empty source val on CheckBox/Boolean target; Casting '$($precastValue)' as bool...$($field.value)"
-        } elseif ($destFieldType -eq "Date"){
-            $precastValue=$field.value; $field.value = Get-CoercedDate -InputDate $field.value -Cutoff '1500-01-01' -OutputFormat 'MM/DD/YYYY' ?? $null;
-            Write-Host "non-empty source val on Date target; Casting '$($precastValue)' as date...$($field.value)"
-        }
-
-        $transformedFields += @{$transformedlabel = $field.value}
-        write-host "$($field.label) => $transformedlabel for value $($field.value)"
     }
+
+    # seperate section for meta-mapping address source fields to addressdata target
     foreach ($kv in $addressMapsByDest.GetEnumerator()) {
         $destLabel = $kv.Key
         $addrMap   = $kv.Value
@@ -1050,7 +1055,10 @@ foreach ($originalasset in $sourceassets) {
     foreach ($pairing in $propPairs) {
         $commonPropValue = $originalAsset.($pairing.Source)
         if (-not [string]::IsNullOrEmpty("$commonPropValue")) {
+            Write-Host "using value $commonPropValue from source $($pairing.source)->$($pairing.dest)"
             $newAssetRequest[$pairing.Dest] = $commonPropValue
+        } else {
+            Write-Host "skipping empty value for common-property, $($pairing.source)"             
         }
     }
     try {
