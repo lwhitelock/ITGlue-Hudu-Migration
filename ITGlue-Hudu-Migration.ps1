@@ -1446,7 +1446,6 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Assets.json")) {
                 $field = $AllFields | Where-Object { $_.IGLayoutID -eq $UpdateAsset.ITGObject.attributes.'flexible-asset-type-id' -and $_.ITGParsedName -eq $ITGParsed }
                 if ($field) {
                     $supported = $true
-
                     if ($field.FieldType -eq "Date") {
                         $raw = ($ITGValues.values ?? $ITGValues) -as [string]
                         $ReturnData = Get-CoercedDate -InputDate $raw -Cutoff '1000-01-01' -OutputFormat 'MM/DD/YYYY'
@@ -1459,7 +1458,6 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Assets.json")) {
                         }
                         $null = $AssetFields.add("$($field.HuduParsedName)", ("$ReturnData"))
                     } elseif ($field.FieldType -eq "Tag") {
-				
                         switch ($field.FieldSubType) {
                             "AccountsUsers" { Write-Host "Tags to Account Users are not supported $($field.FieldName) in $($UpdateAsset.Name) will need to be manually migrated, Sorry!"; $supported = $false }
                             "Checklists" { Write-Host "Tags to Checklists are not supported $($field.FieldName) in $($UpdateAsset.Name) will need to be manually migrated, Sorry!"; $supported = $false }
@@ -1506,13 +1504,9 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Assets.json")) {
                                     $($MatchedAssets | Where-Object { $_.ITGID -eq $IDMatch.id } | Select-Object @{N = 'id'; E = { $_.HuduID } }, @{N = 'name'; E = { $_.Name } })
                                 }
                                 $ReturnData = $AssetsLinked | convertto-json -compress -AsArray | Out-String
-                                $null = $AssetFields.add("$($field.HuduParsedName)", ("$ReturnData"))
-											
+                                $null = $AssetFields.add("$($field.HuduParsedName)", ("$ReturnData"))	
                             }
-					
-
                         }
-
                         if ($Supported -eq $False) {
                             $ManualLog = [PSCustomObject]@{
                                 Document_Name = $UpdateAsset.Name
@@ -1525,10 +1519,8 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Assets.json")) {
                                 Data          = $ITGValues.values.name -join ","
                                 Hudu_URL      = $UpdateAsset.HuduObject.url
                                 ITG_URL       = $UpdateAsset.ITGObject.attributes."resource-url"
-                            }
-                            $null = $ManualActions.add($ManualLog)
+                            }; $null = $ManualActions.add($ManualLog);
                         }
-
                     } elseif ($field.FieldType -eq "Upload") {
                             $ManualLog = [PSCustomObject]@{
                                 Document_Name = $UpdateAsset.Name
@@ -1541,56 +1533,57 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Assets.json")) {
                                 Data          = $ITGValues.values -join ","
                                 Hudu_URL      = $UpdateAsset.HuduObject.url
                                 ITG_URL       = $UpdateAsset.ITGObject.attributes."resource-url"
-                            }
-                            $null = $ManualActions.add($ManualLog)
+                            }; $null = $ManualActions.add($ManualLog);
                     } elseif ($field.FieldType -eq "Password") {
-                            $ITGPassword = (Get-ITGluePasswords -id $ITGValues -include related_items).data
-                            $ITGPasswordValue = ($ITGPasswordsRaw |Where-Object {$_.id -eq $ITGPassword.id}).password
-                            try {
-                                if ($ITGPasswordValue) {
-                                    $NewPasswordObject = [pscustomobject]@{
-                                    Name =  "$($UpdateAsset.name) $($Field.fieldname) $($ITGPassword.Username) Password"
-                                    Username = $ITGPassword.Username
-                                    URL = $ITGPassword.url
-                                    ITGID = $ITGPassword.id
-                                    Description = $ITGpassword.notes
-                                    CompanyId = $UpdateAsset.HuduObject.company_id
-                                    Password = $ITGPasswordValue};
-                                    $null = $AssetFields.add("$($field.HuduParsedName)", $ITGPasswordValue)
-                                    $MigratedPasswordStatus = "Into Asset"
-                                    }
-                                } catch {
-                                Write-Host "Error occured adding field, possible duplicate name" -ForegroundColor Red
-                                $ManualLog = [PSCustomObject]@{
-                                    Document_Name = $UpdateAsset.Name
-                                    Asset_Type    = "Asset Field"
-                                    Company_Name  = $UpdateAsset.HuduObject.company_name
-                                    HuduID        = $UpdateAsset.HuduID
-                                    Field_Name    = "$field.HuduParsedName"
-                                    Notes         = "Failed to add password to Asset"
-                                    Action        = "Manually add the password to the asset"
-                                    Data          = ($ITGPassword.attributes.'resource-url' -replace '[^\x09\x0A\x0D\x20-\xD7FF\xE000-\xFFFD\x10000\x10FFFF]')
-                                    Hudu_URL      = $UpdateAsset.HuduObject.url
-                                    ITG_URL       = $UpdateAsset.ITGObject.attributes.'resource-url'
-                                }
-                                $null = $ManualActions.add($ManualLog)
-                                $MigratedPasswordStatus = "Failed to add"
+                        $ITGPassword = (Get-ITGluePasswords -id $ITGValues -include related_items).data
+                        $ITGPasswordValue = ($ITGPasswordsRaw |Where-Object {$_.id -eq $ITGPassword.id}).password
+                        try {
+                            if ($ITGPasswordValue) {
+                                $NewPasswordObject = [pscustomobject]@{
+                                Name =  "$($UpdateAsset.name) $($Field.fieldname) $($ITGPassword.Username) Password"
+                                Username = $ITGPassword.Username
+                                URL = $ITGPassword.url
+                                ITGID = $ITGPassword.id
+                                Description = $ITGpassword.notes
+                                CompanyId = $UpdateAsset.HuduObject.company_id
+                                Password = $ITGPasswordValue};
+                                $null = $AssetFields.add("$($field.HuduParsedName)", $ITGPasswordValue)
+                                $MigratedPasswordStatus = "Into Asset"
                             }
-                            $MigratedPassword = [PSCustomObject]@{
-                                "Name"      = $ITGPassword.attributes.name
-                                "ITGID"     = $ITGPassword.id
-                                "HuduID"    = $UpdateAsset.HuduID
-                                "Matched"   = $true
-                                "ITGObject" = $ITGPassword
-                                "Imported"  = $MigratedPasswordStatus
-                            }
+                        } catch {
+                            Write-Host "Error occured adding field, possible duplicate name" -ForegroundColor Red
+                            $ManualLog = [PSCustomObject]@{
+                                Document_Name = $UpdateAsset.Name
+                                Asset_Type    = "Asset Field"
+                                Company_Name  = $UpdateAsset.HuduObject.company_name
+                                HuduID        = $UpdateAsset.HuduID
+                                Field_Name    = "$field.HuduParsedName"
+                                Notes         = "Failed to add password to Asset"
+                                Action        = "Manually add the password to the asset"
+                                Data          = ($ITGPassword.attributes.'resource-url' -replace '[^\x09\x0A\x0D\x20-\xD7FF\xE000-\xFFFD\x10000\x10FFFF]')
+                                Hudu_URL      = $UpdateAsset.HuduObject.url
+                                ITG_URL       = $UpdateAsset.ITGObject.attributes.'resource-url'
+                            }; $null = $ManualActions.add($ManualLog); $MigratedPasswordStatus = "Failed to add";
+                        }
+                        $MigratedPassword = [PSCustomObject]@{
+                            "Name"      = $ITGPassword.attributes.name
+                            "ITGID"     = $ITGPassword.id
+                            "HuduID"    = $UpdateAsset.HuduID
+                            "Matched"   = $true
+                            "ITGObject" = $ITGPassword
+                            "Imported"  = $MigratedPasswordStatus
+                        }
                         $null = $MatchedAssetPasswords.add($MigratedPassword)
-                    } elseif ($CurrentVersion -ge [version]("2.37.1")) {
+                    } elseif ($field.FieldType -eq "Number") {
+                        if ($CurrentVersion -ge [version]("2.37.1")){
                             # This version won't cast doubles for 'number' fields. It expects only integers.
                             $coerced = Get-CastIfNumeric ($_.value -replace '[^\x09\x0A\x0D\x20-\xD7FF\xE000-\xFFFD\x10000\x10FFFF]')
                             $null = $AssetFields.add("$($field.HuduParsedName)", [string]"$coerced")
-                    }  else {
-                        $null = $AssetFields.add("$($field.HuduParsedName)", [string]"($_.value -replace '[^\x09\x0A\x0D\x20-\xD7FF\xE000-\xFFFD\x10000\x10FFFF]')")
+                        }  else {
+                            $null = $AssetFields.add("$($field.HuduParsedName)", [string]"$($($_.value) -replace '[^\x09\x0A\x0D\x20-\xD7FF\xE000-\xFFFD\x10000\x10FFFF]')")
+                        }
+                    } else {
+                        $null = $AssetFields.add("$($field.HuduParsedName)", [string]"$($_.value)")
                     }
                 } else {
                     Write-Host "Warning $ITGParsed : $ITGValues Could not be added" -ForegroundColor Red
