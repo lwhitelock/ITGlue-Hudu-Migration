@@ -91,3 +91,10 @@ $RelatedPasswords = $FreshPasswords |? {$_.data.relationships.'related-items'.da
 
 $ConfigurationRelationsToCreate = Get-HuduRelationObject -ITGlueSourceObjects $RelatedConfigurations
 $AssetRelationsToCreate = Get-HuduRelationObject -ITGlueSourceObjects $RelatedAssets
+$PasswordRelationsToCreate = Get-HuduRelationObject -ITGlueSourceObjects $RelatedPasswords
+
+<# Uncomment and run the block below
+$createdConfigurationRelations =  $ConfigurationRelationsToCreate | % {New-HuduRelation -FromableType $_.FromableType -FromableID $_.FromableID -ToableID $_.ToableID -ToableType $_.ToableType}
+$createdAssetRelations =  $AssetRelationsToCreate | % {New-HuduRelation -FromableType $_.FromableType -FromableID $_.FromableID -ToableID $_.ToableID -ToableType $_.ToableType}
+$createdPasswordRelations =  $PasswordRelationsToCreate | % {New-HuduRelation -FromableType $_.FromableType -FromableID $_.FromableID -ToableID $_.ToableID -ToableType $_.ToableType}
+#>
