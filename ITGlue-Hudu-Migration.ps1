@@ -1321,7 +1321,7 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Assets.json")) {
         if ($ScopedMigration) {
             $OriginalLayoutsCount = $($MatchedLayouts.count)
             Write-Host "Setting layouts to those in scope..." -foregroundcolor Yellow               
-            $MatchedLayouts = Filter-ScopedAssets -Layouts $MatchedLayouts -ScopedCompanyIds $ScopedCompanyIds
+            $MatchedLayouts = Filter-ScopedAssets -Layouts $MatchedLayouts -ScopedCompanyIds $ScopedITGCompanyIds
             Write-Host "Layouts scoped... $OriginalLayoutsCount => $($MatchedLayouts.count)"
         }
 
