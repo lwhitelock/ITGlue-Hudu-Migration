@@ -1332,9 +1332,9 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Assets.json")) {
                 $HuduCompanyID = ($MatchedCompanies | Where-Object { $_.ITGID -eq $ITGAsset.attributes.'organization-id' }).HuduID
 
                 $AssetFields = @{ 
-                    'Imported From ITGlue' = Get-Date -Format "o"
-                    'ITGlue URL' = $ITGAsset.attributes.'resource-url'
-                    'ITGlue ID' = $ITGAsset.id
+                    'imported_from_itglue' = Get-Date -Format "o"
+                    'itglue_url' = $ITGAsset.attributes.'resource-url'
+                    'itglue_id' = $ITGAsset.id
                 }
 			
                 $NewHuduAsset = (New-HuduAsset -name $ITGAsset.attributes.name -company_id $HuduCompanyID -asset_layout_id $Layout.HuduObject.id -fields $AssetFields).asset
