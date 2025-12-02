@@ -45,8 +45,9 @@ $FontAwesomeUpgrade = Get-FontAwesomeMap
 # Add Timed (Noninteractive) Messages Helper
 . $PSScriptRoot\Public\Write-TimedMessage.ps1
 
-# Add numeral casting helper method
+# Add numeral casting helper method, populated items helper
 . $PSScriptRoot\Public\Get-CastIfNumeric.ps1
+. $PSScriptRoot\Public\Get-ITGFieldPopulated.ps1
 
 # Add migration scope helper
 . $PSScriptRoot\Public\Set-MigrationScope.ps1
@@ -1159,21 +1160,24 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\AssetLayouts.json")) 
             Write-Host "Fetching Flexible Assets from IT Glue (This may take a while)"
             $FlexAssetsSelect = { (Get-ITGlueFlexibleAssets -page_size 1000 -page_number $i -filter_flexible_asset_type_id $UpdateLayout.ITGID -include related_items).data }
             $FlexAssets = Import-ITGlueItems -ItemSelect $FlexAssetsSelect
-		
-				
-		
+            $fullyPopulated = if ($FlexLayoutFields -and $FlexLayoutFields.count -gt 1 -and $FlexAssets -and $FlexAssets.count -gt 1) {Get-ITGFieldPopulated -FlexLayoutFields $FlexLayoutFields -FlexAssets $FlexAssets} else {@{}}
+
             $UpdateLayoutFields = foreach ($ITGField in $FlexLayoutFields) {
+                $ITGFieldRequired = [bool]$ITGField.Attributes.required
+                if ($ITGField.attributes.kind -eq "Tag"){
+                    $requiredForHudu = $false
+                } else {
+                    $requiredForHudu = $ITGFieldRequired -and ($($fullyPopulated[$ITGField.Attributes.name] ?? $false) -eq $true)
+                }
                 $LayoutField = @{
                     label        = $ITGField.Attributes.name
                     show_in_list = $ITGField.Attributes."show-in-list"
                     position     = $ITGField.Attributes.order
-                    required     = $ITGField.Attributes.required
+                    required     = $requiredForHudu
                     hint         = $ITGField.Attributes.hint
                 }
 
                 $supported = $true
-		
-
                 switch ($ITGField.Attributes.kind) {
                     "Checkbox" {
                         $LayoutField.add("field_type", "CheckBox")
@@ -1190,7 +1194,15 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\AssetLayouts.json")) 
                     }
                     "Select" {
                         $ListName = "$($UpdateLayout.HuduObject.Name)-$($ITGField.Attributes.name)"
-                        $ListItems = Get-NormalizedDropdownOptions -OptionsRaw "$($ITGField.Attributes."default-value")"
+                        $ListItems = Get-NormalizedDropdownOptions -OptionsRaw "$($ITGField.Attributes.'default-value')"
+                        $fieldKey = $ITGField.Attributes.'name-key'
+                        # if there are other values than the list items ITG advertises, collect those for listselect as well.
+                        if ($null -ne $FlexAssets -and $FlexAssets.count -gt 0) {
+                            $ListItems = @(
+                                $ListItems
+                                Get-ITGFieldUniqueValues -FlexAssets $FlexAssets -FieldKey $fieldKey
+                            ) | Where-Object { -not [string]::IsNullOrWhiteSpace($_) } | Sort-Object { $_.ToLowerInvariant().Trim() } -Unique                                                    
+                        }
                         $ListObject = $($(Get-HuduLists -name $ListName | Select-Object -First 1) ?? $(New-HuduList -Items $ListItems -Name "$(Get-UniqueListName -BaseName $ListName -allowReuse $false)"))
                         $LayoutField.add("list_id", $ListObject.Id)
                         $LayoutField.add("field_type", "ListSelect")
