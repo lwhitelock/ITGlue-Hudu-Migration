@@ -57,33 +57,39 @@ function ConvertSecureStringToPlainText {
     [System.Runtime.InteropServices.Marshal]::ZeroFreeBSTR($BSTR)
     return $plainText
 }
-function Select-ObjectFromList($objects,$message,$allowNull = $false) {
-    $validated=$false
-    while ($validated -eq $false){
+function Select-ObjectFromList($objects, $message, $allowNull = $false) {
+    $validated = $false
+    while (-not $validated) {
+        if ($allowNull) { Write-Host "0: None/Custom" }
 
         for ($i = 0; $i -lt $objects.Count; $i++) {
             $object = $objects[$i]
-            if ($null -ne $object.name) {
-                Write-Host "$($i+1): $($object.name)"
-            } elseif ($null -ne $object.attributes.name) {
-                Write-Host "$($i+1): $($object.attributes.name)"
+            $displayLine = if ($null -ne $object.OptionMessage) {
+                "$($i+1): $($object.OptionMessage)"
+            } elseif (-not $([string]::IsNullOrEmpty($object.attributes.name))) {
+                "$($i+1): $($object.attributes.name)"
+            } elseif (-not $([string]::IsNullOrEmpty($object.name))) {
+                "$($i+1): $($object.name)"
             } else {
-                Write-Host "$($i+1): $($object)"
+                "$($i+1): $($object)"
             }
+            Write-Host $displayLine -ForegroundColor $(if ($i % 2 -eq 0) { 'Cyan' } else { 'Yellow' })
         }
-        if ($allowNull -eq $true) {
-            Write-Host "0: None/Custom"
-        }        
-        Write-Host $message
-        $choice = Read-Host
-        if ($null -eq $choice -or $choice -lt 0 -or $choice -gt $objects.Count +1) {
-            Write-Host -message "Invalid selection. Please enter a number from above"
+
+        $raw = Read-Host $message
+
+        $parsed = 0
+        if (-not [int]::TryParse($raw, [ref]$parsed)) {
+            Write-Host "Invalid input. Please enter a number." -ForegroundColor Red
+            continue
         }
-        if ($choice -eq 0 -and $true -eq $allowNull) {
-            return $null
-        }
-        if ($null -ne $objects[$choice - 1]){
-            return $objects[$choice - 1]
+
+        if ($parsed -eq 0 -and $allowNull) { return $null }
+
+        if ($parsed -ge 1 -and $parsed -le $objects.Count) {
+            return $objects[$parsed - 1]
+        } else {
+            Write-Host "Invalid selection. Please enter a number from the list." -ForegroundColor Red
         }
     }
 }
@@ -438,7 +444,19 @@ if ($InitType -eq 'Full') {
     switch ($ScopedMigration) {
         "1" {$ScopedMigration = $false}
         "2" {$ScopedMigration = $true}
-    }        
+    }
+    ############################## Checklists ##############################
+    while ($importChecklists -notin (1,2)) {$importChecklists = Read-Host "[ADVANCED, default 1/$false] Would you like to import Checklists? (requires web access to ITGlue).`n 1) Yes`n 2) No, Skip Checklists`n(1/2)"}
+    switch ($importChecklists) {
+        "2" {$importChecklists = $true}
+        "1" {$importChecklists = $false}
+    }
+    ############################ PasswordFolders ############################
+    while ($importPasswordFolders -notin (1,2)) {$importPasswordFolders = Read-Host "[ADVANCED, default 1/$false] Would you like to import Password Folders? (requires web access to ITGlue).`n 1) Yes`n 2) No, Skip Checklists`n(1/2)"}
+    switch ($importPasswordFolders) {
+        "2" {$importPasswordFolders = $true; $GlobalPasswordFolderMode = [bool]$("global" -eq $(Select-ObjectFromList -message "Password folder import mode-" -objects @("global","per-company")));}
+        "1" {$importPasswordFolders = $false; $GlobalPasswordFolderMode = $null}
+    }
 }
 ############################ Migration Logs Path ##############################
 $MigrationLogs = $environmentSettings.MigrationLogs
