@@ -2,7 +2,7 @@
 $global_password_folders = @()
 $ITGPasswordFolders =  @{}
 $MatchedPasswordFolders = @()
-$GlobalPasswordFolderMode = $GlobalPasswordFolderMode ?? $([bool]$("global" -eq $(Select-ObjectFromList -message "Password folder import mode-" -objects @("global","per-company"))))
+$GlobalPasswordFolderMode = $false
 
 if (-not (Get-Command -Name Get-ITGPasswordFolders -ErrorAction SilentlyContinue)) { . $PSScriptRoot\Public\Get-PasswordFolders.ps1 }
 if (-not (Get-Command -Name Get-ITGlueJWTAuth -ErrorAction SilentlyContinue)) { . $PSScriptRoot\Public\JWT-Auth.ps1 }

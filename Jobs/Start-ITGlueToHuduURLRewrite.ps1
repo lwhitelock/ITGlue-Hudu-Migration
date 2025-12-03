@@ -1,12 +1,3 @@
-function Start-ITGlueToHuduURLRewrite {
-
-$UpdateArticles = (Get-HuduArticles | Where-Object {$_.content -like "*$ITGURL*"})
-$UpdateAssets = $MatchedAssets | Where-Object {$_.HuduObject.fields.value -like "*$ITGURL*"}
-$UpdatePasswords = $MatchedPasswords | Where-Object {$_.HuduObject.description -like "*$ITGURL*"}
-$UpdateAssetPasswords = $MatchedAssetPasswords | Where-Object {$_.ITGObject.attributes.notes -like "*$ITGURL*"}
-$UpdateCompanyNotes = $MatchedCompanies | Where-Object {$_.HuduCompanyObject.notes -like "*$ITGURL*"}
-
-
 # Articles
 $articlesUpdated = @()
 foreach ($articleFound in $UpdateArticles) {
@@ -32,6 +23,7 @@ Write-TimedMessage -Timeout 3 -Message "Snapshot Point: Article URLs Replaced. C
 # Assets
 $assetsUpdated = @()
 foreach ($assetFound in $UpdateAssets.HuduObject) {
+    $originalAsset = $assetFound
     $replacedStatus = 'clean'
     $customFields = @()
 
@@ -71,6 +63,7 @@ foreach ($assetFound in $UpdateAssets.HuduObject) {
         updated_asset  = $AssetPost.asset
     }
 }
+
 $assetsUpdated | ConvertTo-Json -depth 100 |Out-file "$MigrationLogs\ReplacedAssetsURL.json"
 Write-TimedMessage -Timeout 3 -Message  "Snapshot Point: Assets URLs Replaced. Continue?" -DefaultResponse "continue to Passwords Matching, please."
 
@@ -113,5 +106,5 @@ foreach ($companyFound in $UpdateCompanyNotes.HuduCompanyObject) {
     }
 
 }
-return $companyNotesUpdated
-}
+$companyNotesUpdated | ConvertTo-Json -depth 100 |Out-file "$MigrationLogs\ReplacedCompaniesURL.json"
+Write-TimedMessage -Timeout 3 -Message "Snapshot Point: Company Notes URLs Replaced. Continue?"  -DefaultResponse "continue to Manual Actions, please."
