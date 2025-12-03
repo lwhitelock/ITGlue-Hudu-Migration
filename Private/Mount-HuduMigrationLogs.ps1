@@ -70,3 +70,23 @@ function Mount-HuduMigrationLogs {
         }
     }
 }
+
+function Ensure-MigrationLogsDir {
+    param ([string]$MigrationLogs)
+    $ResumeFound = $false
+    if (Test-Path -Path "$MigrationLogs") {
+        if ($ResumePrevious -eq $true) {
+            Write-Host "A previous attempt has been found job will be resumed from the last successful section" -ForegroundColor Green
+            $ResumeFound = $true
+        } else {
+            Write-Host "A previous attempt has been found, resume is disabled so this will be lost, if you haven't reverted to a snapshot, a resume is recommended" -ForegroundColor Red
+            Write-TimedMessage -Timeout 12 -Message "Press any key to continue or ctrl + c to quit and edit the ResumePrevious setting" -DefaultResponse "proceed with new migration, do not resume"
+            $ResumeFound = $false
+        }
+    } else {
+        Write-Host "No previous runs found creating log directory"
+        $null = New-Item "$MigrationLogs" -ItemType "directory"
+        $ResumeFound = $false
+    }
+    return $ResumeFound
+}

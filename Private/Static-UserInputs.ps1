@@ -31,3 +31,15 @@ function Confirm-Import {
         }	
     }
 }
+
+function Build-JobsArray {
+    param ([array]$eligibleItems)
+    $jobsList=@()
+    foreach ($eligibleItem in $eligibleItems) {
+        $jobAvail = Get-Variable -Name $eligibleItem.varname -ValueOnly -ErrorAction SilentlyContinue
+        if ($jobAvail -eq 1) {
+            $jobsList += $eligibleItem.job
+        }
+    }
+
+}
