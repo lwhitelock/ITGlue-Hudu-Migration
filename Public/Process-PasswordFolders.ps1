@@ -12,6 +12,12 @@ $PFMappings = $PFMappings ?? @{}
 # $PFMappings["Software &"]="Software & Applications"
 # $PFMappings["Software and"]="Software & Applications"
 
+function ChoseBest-ByName {
+    param ([string]$Name,[array]$choices)
+return $($choices | ForEach-Object {
+[pscustomobject]@{Choice = $_; Score  = $(Get-SimilaritySafe -a "$Name" -b $_.name);}} | where-object {$_.Score -ge 0.98} | Sort-Object Score -Descending | select-object -First 1).Choice
+}
+
 function remove-hudupasswordfromfolder {
     Param (
         [Parameter(Mandatory = $true)]
