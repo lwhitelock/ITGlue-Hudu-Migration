@@ -2361,8 +2361,7 @@ if ($OptionalImageAnchorReplace -eq $true -or $OptionalImageAnchorReplace -eq 1)
     Write-Host "Replacing links to hosted public photos in Hudu Articles"
     if (-not $(get-command -name Set-HuduImageAnchorsReplaced -ErrorAction SilentlyContinue)){. $PSScriptRoot\Public\Set-HuduImageAnchorsReplaced.ps1}
     Get-AllHuduHostedImageAnchorsReplaced -allhuduArticles $(get-huduarticles)
-}
-
+} else {write-host "skpping image-anchors replace in Hudu articles"}
 
 ############################### Generate Manual Actions Report ###############################
 
