@@ -81,6 +81,6 @@ function Get-AllHuduHostedImageAnchorsReplaced {
     param ([array]$allHuduArticles=@(),[bool]$includeUploads=$false)
     foreach ($a in $allarticles) {
     if ([string]::IsNullOrEmpty($a.content)){write-host "skipping $($a.id)"; continue;}
-        Set-HuduArticle -id $a.id -Content "$(Set-HuduImageAnchorsReplaced -Html $a.content)"
+        Set-HuduArticle -id $a.id -Content "$(Set-HuduImageAnchorsReplaced -Html $a.content -IncludeUploads $includeUploads)"
     }
 }
