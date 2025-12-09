@@ -435,6 +435,14 @@ if ($InitType -eq 'Full') {
         "1" {$importPasswordFolders = $false; $GlobalPasswordFolderMode = $null}
     }    
 
+    ############################ Image Anchors Regex ############################
+    while ($OptionalImageAnchorReplace -notin (1,2)) {$OptionalImageAnchorReplace = Read-Host "[Other, default 1/$true] Would you like to replace links to hosted images in Hudu? (Not commonly needed but can be good for images-as-links in articles).`n 1) Yes`n 2) No, skip image-links`n(1/2)"}
+    switch ($OptionalImageAnchorReplace) {
+        "1" {$OptionalImageAnchorReplace = $true}
+        "2" {$OptionalImageAnchorReplace = $false}
+    }    
+
+
 }
 ############################ Migration Logs Path ##############################
 $MigrationLogs = $environmentSettings.MigrationLogs

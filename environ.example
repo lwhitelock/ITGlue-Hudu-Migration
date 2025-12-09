@@ -80,19 +80,19 @@ $ImportFlexibleAssetLayouts = 1
 $ImportFlexibleAssets       = 1
 $ImportArticles             = 1
 $ImportPasswords            = 1
+$OptionalImageAnchorReplace = 1
 
 # If you want to have script wait for user interaction between steps. Select 1 for yes, 2 for noninteractive/no
 $NonInteractive             = 2
-
-# If you want to scope migration to just come companies, select 2, otherwise leave at 1 for typical, full migration
-$ScopedMigration            = 1
-$MergedOrganizationTypes    = 1
 
 # these require JWT authentication to perform [default is 1/false; 2 for true]
 $importChecklists           = 1
 $importPasswordFolders      = 1
 $GlobalPasswordFolderMode = $true # or $false
 
+# If you want to scope migration to just come companies, select 2, otherwise leave at 1 for typical, full migration
+$ScopedMigration            = 1
+$MergedOrganizationTypes    = 1
 
 # pre-designated array/list of prescoped/preselected companies for scoped migration (typically for faster testing)
 # prescoped Companies

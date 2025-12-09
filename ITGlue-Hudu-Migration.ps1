@@ -2357,6 +2357,13 @@ foreach ($companyFound in $UpdateCompanyNotes.HuduCompanyObject) {
 $companyNotesUpdated | ConvertTo-Json -depth 100 |Out-file "$MigrationLogs\ReplacedCompaniesURL.json"
 Write-TimedMessage -Timeout 3 -Message "Snapshot Point: Company Notes URLs Replaced. Continue?"  -DefaultResponse "continue to Manual Actions, please."
 
+if ($OptionalImageAnchorReplace -eq $true -or $OptionalImageAnchorReplace -eq 1){
+    Write-Host "Replacing links to hosted public photos in Hudu Articles"
+    if (-not $(get-command -name Set-HuduImageAnchorsReplaced -ErrorAction SilentlyContinue)){. $PSScriptRoot\Public\Set-HuduImageAnchorsReplaced.ps1}
+    Get-AllHuduHostedImageAnchorsReplaced -allhuduArticles $(get-huduarticles)
+}
+
+
 ############################### Generate Manual Actions Report ###############################
 
 $ManualActions | ForEach-Object {
