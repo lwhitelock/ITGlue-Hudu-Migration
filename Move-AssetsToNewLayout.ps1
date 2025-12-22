@@ -642,6 +642,32 @@ function Get-SourceListItemNameFieldFromID {
         return $RawValue
     }
 }
+function SafeDecode {
+    [CmdletBinding()]
+    param (
+        [Parameter(Mandatory)]
+        [AllowNull()]
+        [object]$InputObject
+    )
+
+    if ($null -eq $InputObject) { return $null }
+
+    if ($InputObject -isnot [string]) {
+        return $InputObject
+    }
+
+    $s = $InputObject.Trim()
+    if ([string]::IsNullOrWhiteSpace($s)) { return $null }
+
+    try {
+        return $s | ConvertFrom-Json -ErrorAction Stop
+    } catch {
+        # Not valid JSON; just return the original string
+        return $InputObject
+    }
+}
+
+
 function Set-MappedListSelectItemFromuserMapping {
     [OutputType([hashtable])]
     [CmdletBinding()]
@@ -1019,8 +1045,13 @@ foreach ($originalasset in $sourceassets) {
                 }
         # pre-process listselect source values as huyman-readable
         } elseif ($field.value -ilike '*list_id*'){
-            $precastValue=$field.value; $field.value = $(Get-SourceListItemNameFieldFromID $field.value -FieldLabel $field.label) ?? $null;
-            Write-Host "non-empty source val appears to contain listIDs; Raw val '$($precastValue)' as $destFieldType... $($field.value)"
+            $precastValue=$field.value;
+            $listItemId = $null; 
+            $listItemId = $(SafeDecode $field.value).list_ids[0]
+            $humanValue = $($(get-hudulists).list_items | where-object {$_.id -eq $listItemId} | select-object -first 1).name
+
+            $field.value = $humanValue
+            Write-Host "non-empty source val appears to contain listIDs; Raw val '$($precastValue)' as $destFieldType... $($field.value)" -foregroundColor DarkCyan
         }
 
         # handle listselect item-level mappings if present
@@ -1051,6 +1082,7 @@ foreach ($originalasset in $sourceassets) {
             }
             $transformedFields += @{$transformedlabel = $field.value}
         } else {
+            if ([string]::IsNullOrWhiteSpace($field.value)){continue}
         # mapping for individual listitems
             $result = Set-MappedListSelectItemFromuserMapping `
                 -Mapping $mapping `
@@ -1062,7 +1094,7 @@ foreach ($originalasset in $sourceassets) {
                 Write-Host "$transformedlabel value '$($field.value)' mapped to listselect item '$($result.Key)'"
                 $transformedFields += @{ $transformedlabel = $result.Key }
             } elseif (Get-CastIfBoolean $valueEquivilencies.add_listitems) {
-                write-host "List item not in range, adding $($field.value) to list id $($valueEquivilencies.list_id)..."
+                write-host "List item not in range, adding $($field.value) to list id $($valueEquivilencies.list_id)..." -ForegroundColor Yellow
                 $listCache = Refresh-ListCache
                 Ensure-HuduListItemByName -ListId $valueEquivilencies.list_id -Name "$($field.value)".Trim() -listNameExistsByListId $listCache
                 $transformedFields += @{ $transformedlabel = $("$($field.value)".Trim()) }
@@ -1235,7 +1267,7 @@ if ($newlayoutname -ne $sourceassetlayout.name -or $true -eq $setsourcelayoutarc
     Set-HuduAssetLayout -id $sourceassetlayout.id -Name $newlayoutname -Active $false
 }
 if ($true -eq $setsourceassetsarchived) {
-    foreach ($assetarch in $(Get-HuduAssets -AssetLayoutId $sourceassetlayout.id | where-object {$_.archived -ne $true})) {
+    foreach ($originalasset in $sourceassets) {
         $result=Set-HuduAssetArchive -id $assetarch.id -CompanyId $assetarch.company_id -archive $true
         $totalcounts.assetsarchived=$(if ($result) {$totalcounts.assetsarchived+1} else {$totalcounts.assetsarchived})
     }
