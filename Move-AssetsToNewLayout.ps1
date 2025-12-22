@@ -171,7 +171,7 @@ function Get-SmooshedLinkableDescription {
 Related $($linkable.LinkedLayout.name) - $($linkable.LinkedAsset.name)
 "@    
     }
-    $Description = "$( ($_.fields | Where-Object {$_.required}).Count ) required fields, $( ($_.fields | Where-Object {-not $_.required}).Count ) optional fields ..."
+    $description = "$description<br><hr>$descriptor"
     }
     return $description
 }
@@ -722,6 +722,60 @@ function Set-MappedListSelectItemFromuserMapping {
     # No match
     return $result
 }
+
+function Ensure-HuduListItemByName {
+    param(
+        [Parameter(Mandatory)][int]$ListId,
+        [Parameter(Mandatory)][string]$Name,
+        [hashtable]$listNameExistsByListId
+    )
+
+    $nameTrim = $Name.Trim()
+    $needle = $nameTrim.ToLowerInvariant()
+
+    if (-not $listNameExistsByListId.ContainsKey($ListId)) {
+        Refresh-ListCache
+    }
+
+    $map = $listNameExistsByListId[$ListId]
+    if ($map -and $map.ContainsKey($needle)) {
+        return $map[$needle]  # return canonical name as stored
+    }
+
+    # Add item to list
+    $list = Get-HuduLists -Id $ListId
+    $listName = $list.name
+
+    $items = @()
+    foreach ($existing in ($list.list_items ?? @())) {
+        $items += @{ id = [int]$existing.id; name = [string]$existing.name }
+    }
+    $items += @{ name = $nameTrim }
+
+    $null = Set-HuduList -Id $ListId -Name $listName -ListItems $items
+
+    # refresh cache and return
+    Refresh-ListCache
+    $map = $listNameExistsByListId[$ListId]
+    if ($map.ContainsKey($needle)) { return $map[$needle] }
+
+    throw "Failed to add/list item '$Name' to list $ListId"
+}
+function Refresh-ListCache {
+    $listNameExistsByListId = @{}
+    foreach ($l in Get-HuduLists) {
+        $lid = [int]$l.id
+        $map = @{}
+        foreach ($it in ($l.list_items ?? @())) {
+            if ($it.name) {
+                $map[$it.name.ToString().Trim().ToLowerInvariant()] = [string]$it.name
+            }
+        }
+        $listNameExistsByListId[$lid] = $map
+    }
+    return $listNameExistsByListId
+}
+
 function Write-ErrorObjectsToFile {
     param (
         [Parameter(Mandatory)]
@@ -1008,10 +1062,10 @@ foreach ($originalasset in $sourceassets) {
                 Write-Host "$transformedlabel value '$($field.value)' mapped to listselect item '$($result.Key)'"
                 $transformedFields += @{ $transformedlabel = $result.Key }
             } elseif (Get-CastIfBoolean $valueEquivilencies.add_listitems) {
-                Write-Host "'$($field.value)' not found in list item matches, adding to list items for list id $($valueEquivilencies.list_id)"
-                $NewOptions = @($valueEquivilencies.list_options) + @("$($field.value)")
-                Set-HuduList -Id $valueEquivilencies.list_id -ListItems $NewOptions
-                $transformedFields += @{ $transformedlabel = $field.value }
+                write-host "List item not in range, adding $($field.value) to list id $($valueEquivilencies.list_id)..."
+                $listCache = Refresh-ListCache
+                Ensure-HuduListItemByName -ListId $valueEquivilencies.list_id -Name "$($field.value)".Trim() -listNameExistsByListId $listCache
+                $transformedFields += @{ $transformedlabel = $("$($field.value)".Trim()) }
             } else {Write-Host "No value matches for list id $($valueEquivilencies.list_id) from '$($field.value)' / '$($result.Normalized)'; not configured to add list items, so leaving empty."}
         }
         
