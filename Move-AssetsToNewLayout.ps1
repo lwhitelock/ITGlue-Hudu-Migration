@@ -781,7 +781,7 @@ function Ensure-HuduListItemByName {
     $null = Set-HuduList -Id $ListId -Name $listName -ListItems $items
 
     # refresh cache and return
-    Refresh-ListCache
+    $listNameExistsByListId = Refresh-ListCache
     $map = $listNameExistsByListId[$ListId]
     if ($map.ContainsKey($needle)) { return $map[$needle] }
 
