@@ -748,6 +748,104 @@ function Set-MappedListSelectItemFromuserMapping {
     # No match
     return $result
 }
+function Convert-FieldArrayToMap {
+    param([Parameter(Mandatory)][object[]]$FieldArray)
+
+    $map = @{}
+    foreach ($ht in $FieldArray) {
+        if ($ht -isnot [hashtable] -and $ht -isnot [System.Collections.IDictionary]) { continue }
+        foreach ($k in $ht.Keys) {
+            $map[$k] = $ht[$k]
+        }
+    }
+    return $map
+}
+
+function Merge-FieldMaps {
+    param(
+        [Parameter(Mandatory)][hashtable]$TransformedMap,
+        [Parameter(Mandatory)][hashtable]$MatchedMap,
+        [Parameter(Mandatory)][object[]]$LayoutFields,   # destassetlayout.fields
+        [string]$RichTextSeparator = "`n`n---`n`n"
+    )
+
+    # Build label -> field_type lookup once
+    $typeByLabel = @{}
+    foreach ($lf in $LayoutFields) {
+        if ($lf.label) { $typeByLabel[$lf.label] = ($lf.field_type ?? $lf.type) }
+    }
+
+    $out = @{}
+    $allLabels = @($TransformedMap.Keys + $MatchedMap.Keys) | Select-Object -Unique
+
+    foreach ($label in $allLabels) {
+        $t = $TransformedMap[$label]
+        $m = $MatchedMap[$label]
+        $fieldType = $typeByLabel[$label]
+
+        $tBlank = [string]::IsNullOrWhiteSpace([string]$t)
+        $mBlank = [string]::IsNullOrWhiteSpace([string]$m)
+
+        if ($fieldType -eq "RichText") {
+            if (-not $tBlank -and -not $mBlank) {
+                $out[$label] = ([string]$t) + $RichTextSeparator + ([string]$m)
+            } elseif (-not $tBlank) {
+                $out[$label] = $t
+            } elseif (-not $mBlank) {
+                $out[$label] = $m
+            }
+            continue
+        }
+
+        # Non-richtext: prefer transformed unless it's blank
+        if (-not $tBlank) {
+            $out[$label] = $t
+        } elseif (-not $mBlank) {
+            $out[$label] = $m
+        }
+    }
+
+    return $out
+}
+function FieldListToMap {
+    param([object[]]$FieldList)
+
+    $map = @{}
+    foreach ($ht in ($FieldList ?? @())) {
+        if ($ht -isnot [System.Collections.IDictionary]) { continue }
+        foreach ($k in $ht.Keys) {
+            $map[$k] = $ht[$k]   # last wins
+        }
+    }
+    $map
+}
+
+function MapToFieldList {
+    param(
+        [hashtable]$Map,
+        [object[]]$LayoutFields = $null  # optional for ordering
+    )
+
+    $out = @()
+
+    if ($LayoutFields) {
+        foreach ($lf in $LayoutFields) {
+            $label = $lf.label
+            if ($label -and $Map.ContainsKey($label)) {
+                $out += @{ $label = $Map[$label] }
+            }
+        }
+        # include any extras not in layout
+        foreach ($k in $Map.Keys | Where-Object { $_ -notin ($LayoutFields.label) }) {
+            $out += @{ $k = $Map[$k] }
+        }
+    } else {
+        foreach ($k in $Map.Keys) { $out += @{ $k = $Map[$k] } }
+    }
+
+    $out
+}
+
 
 function Ensure-HuduListItemByName {
     param(
@@ -977,7 +1075,33 @@ foreach ($entry in $mapping) {
 }
 
 $mappingtosmooshed = [bool]$($SMOOSHLABELS.count -gt 0)
-$sourceassets = $($allAssets | Where-Object {$_.asset_layout_id -eq $sourceassetlayout.id}) 
+function Get-AssetsByFieldValue {
+    param(
+        [int]$assetlayoutid,
+        [string]$label,
+        [string]$whenvalue
+    )
+
+    Write-Host "obtaining assets with field value $label = $whenvalue" -ForegroundColor Green
+
+    $allassets = Get-HuduAssets -AssetLayoutId $assetlayoutid
+    $matches = @()
+
+    foreach ($a in $allassets) {
+        $asset = $a.asset ?? $a
+
+        $fieldvalue = ($asset.fields | Where-Object { $_.label -ieq $label } | Select-Object -First 1).value
+
+        if ($null -ne $fieldvalue -and $fieldvalue -ieq $whenvalue) {
+            Write-Host "matched asset $($asset.id) with $label field value $fieldvalue" -ForegroundColor Cyan
+            $matches += $asset
+        }
+    }
+
+    return $matches
+}
+$sourceAssets = Get-AssetsByFieldValue -assetlayoutid 2 -label "configuration type kind" -whenvalue "server"
+
 $destassets = $($allAssets | Where-Object {$_.asset_layout_id -eq $destassetlayout.id}) 
 if ($sourceassets.count -lt 1) { write-host "NO SOURCE ASSETS!"; exit}
 read-host "$($($addressMapsByDest.GetEnumerator()).count) Location Types in Target press enter to proceed"
@@ -1002,21 +1126,13 @@ foreach ($originalasset in $sourceassets) {
     $linkableToAssetInfo = $null
     write-host "matching existing assets to asset $sourceassetsIDX of $($sourceassets.count) in destination layout assets ($($destassets.count) total) to determine if overlap"
     $match = $destassets | where-object {$_.company_id -eq $originalasset.company_id -and $_.name -like "*$($originalasset.name)*"} | Select-Object -First 1
-    if ($match -and $null -ne $match) {
-        $totalcounts.assetsmatched=$totalcounts.assetsmatched+1
-        write-host "match found in dest layout. (#$($totalcounts.assetsmatched)) thus far"
-        write-host "original: $($($originalasset | ConvertTo-Json -depth 6).ToString())" -ForegroundColor Yellow
-        write-host "match: $($($match | ConvertTo-Json -depth 6).ToString())" -ForegroundColor Blue
-        continue
-        $archiveChoice=$(select-objectfromlist -message "which action to take for match?" -objects @("archive match","move anyway, archive original","skip"))
-        if ($archiveChoice -eq "archive match") {
-            Set-HuduAssetArchive -CompanyId $originalasset.company_id -Id $originalasset.id -Archive $true
-            $totalcounts.assetsarchived=$totalcounts.assetsarchived+1
-        } elseif ($archiveChoice -eq "skip") {
-            $totalcounts.assetsskipped=$totalcounts.assetsskipped+1
-            continue
-        } else {write-host "archive after moving as usual"}
+    if ($match -and $null -ne $match -and $null -ne $match.fields) {
+        write-host "Matched existing asset '$($match.name)' (ID: $($match.id)) in destination layout for source asset '$($originalasset.name)' (ID: $($originalasset.id)) - will compile complete list of fields from both"
+        $matchedMap     = FieldListToMap $match.fields
+    } else {
+        $matchedmap = $null
     }
+
 
     $transformedFields = @()
     if ($CONSTANTS -and $CONSTANTS.count -gt 0) {
@@ -1159,10 +1275,23 @@ foreach ($originalasset in $sourceassets) {
         CompanyId       = $originalasset.company_id
         AssetLayoutId   = $destassetlayout.id
     }
-     if ($transformedFields -and $transformedFields.count -gt 0){
+
+     if ($null -ne $matchedmap -and $matchedmap.count -gt 0){
+        write-host "Merging transformed fields with matched existing asset fields..."
+        $transformedMap = Convert-FieldArrayToMap $transformedFields
+        $finalMap = Merge-FieldMaps -TransformedMap $transformedMap `
+                                    -MatchedMap $matchedMap `
+                                    -LayoutFields $destassetlayout.fields
+        $newAssetRequest["Fields"]=$(MapToFieldList -Map $finalMap -LayoutFields $destassetlayout.fields)
+        
+        $newAssetRequest["Id"]=$match.id
+    } elseif ($transformedFields -and $transformedFields.count -gt 0){
         $newAssetRequest["Fields"]=$transformedFields
         write-host $($($transformedFields | convertto-json -depth 5).ToString())
      }
+
+
+
     $propPairs = @(
         @{ Dest = 'PrimarySerial';       Source = 'primary_serial' }
         @{ Dest = 'PrimaryMail';         Source = 'primary_mail' }
@@ -1180,9 +1309,17 @@ foreach ($originalasset in $sourceassets) {
         }
     }
     try {
-        write-host "$($($newAssetRequest | ConvertTo-Json -depth 66).ToString())"
-        $newAsset = $(new-huduasset @newAssetRequest).asset
-        write-host "Created asset $($newAsset.id)"
+        if ($null -ne $newAssetRequest.id -and $newAssetRequest.id -gt 0){
+            write-host "$($($newAssetRequest | ConvertTo-Json -depth 66).ToString())"
+            $newAsset = $(set-huduasset @newAssetRequest).asset
+            write-host "updated asset $($newAsset.id)"
+        } else {
+            write-host "$($($newAssetRequest | ConvertTo-Json -depth 66).ToString())"
+            $newAsset = $(new-huduasset @newAssetRequest).asset
+            write-host "Created asset $($newAsset.id)"
+        }
+
+
         # archive new asset if original was archived
         if ($originalasset.archived -eq $true) {
             Set-HuduAssetArchive -CompanyId $newAsset.company_id -Id $newAsset.id -Archive $true
