@@ -1075,33 +1075,7 @@ foreach ($entry in $mapping) {
 }
 
 $mappingtosmooshed = [bool]$($SMOOSHLABELS.count -gt 0)
-function Get-AssetsByFieldValue {
-    param(
-        [int]$assetlayoutid,
-        [string]$label,
-        [string]$whenvalue
-    )
-
-    Write-Host "obtaining assets with field value $label = $whenvalue" -ForegroundColor Green
-
-    $allassets = Get-HuduAssets -AssetLayoutId $assetlayoutid
-    $matches = @()
-
-    foreach ($a in $allassets) {
-        $asset = $a.asset ?? $a
-
-        $fieldvalue = ($asset.fields | Where-Object { $_.label -ieq $label } | Select-Object -First 1).value
-
-        if ($null -ne $fieldvalue -and $fieldvalue -ieq $whenvalue) {
-            Write-Host "matched asset $($asset.id) with $label field value $fieldvalue" -ForegroundColor Cyan
-            $matches += $asset
-        }
-    }
-
-    return $matches
-}
-$sourceAssets = Get-AssetsByFieldValue -assetlayoutid 2 -label "configuration type kind" -whenvalue "server"
-
+$sourceAssets = $($allAssets | Where-Object {$_.asset_layout_id -eq $sourceassetlayout.id}) 
 $destassets = $($allAssets | Where-Object {$_.asset_layout_id -eq $destassetlayout.id}) 
 if ($sourceassets.count -lt 1) { write-host "NO SOURCE ASSETS!"; exit}
 read-host "$($($addressMapsByDest.GetEnumerator()).count) Location Types in Target press enter to proceed"
@@ -1126,6 +1100,7 @@ foreach ($originalasset in $sourceassets) {
     $linkableToAssetInfo = $null
     write-host "matching existing assets to asset $sourceassetsIDX of $($sourceassets.count) in destination layout assets ($($destassets.count) total) to determine if overlap"
     $match = $destassets | where-object {$_.company_id -eq $originalasset.company_id -and $_.name -like "*$($originalasset.name)*"} | Select-Object -First 1
+    $match = $match.asset ?? $match
     if ($match -and $null -ne $match -and $null -ne $match.fields) {
         write-host "Matched existing asset '$($match.name)' (ID: $($match.id)) in destination layout for source asset '$($originalasset.name)' (ID: $($originalasset.id)) - will compile complete list of fields from both"
         $matchedMap     = FieldListToMap $match.fields
@@ -1318,6 +1293,7 @@ foreach ($originalasset in $sourceassets) {
             $newAsset = $(new-huduasset @newAssetRequest).asset
             write-host "Created asset $($newAsset.id)"
         }
+        $newAsset = $newAsset.asset ?? $newAsset
 
 
         # archive new asset if original was archived
@@ -1338,53 +1314,52 @@ foreach ($originalasset in $sourceassets) {
         Write-ErrorObjectsToFile -ErrorObject $newAssetRequest -Name "NC-$($newAssetRequest.name)"
         $totalcounts.errored=$totalcounts.errored+1
         continue
-    } else {
+    } 
+    if ($null -ne $newAssetRequest.id -and $newAssetRequest.id -gt 0){
+        write-host "updated asset $($newasset.id), no need to re-relate items"
+    }else {
         $totalcounts.assetsmoved=$totalcounts.assetsmoved+1
-        write-host "created asset $($newasset.id)"
-    }
-
-    # add relations
-    $sourceToables  = $($($allrelations | where-object {$_.toable_type -eq 'Asset' -and $originalasset.id -eq $_.toable_id }) ?? @())
-     write-host "$($sourceToables.count) toable relations"
-    $sourceFromables  = $($($allrelations | where-object {$_.fromable_type -eq 'Asset' -and $originalasset.id -eq $_.fromable_id }) ?? @())
-     write-host "$($sourceFromables.count) fromable relations"
-    try {
-        $relationsTo = $sourceToables | Where-Object { $_.toable_id -eq $sourceAsset.id }
-        foreach ($rel in $relationsTo) {
-            $newToable+=New-HuduRelation -FromableType $rel.fromable_type -FromableId $rel.fromable_id `
-                            -ToableType "Asset" -ToableId $newAsset.id
-            write-host "created toable rel $($newToable.id)"
-            $totalcounts.toablescreated= if ($newToable) {$totalcounts.toablescreated+1} else {$totalcounts.toablescreated}
-        }
-        $relationsFrom = $sourceFromables | Where-Object { $_.fromable_id -eq $sourceAsset.id }
-        foreach ($rel in $relationsFrom) {
-            $newFromable=New-HuduRelation -FromableType "Asset" -FromableId $newAsset.id `
-                            -ToableType $rel.toable_type -ToableId $rel.toable_id
-            write-host "created fromable rel $($newFromable.id)"
-            $totalcounts.fromablescreated= if ($newFromable) {$totalcounts.fromablescreated+1} else {$totalcounts.fromablescreated}
-        }
-    } catch {
-        $totalcounts.errored=$totalcounts.errored+1
-        Write-ErrorObjectsToFile -ErrorObject @{Err= $_; From = $relationsFrom; To=$relationsTo} -Name "NCREL-$($newasset.name)"
-    }
-
-    if ($linkableToAssetInfo -and $linkableToAssetInfo.count -gt 0){
-        write-host "Asset has external asset links, relinking $($linkableToAssetInfo.count) for $($originalasset.name)"
-        foreach ($linkableToAsset in $linkableToAssetInfo) {
-            $linkedAsset=$linkableToAsset.LinkedAsset
-            if (-not $linkableToAsset.LinkedAsset) {continue}
-            try {
-                $newToable=New-HuduRelation -FromableType 'Asset' -ToableType "Asset" -FromableId $LinkedAsset.id -ToableID $newAsset.id
+        write-host "created asset $($newasset.id), adding relations now."
+        # add relations
+        $sourceToables  = $($($allrelations | where-object {$_.toable_type -eq 'Asset' -and $originalasset.id -eq $_.toable_id }) ?? @())
+        write-host "$($sourceToables.count) toable relations"
+        $sourceFromables  = $($($allrelations | where-object {$_.fromable_type -eq 'Asset' -and $originalasset.id -eq $_.fromable_id }) ?? @())
+        write-host "$($sourceFromables.count) fromable relations"
+        try {
+            $relationsTo = $sourceToables | Where-Object { $_.toable_id -eq $sourceAsset.id }
+            foreach ($rel in $relationsTo) {
+                $newToable+=New-HuduRelation -FromableType $rel.fromable_type -FromableId $rel.fromable_id `
+                                -ToableType "Asset" -ToableId $newAsset.id
+                write-host "created toable rel $($newToable.id)"
                 $totalcounts.toablescreated= if ($newToable) {$totalcounts.toablescreated+1} else {$totalcounts.toablescreated}
-                write-host "created asset-toable rel $($newToable.id)"
-            } catch {
-                $totalcounts.errored=$totalcounts.errored+1
-                Write-ErrorObjectsToFile -ErrorObject @{Err = $_; From = $relationsFrom; To=$relationsTo} -Name "NCREL-AL-$($newasset.name)"
             }
+            $relationsFrom = $sourceFromables | Where-Object { $_.fromable_id -eq $sourceAsset.id }
+            foreach ($rel in $relationsFrom) {
+                $newFromable=New-HuduRelation -FromableType "Asset" -FromableId $newAsset.id `
+                                -ToableType $rel.toable_type -ToableId $rel.toable_id
+                write-host "created fromable rel $($newFromable.id)"
+                $totalcounts.fromablescreated= if ($newFromable) {$totalcounts.fromablescreated+1} else {$totalcounts.fromablescreated}
+            }
+        } catch {
+            $totalcounts.errored=$totalcounts.errored+1
+            Write-ErrorObjectsToFile -ErrorObject @{Err= $_; From = $relationsFrom; To=$relationsTo} -Name "NCREL-$($newasset.name)"
         }
+        if ($linkableToAssetInfo -and $linkableToAssetInfo.count -gt 0){
+            write-host "Asset has external asset links, relinking $($linkableToAssetInfo.count) for $($originalasset.name)"
+            foreach ($linkableToAsset in $linkableToAssetInfo) {
+                $linkedAsset=$linkableToAsset.LinkedAsset
+                if (-not $linkableToAsset.LinkedAsset) {continue}
+                try {
+                    $newToable=New-HuduRelation -FromableType 'Asset' -ToableType "Asset" -FromableId $LinkedAsset.id -ToableID $newAsset.id
+                    $totalcounts.toablescreated= if ($newToable) {$totalcounts.toablescreated+1} else {$totalcounts.toablescreated}
+                    write-host "created asset-toable rel $($newToable.id)"
+                } catch {
+                    $totalcounts.errored=$totalcounts.errored+1
+                    Write-ErrorObjectsToFile -ErrorObject @{Err = $_; From = $relationsFrom; To=$relationsTo} -Name "NCREL-AL-$($newasset.name)"
+                }
+            }
+        }        
     }
-
-
 }
 Write-host "wrap-up"
 $newlayoutname = $null
