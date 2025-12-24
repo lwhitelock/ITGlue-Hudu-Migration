@@ -125,6 +125,8 @@ Make sure the API Key you're using has password access, and that all passwords h
 You can [download newest powershell release here](https://github.com/powershell/powershell/releases)
 
 >[!IMPORTANT]
+>You must run the script using PowerShell 7+ (**pwsh.exe**), it _will not_ run with ps.exe
+>
 >*Currently, the script has only been tested on x86_64 Windows systems. Although Windows ARM, macOS, and Linux have PowerShell available to them, the script has not been tested on those Operating Systems and is not recommended as the script has a lot of dependencies*
 
 2. Running the script
