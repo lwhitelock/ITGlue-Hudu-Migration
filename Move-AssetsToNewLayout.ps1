@@ -1181,8 +1181,9 @@ foreach ($originalasset in $sourceassets) {
     }
     try {
         write-host "$($($newAssetRequest | ConvertTo-Json -depth 66).ToString())"
-        $newAsset = $(new-huduasset @newAssetRequest).asset
-        write-host "Created asset $($newAsset.id)"
+        $newAsset = $(new-huduasset @newAssetRequest)
+        $newAsset = $newasset.asset ?? $newasset
+        write-host "Created asset $($newAsset.id)..."
         # archive new asset if original was archived
         if ($originalasset.archived -eq $true) {
             Set-HuduAssetArchive -CompanyId $newAsset.company_id -Id $newAsset.id -Archive $true
