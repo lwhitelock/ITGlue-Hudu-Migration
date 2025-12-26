@@ -1310,21 +1310,14 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\AssetLayouts.json")) 
 
 }
 
-############################### Flexible Assets ###############################
+############################### Creating Base Flexible Assets ###############################
 #Check for Assets Resume
-if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Assets.json")) {
-    Write-Host "Loading Previous Asset Migration"
-    $MatchedAssets = Get-Content "$MigrationLogs\Assets.json" -raw | Out-String | ConvertFrom-Json -depth 100
-    $MatchedAssetPasswords = Get-Content "$MigrationLogs\AssetPasswords.json" -raw | Out-String | ConvertFrom-Json -depth 100
-    $RelationsToCreate = [System.Collections.ArrayList](Get-Content "$MigrationLogs\RelationsToCreate.json" -raw | Out-String | ConvertFrom-Json -depth 100)
-    $ManualActions = [System.Collections.ArrayList](Get-Content "$MigrationLogs\ManualActions.json" -raw | Out-String | ConvertFrom-Json -depth 100)
+if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\AssetsBase.json")) {
+    Write-Host "Loading Previous Base Assets Migration"
+    $MatchedAssets = Get-Content "$MigrationLogs\AssetsBase.json" -raw | Out-String | ConvertFrom-Json -depth 100
 } else {
-# Load raw passwords for embedded fields and future use
-$ITGPasswordsRaw = Import-CSV -Path "$ITGLueExportPath\passwords.csv"
     if ($ImportFlexibleAssets -eq $true) {
-        $RelationsToCreate = [System.Collections.ArrayList]@()
-        $MatchedAssets = [System.Collections.ArrayList]@()
-        $MatchedAssetPasswords = [System.Collections.ArrayList]@()
+		$MatchedAssets = [System.Collections.ArrayList]@()
 
         #We need to do a first pass creating empty assets with just the ITG migrated data. This builds an array we need to use to lookup relations when populating the entire assets
         if ($ScopedMigration) {
@@ -1363,8 +1356,26 @@ $ITGPasswordsRaw = Import-CSV -Path "$ITGLueExportPath\passwords.csv"
             }
 		
         }
-	
-	
+
+    $MatchedAssets | ConvertTo-Json -depth 100 | Out-File "$MigrationLogs\AssetsBase.json"
+    Write-TimedMessage -Timeout 3 -Message "Snapshot Point: Base Assets Created. Continue?"  -DefaultResponse "continue to Populate Assets, please."
+	}
+}
+############################### Populating Flexible Assets ###############################
+#Check for Assets Populate Resume
+if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Assets.json")) {
+    Write-Host "Loading Previous Migration Assets"
+    $MatchedAssets = Get-Content "$MigrationLogs\Assets.json" -raw | Out-String | ConvertFrom-Json -depth 100
+    $MatchedAssetPasswords = Get-Content "$MigrationLogs\AssetPasswords.json" -raw | Out-String | ConvertFrom-Json -depth 100
+    $RelationsToCreate = [System.Collections.ArrayList](Get-Content "$MigrationLogs\RelationsToCreate.json" -raw | Out-String | ConvertFrom-Json -depth 100)
+    $ManualActions = [System.Collections.ArrayList](Get-Content "$MigrationLogs\ManualActions.json" -raw | Out-String | ConvertFrom-Json -depth 100)
+} else {
+    if ($ImportFlexibleAssets -eq $true) {
+        $RelationsToCreate = [System.Collections.ArrayList]@()
+        $MatchedAssetPasswords = [System.Collections.ArrayList]@()
+		
+		# Load raw passwords for embedded fields and future use
+		$ITGPasswordsRaw = Import-CSV -Path "$ITGLueExportPath\passwords.csv"
         #We now need to loop through all Assets again updating the assets to their final version
         foreach ($UpdateAsset in $MatchedAssets) {
             Write-Host "Populating $($UpdateAsset.Name)"
