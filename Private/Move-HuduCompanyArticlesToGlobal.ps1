@@ -26,7 +26,7 @@ function Move-HuduCompanyArticlesToGlobal {
         }
 
         Write-Host "Looking for original article"
-        if ($ArticleToMove = (Get-HuduArticles -Id $RedoingArticle.HuduObject.id).content) {
+        if ($ArticleToMove = (Get-HuduArticles -Id $RedoingArticle.HuduObject.id).article) {
             Write-Host "Article found, creating new version"
             $ArticleSplat = @{
                 name      = $ArticleToMove.name
