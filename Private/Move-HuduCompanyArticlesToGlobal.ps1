@@ -3,7 +3,8 @@ function Move-HuduCompanyArticlesToGlobal {
         [int]$CompanyID
     )
 
-    $ArticlesToRedo = $MatchedArticles |? {$_.HuduObject.company_id -eq $CompanyID}
+    $ArticlesToRedo = ($MatchedArticles |? {$_.HuduObject.company_id -eq $CompanyID})
+    Write-Host "Moving $($ArticlesToRedo.count) Articles"
 
     foreach ($RedoingArticle in $ArticlesToRedo) {
         $RedoingFolders = $RedoingArticle.folders
@@ -23,17 +24,26 @@ function Move-HuduCompanyArticlesToGlobal {
                 $art_folder_id = $GlobalKBFolder.id
             }
         }
-        if ($ArticleToMove = Get-HuduArticles -Id $RedoingArticle.HuduObject.id) {
+
+        Write-Host "Looking for original article"
+        if ($ArticleToMove = (Get-HuduArticles -Id $RedoingArticle.HuduObject.id).content) {
+            Write-Host "Article found, creating new version"
             $ArticleSplat = @{
                 name      = $ArticleToMove.name
                 content   = $ArticleToMove.content
                 folder_id = $art_folder_id
             }
 
-            $MovedArticle = (New-HuduArticle @ArticleSplat).article
-            $RedoingArticle.HuduID = $MovedArticle.id
-            $RedoingArticle.HuduObject = $MovedArticle
-            $RedoingArticle.Imported = "Moved from $CompanyID to Global KB"
+            if ($MovedArticle = (New-HuduArticle @ArticleSplat).article) {
+                $RedoingArticle.HuduID = $MovedArticle.id
+                $RedoingArticle.HuduObject = $MovedArticle
+                $RedoingArticle.Imported = "Moved from $CompanyID to Global KB"
+                Write-Host "Article recreated. Safe to delete original."                
+            }
+            else {
+                Write-Host "Failed to create article."
+            }
+
         }
 
     }
