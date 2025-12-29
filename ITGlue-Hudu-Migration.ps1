@@ -179,7 +179,6 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Companies.json")) {
     if ($ScopedMigration) {
         $OriginalCompanyCount = $($ITGcompanies.count)
         Write-Host "Setting companies to those in scope..." -foregroundcolor Yellow 
-        $ITGCompanies = $ITGCompanies | Where-Object { $_.attributes.name -ieq "Correctional Services/ OTS" }
         $ScopedCompanyIds = $ITGCompanies.id
         Write-Host "Companies scoped... $OriginalCompanyCount => $($Itgcompanies.count)"
     }
