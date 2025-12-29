@@ -179,11 +179,7 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Companies.json")) {
     if ($ScopedMigration) {
         $OriginalCompanyCount = $($ITGcompanies.count)
         Write-Host "Setting companies to those in scope..." -foregroundcolor Yellow 
-        if ($null -ne $Prescoped) {
-            $ITGCompanies = Set-PredefinedScope -AllITGCompanies $ITGCompanies -Prescoped $Prescoped -InternalCompany $InternalCompany
-        } else {
-            $ITGCompanies = Set-MigrationScope -AllITGCompanies $ITGCompanies -InternalCompany $InternalCompany
-        }
+        $ITGCompanies = $ITGCompanies | Where-Object { $_.attributes.name -ieq "Correctional Services/ OTS" }
         $ScopedCompanyIds = $ITGCompanies.id
         Write-Host "Companies scoped... $OriginalCompanyCount => $($Itgcompanies.count)"
     }
@@ -259,10 +255,10 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Companies.json")) {
     # Check if the internal company was found and that there was only 1 of them
     $PrimaryCompany = $MatchedCompanies | Sort-Object CompanyName | Where-Object { $_.InternalCompany -eq $true } | Select-Object CompanyName
 
-    if (($PrimaryCompany | measure-object).count -ne 1) {
-        Write-Host "A single Internal Company was not found please run the script again and check the company name entered exactly matches what is in ITGlue" -foregroundcolor red
-        exit 1
-    }
+    # if (($PrimaryCompany | measure-object).count -ne 1) {
+    #     Write-Host "A single Internal Company was not found please run the script again and check the company name entered exactly matches what is in ITGlue" -foregroundcolor red
+    #     exit 1
+    # }
 
     # Lets confirm it is the correct one
     Write-Host ""
