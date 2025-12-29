@@ -766,6 +766,7 @@ function Merge-FieldMaps {
         [Parameter(Mandatory)][hashtable]$TransformedMap,
         [Parameter(Mandatory)][hashtable]$MatchedMap,
         [Parameter(Mandatory)][object[]]$LayoutFields,   # destassetlayout.fields
+        [bool]$preferOriginal = $true,
         [string]$RichTextSeparator = "`n`n---`n`n"
     )
 
@@ -798,10 +799,20 @@ function Merge-FieldMaps {
         }
 
         # Non-richtext: prefer transformed unless it's blank
-        if (-not $tBlank) {
-            $out[$label] = $t
-        } elseif (-not $mBlank) {
-            $out[$label] = $m
+        if ($preferOriginal) {
+            if (-not $mBlank) {
+                $out[$label] = $m
+            } elseif (-not $tBlank) {
+                $out[$label] = $t
+            }
+            continue
+        } else {
+            if (-not $tBlank) {
+                $out[$label] = $t
+            } elseif (-not $mBlank) {
+                $out[$label] = $m
+            }
+            continue
         }
     }
 
@@ -1286,16 +1297,29 @@ foreach ($originalasset in $sourceassets) {
     try {
         if ($null -ne $newAssetRequest.id -and $newAssetRequest.id -gt 0){
             write-host "$($($newAssetRequest | ConvertTo-Json -depth 66).ToString())"
-            $newAsset = $(set-huduasset @newAssetRequest).asset
+            $newAsset = $(set-huduasset @newAssetRequest)
+            $newAsset = $newAsset.asset ?? $newAsset
             write-host "updated asset $($newAsset.id)"
         } else {
             write-host "$($($newAssetRequest | ConvertTo-Json -depth 66).ToString())"
-            $newAsset = $(new-huduasset @newAssetRequest).asset
+            $newAsset = $(new-huduasset @newAssetRequest)
+            $newAsset = $newAsset.asset ?? $newAsset
             write-host "Created asset $($newAsset.id)"
         }
-        $newAsset = $newAsset.asset ?? $newAsset
 
 
+    } catch {
+        Write-ErrorObjectsToFile -ErrorObject @{Err=$_; request=$newAssetRequest} -Name $newAssetRequest.name
+        continue
+    }
+    if (-not $newAsset -or $null -eq $newAsset) {
+        Write-ErrorObjectsToFile -ErrorObject $newAssetRequest -Name "NC-$($newAssetRequest.name)"
+        $totalcounts.errored=$totalcounts.errored+1
+        continue
+    } 
+    if ($null -ne $newAssetRequest.id -and $newAssetRequest.id -gt 0){
+        write-host "updated asset $($newasset.id), no need to re-relate items"
+    }else {
         # archive new asset if original was archived
         if ($originalasset.archived -eq $true) {
             Set-HuduAssetArchive -CompanyId $newAsset.company_id -Id $newAsset.id -Archive $true
@@ -1306,18 +1330,6 @@ foreach ($originalasset in $sourceassets) {
             Set-HuduAssetArchive -CompanyId $originalasset.company_id -Id $originalasset.id -Archive $true
             $totalcounts.assetsarchived=$totalcounts.assetsarchived+1
         }        
-
-    } catch {
-        Write-ErrorObjectsToFile -ErrorObject @{Err=$_; request=$newAssetRequest} -Name $newAssetRequest.name
-    }
-    if (-not $newAsset -or $null -eq $newAsset) {
-        Write-ErrorObjectsToFile -ErrorObject $newAssetRequest -Name "NC-$($newAssetRequest.name)"
-        $totalcounts.errored=$totalcounts.errored+1
-        continue
-    } 
-    if ($null -ne $newAssetRequest.id -and $newAssetRequest.id -gt 0){
-        write-host "updated asset $($newasset.id), no need to re-relate items"
-    }else {
         $totalcounts.assetsmoved=$totalcounts.assetsmoved+1
         write-host "created asset $($newasset.id), adding relations now."
         # add relations
