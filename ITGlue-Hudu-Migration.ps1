@@ -1449,7 +1449,7 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Assets.json")) {
             Write-Host "Populating $($UpdateAsset.Name)"
 		
             $AssetFields = @{ 
-                'imported_from_itglue' = Get-Date -Format "o"
+                'Imported From ITGlue' = Get-Date -Format "o"
             }
 
             $traits = $UpdateAsset.ITGObject.attributes.traits
@@ -1599,8 +1599,11 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Assets.json")) {
                     Write-Host "Warning $ITGParsed : $ITGValues Could not be added" -ForegroundColor Red
                 }
             }
-
-            $UpdatedHuduAsset = (Set-HuduAsset -asset_id $UpdateAsset.HuduID -name $UpdateAsset.name -company_id $($UpdateAsset.HuduObject.company_id) -asset_layout_id $UpdateAsset.HuduObject.asset_layout_id -fields $AssetFields).asset
+            $CleanedAssetFields = @{}
+            $AssetFields.GetEnumerator() | ForEach-Object {
+                $CleanedAssetFields[$_.Key -replace '_', ' '] = $_.Value
+            }
+            $UpdatedHuduAsset = (Set-HuduAsset -asset_id $UpdateAsset.HuduID -name $UpdateAsset.name -company_id $($UpdateAsset.HuduObject.company_id) -asset_layout_id $UpdateAsset.HuduObject.asset_layout_id -fields $CleanedAssetFields).asset
 
             $UpdateAsset.HuduObject = $UpdatedHuduAsset
             $UpdateAsset.Imported = "Created-By-Script"
