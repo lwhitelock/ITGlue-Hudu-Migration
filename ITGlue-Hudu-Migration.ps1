@@ -1222,6 +1222,13 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\AssetLayouts.json")) 
 
 
         foreach ($UpdateLayout in $MatchedLayouts) {
+            if ($skipIntegratorLayouts -and $true -eq $skipIntegratorLayouts){
+                if ("$($UpdateLayout.Name)" -ilike "*(auto)*"){
+                    Write-Host "Skipping Integrator Layout $($UpdateLayout.Name)" -ForegroundColor Yellow
+                    continue
+                }
+            }
+
             Write-Host "Starting $($UpdateLayout.Name)" -ForegroundColor Green
 
             # Grab the fields for the layout
