@@ -1121,6 +1121,14 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\AssetLayouts.json")) 
 
     # Match to existing layouts
     $MatchedLayouts = foreach ($ITGLayout in $FlexLayouts) {
+        if ($skipIntegratorLayouts -and $true -eq $skipIntegratorLayouts){
+            if ("$($ITGLayout.attributes.name)" -ilike "*(auto)*"){
+                Write-Host "Skipping Integrator Layout $($ITGLayout.attributes.name)" -ForegroundColor Yellow
+                continue
+            }
+        }
+
+
         $HuduLayout = $HuduLayouts | Where-Object { $_.name -eq "$($FlexibleLayoutPrefix)$($ITGLayout.attributes.name)" }
 		
         if ($HuduLayout) {
@@ -1163,12 +1171,6 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\AssetLayouts.json")) 
         foreach ($UnmatchedLayout in $MatchedLayouts | Where-Object { $_.Matched -eq $false }) {
             if ($ImportOption -eq 2) {
                 Confirm-Import -ImportObjectName "$($ITGLayout.attributes.name)" -ImportObject $null -ImportSetting $ImportOption
-            }
-            if ($skipIntegratorLayouts -and $true -eq $skipIntegratorLayouts){
-                if ("$($UnmatchedLayout.ITGObject.attributes.name)" -ilike "*(auto)*"){
-                    Write-Host "Skipping Integrator Layout $($UnmatchedLayout.ITGObject.attributes.name)" -ForegroundColor Yellow
-                    continue
-                }
             }
 
 
