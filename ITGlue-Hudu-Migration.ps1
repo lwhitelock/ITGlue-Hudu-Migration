@@ -1123,7 +1123,7 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\AssetLayouts.json")) 
     $MatchedLayouts = foreach ($ITGLayout in $FlexLayouts) {
         if ($skipIntegratorLayouts -and $true -eq $skipIntegratorLayouts){
             if ("$($ITGLayout.attributes.name)" -ilike "*(auto)*"){
-                Write-Host "Skipping Integrator Layout $($ITGLayout.attributes.name)" -ForegroundColor Yellow
+                Write-warning "Skipping Integrator Layout $($ITGLayout.attributes.name)"
                 continue
             }
         }
