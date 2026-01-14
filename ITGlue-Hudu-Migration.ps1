@@ -1164,6 +1164,13 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\AssetLayouts.json")) 
             if ($ImportOption -eq 2) {
                 Confirm-Import -ImportObjectName "$($ITGLayout.attributes.name)" -ImportObject $null -ImportSetting $ImportOption
             }
+            if ($skipIntegratorLayouts -and $true -eq $skipIntegratorLayouts){
+                if ("$($UnmatchedLayout.ITGObject.attributes.name)" -ilike "*(auto)*"){
+                    Write-Host "Skipping Integrator Layout $($UnmatchedLayout.ITGObject.attributes.name)" -ForegroundColor Yellow
+                    continue
+                }
+            }
+
 
             $TempLayoutFields = @(
                 @{
@@ -1575,13 +1582,9 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Assets.json")) {
                         }
                         $null = $MatchedAssetPasswords.add($MigratedPassword)
                     } elseif ($field.FieldType -eq "Number") {
-                        if ($CurrentVersion -ge [version]("2.37.1")){
-                            # This version won't cast doubles for 'number' fields. It expects only integers.
-                            $coerced = Get-CastIfNumeric ($_.value -replace '[^\x09\x0A\x0D\x20-\xD7FF\xE000-\xFFFD\x10000\x10FFFF]')
-                            $null = $AssetFields.add("$($field.HuduParsedName)", [string]"$coerced")
-                        }  else {
-                            $null = $AssetFields.add("$($field.HuduParsedName)", [string]"$($($_.value) -replace '[^\x09\x0A\x0D\x20-\xD7FF\xE000-\xFFFD\x10000\x10FFFF]')")
-                        }
+                        # This version won't cast doubles for 'number' fields. It expects only integers.
+                        $coerced = Get-CastIfNumeric ($_.value -replace '[^\x09\x0A\x0D\x20-\xD7FF\xE000-\xFFFD\x10000\x10FFFF]')
+                        $null = $AssetFields.add("$($field.HuduParsedName)", [string]"$coerced")
                     } else {
                         $null = $AssetFields.add("$($field.HuduParsedName)", [string]"$($_.value)")
                     }

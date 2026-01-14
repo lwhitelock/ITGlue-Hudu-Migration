@@ -93,6 +93,8 @@ $GlobalPasswordFolderMode = $true # or $false
 # If you want to scope migration to just come companies, select 2, otherwise leave at 1 for typical, full migration
 $ScopedMigration            = 1
 $MergedOrganizationTypes    = 1
+# do you want to skip flexible asset layouts from integrators? they are generally have the phrase '(auto)' in the name
+$skipIntegratorLayouts = $true
 
 # pre-designated array/list of prescoped/preselected companies for scoped migration (typically for faster testing)
 # prescoped Companies
