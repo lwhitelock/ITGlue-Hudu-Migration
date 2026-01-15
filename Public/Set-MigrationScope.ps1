@@ -47,7 +47,7 @@ function Set-MigrationScope {
     while ($true) {
         $selection = Select-ObjectFromList -allowNull $true `
             -message "Select a number corresponding to a company to add to migration list. enter 0 to finish." `
-            -objects $AllITGCompanies
+            -objects $($AllITGCompanies | Sort-Object { $_.attributes.name })
 
         if ($null -eq $selection) { break }
 

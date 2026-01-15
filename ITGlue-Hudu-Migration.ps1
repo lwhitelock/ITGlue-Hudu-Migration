@@ -1121,6 +1121,14 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\AssetLayouts.json")) 
 
     # Match to existing layouts
     $MatchedLayouts = foreach ($ITGLayout in $FlexLayouts) {
+        if ($skipIntegratorLayouts -and $true -eq $skipIntegratorLayouts){
+            if ("$($ITGLayout.attributes.name)" -ilike "*(auto)*"){
+                Write-warning "Skipping Integrator Layout $($ITGLayout.attributes.name)"
+                continue
+            }
+        }
+
+
         $HuduLayout = $HuduLayouts | Where-Object { $_.name -eq "$($FlexibleLayoutPrefix)$($ITGLayout.attributes.name)" }
 		
         if ($HuduLayout) {
@@ -1164,6 +1172,7 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\AssetLayouts.json")) 
             if ($ImportOption -eq 2) {
                 Confirm-Import -ImportObjectName "$($ITGLayout.attributes.name)" -ImportObject $null -ImportSetting $ImportOption
             }
+
 
             $TempLayoutFields = @(
                 @{
@@ -1215,6 +1224,13 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\AssetLayouts.json")) 
 
 
         foreach ($UpdateLayout in $MatchedLayouts) {
+            if ($skipIntegratorLayouts -and $true -eq $skipIntegratorLayouts){
+                if ("$($UpdateLayout.Name)" -ilike "*(auto)*"){
+                    Write-Host "Skipping Integrator Layout $($UpdateLayout.Name)" -ForegroundColor Yellow
+                    continue
+                }
+            }
+
             Write-Host "Starting $($UpdateLayout.Name)" -ForegroundColor Green
 
             # Grab the fields for the layout
@@ -1435,7 +1451,7 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Assets.json")) {
             Write-Host "Populating $($UpdateAsset.Name)"
 		
             $AssetFields = @{ 
-                'imported_from_itglue' = Get-Date -Format "o"
+                'Imported From ITGlue' = Get-Date -Format "o"
             }
 
             $traits = $UpdateAsset.ITGObject.attributes.traits
@@ -1575,13 +1591,9 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Assets.json")) {
                         }
                         $null = $MatchedAssetPasswords.add($MigratedPassword)
                     } elseif ($field.FieldType -eq "Number") {
-                        if ($CurrentVersion -ge [version]("2.37.1")){
-                            # This version won't cast doubles for 'number' fields. It expects only integers.
-                            $coerced = Get-CastIfNumeric ($_.value -replace '[^\x09\x0A\x0D\x20-\xD7FF\xE000-\xFFFD\x10000\x10FFFF]')
-                            $null = $AssetFields.add("$($field.HuduParsedName)", [string]"$coerced")
-                        }  else {
-                            $null = $AssetFields.add("$($field.HuduParsedName)", [string]"$($($_.value) -replace '[^\x09\x0A\x0D\x20-\xD7FF\xE000-\xFFFD\x10000\x10FFFF]')")
-                        }
+                        # This version won't cast doubles for 'number' fields. It expects only integers.
+                        $coerced = Get-CastIfNumeric ($_.value -replace '[^\x09\x0A\x0D\x20-\xD7FF\xE000-\xFFFD\x10000\x10FFFF]')
+                        $null = $AssetFields.add("$($field.HuduParsedName)", [string]"$coerced")
                     } else {
                         $null = $AssetFields.add("$($field.HuduParsedName)", [string]"$($_.value)")
                     }
@@ -1589,8 +1601,11 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Assets.json")) {
                     Write-Host "Warning $ITGParsed : $ITGValues Could not be added" -ForegroundColor Red
                 }
             }
-
-            $UpdatedHuduAsset = (Set-HuduAsset -asset_id $UpdateAsset.HuduID -name $UpdateAsset.name -company_id $($UpdateAsset.HuduObject.company_id) -asset_layout_id $UpdateAsset.HuduObject.asset_layout_id -fields $AssetFields).asset
+            $CleanedAssetFields = @{}
+            $AssetFields.GetEnumerator() | ForEach-Object {
+                $CleanedAssetFields[$_.Key -replace '_', ' '] = $_.Value
+            }
+            $UpdatedHuduAsset = (Set-HuduAsset -asset_id $UpdateAsset.HuduID -name $UpdateAsset.name -company_id $($UpdateAsset.HuduObject.company_id) -asset_layout_id $UpdateAsset.HuduObject.asset_layout_id -fields $CleanedAssetFields).asset
 
             $UpdateAsset.HuduObject = $UpdatedHuduAsset
             $UpdateAsset.Imported = "Created-By-Script"

@@ -441,6 +441,13 @@ if ($InitType -eq 'Full') {
         "1" {$OptionalImageAnchorReplace = $true}
         "2" {$OptionalImageAnchorReplace = $false}
     }    
+    while ($skipIntegratorLayouts -notin @($true, $false)){
+        $skipIntegratorLayoutsInput = Read-Host "[Other, default false] Would you like to skip importing Integrator Layouts? These are often containing data that goes unused.`n 1) Yes`n 2) No, import all layouts`n(1/2)"
+        switch ($skipIntegratorLayoutsInput) {
+            "1" {$skipIntegratorLayouts = $true}
+            "2" {$skipIntegratorLayouts = $false}
+        }
+    }
 
 
 }
