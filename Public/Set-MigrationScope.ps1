@@ -1,3 +1,37 @@
+function Set-PredefinedScope {
+    param(
+        [Parameter(Mandatory)]
+        [array]$AllITGCompanies,
+
+        [Parameter(Mandatory)]
+        [array]$Prescoped,
+
+        [string]$InternalCompany
+    )
+
+    $ScopedForCompanies = [System.Collections.ArrayList]@()
+
+    foreach ($idx in $Prescoped) {
+        if ($idx -lt $AllITGCompanies.Count) {
+            [void]$ScopedForCompanies.Add($AllITGCompanies[$idx])
+        }
+    }
+
+    $internalMatch = $AllITGCompanies | Where-Object {
+        $_.attributes.name -eq $InternalCompany
+    }
+
+    foreach ($company in $internalMatch) {
+        [void]$ScopedForCompanies.Add($company)
+    }
+
+    # Deduplicate based on ID
+    $ScopedForCompanies = $ScopedForCompanies |
+        Sort-Object { $_.id } -Unique
+
+    return $ScopedForCompanies
+}
+
 function Set-MigrationScope {
     param(
         [Parameter(Mandatory)]
@@ -12,7 +46,7 @@ function Set-MigrationScope {
     $ScopedForCompanies = [System.Collections.ArrayList]@()
     while ($true) {
         $selection = Select-ObjectFromList -allowNull $true `
-            -message "Select a number corresponding to a company to add to migration list. Press Enter to finish." `
+            -message "Select a number corresponding to a company to add to migration list. enter 0 to finish." `
             -objects $AllITGCompanies
 
         if ($null -eq $selection) { break }

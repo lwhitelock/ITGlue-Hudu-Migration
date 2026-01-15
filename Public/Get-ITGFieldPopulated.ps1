@@ -1,4 +1,3 @@
-
 function Test-ValuePresent {
     param([object]$Value)
 
