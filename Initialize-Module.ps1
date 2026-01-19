@@ -448,7 +448,25 @@ if ($InitType -eq 'Full') {
             "2" {$skipIntegratorLayouts = $false}
         }
     }
-
+    while ($allowSettingFlagsAndTypes -notin @($true, $false)){
+        $allowSettingFlagsAndTypes = Read-Host "Would you like to import objects into hudu with new Flags and FlagTypes? This requires Hudu version 2.4.0 or later.`n 1) Yes`n 2) No, skip setting Flags and FlagTypes`n(1/2)"
+        switch ($allowSettingFlagsAndTypes) {
+            "1" {
+                $allowSettingFlagsAndTypes = $true
+                $ObjectFlagMap = @{}
+                foreach ($flagable in @("Companies","Locations","Contacts","Configurations","Assets","Articles","Websites","Passwords")){
+                    $flagableColors = $null; $flagableColors = Select-ObjectFromList -message "Select the color to use for the 'Flag' field on imported $flagable (if any). Enter '0' or 1-'None' to skip flagging this type of object" -objects @('None', 'red', 'crimson', 'scarlet', 'rot', 'karminrot', 'scharlachrot', 'rouge', 'cramoisi', 'écarlate', 'rosso', 'cremisi', 'scarlatto', 'rojo', 'carmesí', 'escarlata', 'blue', 'navy', 'blau', 'marineblau', 'bleu', 'bleu marine', 'blu', 'blu navy', 'azul', 'azul marino', 'green', 'lime', 'grün', 'limettengrün', 'vert', 'vert citron', 'verde', 'verde lime', 'verde lima', 'yellow', 'gold', 'gelb', 'jaune', 'or', 'giallo', 'oro', 'amarillo', 'purple', 'violet', 'lila', 'violett', 'pourpre', 'viola', 'porpora', 'púrpura', 'violeta', 'orange', 'arancione', 'naranja', 'light pink', 'pink', 'baby pink', 'hellrosa', 'rosa', 'rose clair', 'rose', 'rosa chiaro', 'rosa claro', 'light blue', 'baby blue', 'sky blue', 'hellblau', 'babyblau', 'himmelblau', 'bleu clair', 'bleu ciel', 'azzurro', 'blu chiaro', 'azul claro', 'celeste', 'light green', 'mint', 'hellgrün', 'mintgrün', 'vert clair', 'menthe', 'verde chiaro', 'menta', 'verde claro', 'light purple', 'lavender', 'helllila', 'lavendel', 'violet clair', 'lavande', 'viola chiaro', 'lavanda', 'morado claro', 'light orange', 'peach', 'hellorange', 'pfirsich', 'orange clair', 'pêche', 'arancione chiaro', 'pesca', 'naranja claro', 'melocotón', 'light yellow', 'cream', 'hellgelb', 'creme', 'jaune clair', 'crème', 'giallo chiaro', 'crema', 'amarillo claro', 'white', 'weiß', 'blanc', 'bianco', 'blanco', 'grey', 'gray', 'silver', 'grau', 'silber', 'gris', 'argent', 'grigio', 'argento', 'plateado', 'lightpink', 'lightblue', 'lightgreen', 'lightpurple', 'lightorange', 'lightyellow') -allowNull $true;
+                    if ($null -eq $flagableColors -or $flagableColors -ieq "None"){continue}
+                    $flagName = $null; $flagName = $(Read-Host "Enter the exact name of the Flag Type to use for $flagable with color $flagableColors (case-sensitive).") ?? "$flagable - $flagableColors"
+                    $ObjectFlagMap["$flagable"] = @{Color = $flagableColors;Name  = $flagName;}
+                }
+            }
+            "2" {
+                $ObjectFlagMap = @{}
+                $allowSettingFlagsAndTypes = $false
+            }
+        }
+    }
 
 }
 ############################ Migration Logs Path ##############################
