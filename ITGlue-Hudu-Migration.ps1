@@ -68,6 +68,7 @@ $FontAwesomeUpgrade = Get-FontAwesomeMap
 # initialization helper and field requirement helper, logging, selection helper
 . $PSScriptRoot\Public\Get-ITGFieldPopulated.ps1
 . $PSScriptRoot\Public\JWT-Auth.ps1
+if (-not (Get-Command -Name Get-UserFlagSetup -ErrorAction SilentlyContinue)) { . $PSScriptRoot\Public\Add-OptionalFlags.ps1 }
 
 ############################### End of Functions ###############################
 
@@ -162,6 +163,7 @@ $MergedOrganizationSettings = @{
 }
 $MatchedPasswordFolders = @()
 $MatchedChecklists = @()
+$objectFlagMap = $objectFlagMap ?? @{}
 
 #Check for Company Resume
 if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Companies.json")) {
@@ -334,13 +336,7 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Companies.json")) {
                     $HuduNewCompany = (New-HuduCompany -name $($unmatchedcompany.CompanyName) -nickname $unmatchedcompany.ITGCompanyObject.attributes."short-name" -notes $CompanyNotes -CompanyType $unmatchedcompany.attributes.'organization-type-name').company
                     $CompaniesMigrated = $CompaniesMigrated + 1
                 }
-                if ($ObjectFlagMap -and $ObjectFlagMap.containskey("Companies") -and $null -ne $ObjectFlagMap["Companies"]){
-                    try {
-                        New-HuduFlag -FlagTypeID $ObjectFlagMap["Companies"].id -flagabletype "Company" -flagableId $HuduNewCompany.id
-                    } catch {
-                        Write-Error "Failed to add flag to company $($unmatchedcompany.CompanyName). Error: $_"
-                    }
-                }
+                Add-OptionalFlags -objectFlagMap $objectFlagMap -object $HuduNewCompany -objectType "Company"
 
                 $unmatchedcompany.matched = $true
                 $unmatchedcompany.HuduID = $HuduNewCompany.id
@@ -493,6 +489,8 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Locations.json")) {
 
     #Import Locations
     $MatchedLocations = Import-Items @LocImportSplat
+    $MatchedLocations | foreach-object {Add-OptionalFlags -objectFlagMap $objectFlagMap -objectType "Location" -object $_.HuduObject}
+
     $ITGLocationsHashTable = @{}
     foreach ($ITGL in $MatchedLocations) {
         $ITGLocationsHashTable[$ITGL.itgid] = $ITGL
@@ -943,6 +941,7 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Configurations.json")
             }
         }
 
+    $MatchedConfigurations | foreach-object {Add-OptionalFlags -objectFlagMap $objectFlagMap -objectType "Configuration" -object $_.HuduObject}
 
 
     } else {
@@ -1092,6 +1091,7 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Contacts.json")) {
 
     #Import Locations
     $MatchedContacts = Import-Items @ConImportSplat
+    $MatchedContacts | foreach-object {Add-OptionalFlags -objectFlagMap $objectFlagMap -objectType "Contacts" -object $_.HuduObject}
 
     Write-Host "Contacts Complete"
 
@@ -1993,6 +1993,7 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Articles.json")) {
             $Article.Imported = "Created-By-Script"
 			
         } 
+        $MatchedArticles | foreach-object {Add-OptionalFlags -objectFlagMap $objectFlagMap -objectType "Articles" -object $_.HuduObject}
 
         $MatchedArticles | ConvertTo-Json -depth 100 | Out-File "$MigrationLogs\Articles.json"
         $ArticleErrors | ConvertTo-Json -depth 100 | Out-File "$MigrationLogs\ArticleErrors.json"
@@ -2254,6 +2255,7 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Passwords.json")) {
         }
     }
 
+    $MatchedPasswords | foreach-object {Add-OptionalFlags -objectFlagMap $objectFlagMap -objectType "Passwords" -object $_.HuduObject}
     # Save the results to resume from if needed
     $MatchedPasswords | ConvertTo-Json -depth 100 | Out-File "$MigrationLogs\Passwords.json"
     $ManualActions | ConvertTo-Json -depth 100 | Out-File "$MigrationLogs\ManualActions.json"

@@ -5,10 +5,21 @@ function Add-OptionalFlags {
         [PSCustomObject]$object,
         [string]$objectType
     )
+    $translatedObjectType = switch ($objectType.ToLower()) {
+        "company"       {"Company"}
+        "location"      {"Asset"}
+        "contacts"      {"Asset"}
+        "configuration" {"Asset"}
+        "asset"         {"Asset"}
+        "articles"      {"Article"}
+        "website"       {"Websites"}
+        "passwords"      {"Password"}
+        default         { $objectType }
+    }
 
     if ($ObjectFlagMap -and $ObjectFlagMap.containskey("$objectType") -and $null -ne $ObjectFlagMap["$objectType"]){
         try {
-            New-HuduFlag -FlagTypeID $ObjectFlagMap["$objectType"].id -flagabletype "$objectType" -flagableId $object.id
+            New-HuduFlag -FlagTypeID $ObjectFlagMap["$objectType"].id -flagabletype "$translatedObjectType" -flagableId $object.id
         } catch {
             Write-Error "Failed to add flag to $objectType $($object.Name). Error: $_"
         }
