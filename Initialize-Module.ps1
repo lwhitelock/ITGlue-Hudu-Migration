@@ -449,16 +449,49 @@ if ($InitType -eq 'Full') {
         }
     }
     while ($allowSettingFlagsAndTypes -notin @($true, $false)){
+        if (-not (Get-Command -Name Get-HuduFlagTypes -ErrorAction SilentlyContinue)) { 
+            Write-Host "Flags and Flag Types aren't available in your HuduAPI module version. Skipping."
+            $allowSettingFlagsAndTypes = $false
+        }
         $allowSettingFlagsAndTypes = Read-Host "Would you like to import objects into hudu with new Flags and FlagTypes? This requires Hudu version 2.4.0 or later.`n 1) Yes`n 2) No, skip setting Flags and FlagTypes`n(1/2)"
         switch ($allowSettingFlagsAndTypes) {
             "1" {
-                $allowSettingFlagsAndTypes = $true
                 $ObjectFlagMap = @{}
-                foreach ($flagable in @("Companies","Locations","Contacts","Configurations","Assets","Articles","Websites","Passwords")){
-                    $flagableColors = $null; $flagableColors = Select-ObjectFromList -message "Select the color to use for the 'Flag' field on imported $flagable (if any). Enter '0' or 1-'None' to skip flagging this type of object" -objects @('None', 'red', 'crimson', 'scarlet', 'rot', 'karminrot', 'scharlachrot', 'rouge', 'cramoisi', 'écarlate', 'rosso', 'cremisi', 'scarlatto', 'rojo', 'carmesí', 'escarlata', 'blue', 'navy', 'blau', 'marineblau', 'bleu', 'bleu marine', 'blu', 'blu navy', 'azul', 'azul marino', 'green', 'lime', 'grün', 'limettengrün', 'vert', 'vert citron', 'verde', 'verde lime', 'verde lima', 'yellow', 'gold', 'gelb', 'jaune', 'or', 'giallo', 'oro', 'amarillo', 'purple', 'violet', 'lila', 'violett', 'pourpre', 'viola', 'porpora', 'púrpura', 'violeta', 'orange', 'arancione', 'naranja', 'light pink', 'pink', 'baby pink', 'hellrosa', 'rosa', 'rose clair', 'rose', 'rosa chiaro', 'rosa claro', 'light blue', 'baby blue', 'sky blue', 'hellblau', 'babyblau', 'himmelblau', 'bleu clair', 'bleu ciel', 'azzurro', 'blu chiaro', 'azul claro', 'celeste', 'light green', 'mint', 'hellgrün', 'mintgrün', 'vert clair', 'menthe', 'verde chiaro', 'menta', 'verde claro', 'light purple', 'lavender', 'helllila', 'lavendel', 'violet clair', 'lavande', 'viola chiaro', 'lavanda', 'morado claro', 'light orange', 'peach', 'hellorange', 'pfirsich', 'orange clair', 'pêche', 'arancione chiaro', 'pesca', 'naranja claro', 'melocotón', 'light yellow', 'cream', 'hellgelb', 'creme', 'jaune clair', 'crème', 'giallo chiaro', 'crema', 'amarillo claro', 'white', 'weiß', 'blanc', 'bianco', 'blanco', 'grey', 'gray', 'silver', 'grau', 'silber', 'gris', 'argent', 'grigio', 'argento', 'plateado', 'lightpink', 'lightblue', 'lightgreen', 'lightpurple', 'lightorange', 'lightyellow') -allowNull $true;
-                    if ($null -eq $flagableColors -or $flagableColors -ieq "None"){continue}
-                    $flagName = $null; $flagName = $(Read-Host "Enter the exact name of the Flag Type to use for $flagable with color $flagableColors (case-sensitive).") ?? "$flagable - $flagableColors"
-                    $ObjectFlagMap["$flagable"] = @{Color = $flagableColors;Name  = $flagName;}
+                $completedFlagSetup = $false
+                while ($completedFlagSetup -ne $true){
+                    $flagColor = $null; $flagColor = Select-ObjectFromList -message "Select the color to use for a new flag type. First we create flag types, then we attribute flag types to the objects that you'd like. Select a Color or Enter '0' or 1-'None' to skip creating FlagTypes if you already created some in Hudu." -objects @('None', 'red', 'crimson', 'scarlet', 'rot', 'karminrot', 'scharlachrot', 'rouge', 'cramoisi', 'écarlate', 'rosso', 'cremisi', 'scarlatto', 'rojo', 'carmesí', 'escarlata', 'blue', 'navy', 'blau', 'marineblau', 'bleu', 'bleu marine', 'blu', 'blu navy', 'azul', 'azul marino', 'green', 'lime', 'grün', 'limettengrün', 'vert', 'vert citron', 'verde', 'verde lime', 'verde lima', 'yellow', 'gold', 'gelb', 'jaune', 'or', 'giallo', 'oro', 'amarillo', 'purple', 'violet', 'lila', 'violett', 'pourpre', 'viola', 'porpora', 'púrpura', 'violeta', 'orange', 'arancione', 'naranja', 'light pink', 'pink', 'baby pink', 'hellrosa', 'rosa', 'rose clair', 'rose', 'rosa chiaro', 'rosa claro', 'light blue', 'baby blue', 'sky blue', 'hellblau', 'babyblau', 'himmelblau', 'bleu clair', 'bleu ciel', 'azzurro', 'blu chiaro', 'azul claro', 'celeste', 'light green', 'mint', 'hellgrün', 'mintgrün', 'vert clair', 'menthe', 'verde chiaro', 'menta', 'verde claro', 'light purple', 'lavender', 'helllila', 'lavendel', 'violet clair', 'lavande', 'viola chiaro', 'lavanda', 'morado claro', 'light orange', 'peach', 'hellorange', 'pfirsich', 'orange clair', 'pêche', 'arancione chiaro', 'pesca', 'naranja claro', 'melocotón', 'light yellow', 'cream', 'hellgelb', 'creme', 'jaune clair', 'crème', 'giallo chiaro', 'crema', 'amarillo claro', 'white', 'weiß', 'blanc', 'bianco', 'blanco', 'grey', 'gray', 'silver', 'grau', 'silber', 'gris', 'argent', 'grigio', 'argento', 'plateado', 'lightpink', 'lightblue', 'lightgreen', 'lightpurple', 'lightorange', 'lightyellow') -allowNull $true;
+                    if ($null -eq $flagColor -or $flagColor -ieq "None"){
+                        $completedFlagSetup = $true
+                        break
+                    }
+                    $flagName = $null; $flagName = $(Read-Host "Enter the Name of your New Flag Type to use with color $flagColor") ?? "$flagColor Flag"
+                    if ([string]::IsNullOrWhiteSpace($flagName)){
+                        write-error "Empty flag name, try again or enter NONE at the next prompt to finish."
+                    } else {
+                        try {
+                            New-HuduFlagType -Color $flagColor -Name $flagName
+                        } catch {
+                            Write-Error "Failed to create FlagType $flagName with color $flagColor. It may already exist. Error: $_" -ForegroundColor Yellow
+                        }
+                    }
+                }
+                $SelectableFlagTypes = Get-HuduFlagTypes
+                if ($SelectableFlagTypes.count -eq 0){
+                    Write-Error "No flag types found in Hudu. You can either create these in this setup or create them directly in Hudu, but you'll need flag types to exist before you can attribute flag types to objects"
+                }
+
+                $FlagableObjects = @("Companies","Locations","Contacts","Configurations","Assets","Articles","Websites","Passwords")
+                Write-Host "Done setting up flagtypes, Now we can attribute them to certain source objects to-be migrated."
+                foreach ($flagable in $FlagableObjects){
+                    $selectedFlagType = $null; $selectedFlagType = Select-ObjectFromList -message "Select the Flag Type to attribute to incoming '$($flagable)' objects. Select '0' or 'None' to skip attributing this flagtype." -objects $SelectableFlagTypes -allowNull $true -inspectObjects $true;
+                    if ($null -eq $selectedFlagType){continue}
+                    $ObjectFlagMap["$flagable"] = $selectedFlagType
+                }
+                if ($ObjectFlagMap.Keys.count -gt 0){
+                $allowSettingFlagsAndTypes = $true
+                } else {
+                    Write-Host "No Flag Types were selected for any objects, skipping flag attribution." -ForegroundColor Yellow
+                    $allowSettingFlagsAndTypes = $false
                 }
             }
             "2" {
