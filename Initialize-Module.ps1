@@ -39,7 +39,6 @@ if($IsWindows){
     $settingsTop = Join-Path "$home" ".config"
 }
 if (-not (Get-Command -Name Get-EnsuredPath -ErrorAction SilentlyContinue)) { . $PSScriptRoot\Public\Init-OptionsAndLogs.ps1 }
-if (-not (Get-Command -Name Get-UserFlagSetup -ErrorAction SilentlyContinue)) { . $PSScriptRoot\Public\Add-OptionalFlags.ps1 }
 $debugfolder = $(Get-EnsuredPath -path $(join-path $(Resolve-Path .).path "debug"))
 
 # Define the path to the settings.json file in the detected platform's folder:
@@ -447,17 +446,6 @@ if ($InitType -eq 'Full') {
         switch ($skipIntegratorLayoutsInput) {
             "1" {$skipIntegratorLayouts = $true}
             "2" {$skipIntegratorLayouts = $false}
-        }
-    }
-    while ($allowSettingFlagsAndTypes -notin @($true, $false)){
-        if (-not (Get-Command -Name Get-HuduFlagTypes -ErrorAction SilentlyContinue)) { 
-            Write-Host "Flags and Flag Types aren't available in your HuduAPI module version. Skipping."
-            $allowSettingFlagsAndTypes = $false; break;
-        }
-        $allowSettingFlagsAndTypes = Read-Host "Would you like to import objects into hudu with new Flags and FlagTypes? This requires Hudu version 2.4.0 or later.`n 1) Yes`n 2) No, skip setting Flags and FlagTypes`n(1/2)"
-        switch ($allowSettingFlagsAndTypes) {
-            "1" {$flagsResult = Get-UserFlagSetup; $ObjectFlagMap = $flagsResult.ObjectFlagMap ?? @{}; $allowSettingFlagsAndTypes = $flagsResult.AllowSettingFlags ?? $false;}
-            "2" {$ObjectFlagMap = @{}; $allowSettingFlagsAndTypes = $false;}
         }
     }
 }

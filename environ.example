@@ -95,7 +95,6 @@ $ScopedMigration            = 1
 $MergedOrganizationTypes    = 1
 # do you want to skip flexible asset layouts from integrators? they are generally have the phrase '(auto)' in the name
 $skipIntegratorLayouts = $true
-$allowSettingFlagsAndTypes = $true
 
 # pre-designated array/list of prescoped/preselected companies for scoped migration (typically for faster testing)
 # prescoped Companies

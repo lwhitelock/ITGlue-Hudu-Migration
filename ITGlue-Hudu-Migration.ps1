@@ -124,6 +124,18 @@ $ScriptStartTime = $(Get-Date -Format "o")
 $CurrentVersion =  Set-ExternalModulesInitialized `
                 -RequiredHuduVersion ([version]"2.39.4") `
                 -DisallowedVersions @([version]"2.37.0")
+
+while ($allowSettingFlagsAndTypes -notin @($true, $false)){
+    if (-not (Get-Command -Name Get-HuduFlagTypes -ErrorAction SilentlyContinue)) { 
+        Write-Host "Flags and Flag Types aren't available in your HuduAPI module version. Skipping."
+        $allowSettingFlagsAndTypes = $false; break;
+    }
+    $allowSettingFlagsAndTypes = Read-Host "Would you like to import objects into hudu with new Flags and FlagTypes? This requires Hudu version 2.4.0 or later.`n 1) Yes`n 2) No, skip setting Flags and FlagTypes`n(1/2)"
+    switch ($allowSettingFlagsAndTypes) {
+        "1" {$flagsResult = Get-UserFlagSetup; $ObjectFlagMap = $flagsResult.ObjectFlagMap ?? @{}; $allowSettingFlagsAndTypes = $flagsResult.AllowSettingFlags ?? $false;}
+        "2" {$ObjectFlagMap = @{}; $allowSettingFlagsAndTypes = $false;}
+    }
+}                
 # Check if we have a logs folder
 
 if ($backups -ne "Y" -or $backups -ne "y") {
