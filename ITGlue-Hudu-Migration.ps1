@@ -334,7 +334,14 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Companies.json")) {
                     $HuduNewCompany = (New-HuduCompany -name $($unmatchedcompany.CompanyName) -nickname $unmatchedcompany.ITGCompanyObject.attributes."short-name" -notes $CompanyNotes -CompanyType $unmatchedcompany.attributes.'organization-type-name').company
                     $CompaniesMigrated = $CompaniesMigrated + 1
                 }
-			
+                if ($ObjectFlagMap -and $ObjectFlagMap.containskey("Companies") -and $null -ne $ObjectFlagMap["Companies"]){
+                    try {
+                        New-HuduFlag -FlagTypeID $ObjectFlagMap["Companies"].id -flagabletype "Company" -flagableId $HuduNewCompany.id
+                    } catch {
+                        Write-Error "Failed to add flag to company $($unmatchedcompany.CompanyName). Error: $_"
+                    }
+                }
+
                 $unmatchedcompany.matched = $true
                 $unmatchedcompany.HuduID = $HuduNewCompany.id
                 $unmatchedcompany.HuduCompanyObject = $HuduNewCompany
