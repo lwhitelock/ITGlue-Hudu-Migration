@@ -2495,27 +2495,27 @@ $ManualActionsReport = foreach ($item in $UniqueItems) {
 }
 
 ############################### Wrap-Up ###############################
-write-host "wrapup 1/8... setting asset layouts as active, enabling advanced website monitoring features"
+write-host "wrapup 1/9... setting asset layouts as active, enabling advanced website monitoring features"
 foreach ($layout in Get-HuduAssetLayouts) {write-host "setting $($(Set-HuduAssetLayout -id $layout.id -Active $true).asset_layout.name) as active" }
 $MatchedWebsites.HuduObject | Where-Object {$_.id -and $_.id -gt 0} | Foreach-Object {write-host "Enabling advanced monitoring features for $($(Set-HuduWebsite -id $_.id -EnableDMARC 'true' -EnableDKIM 'true' -EnableSPF 'true' -DisableDNS 'false' -DisableSSL 'false' -DisableWhois 'false' -Paused 'false').name)" -ForegroundColor DarkCyan}
-write-host "wrapup 2/8... adding attachments (this can take a while)"
+write-host "wrapup 2/9... adding attachments (this can take a while)"
 . .\Add-HuduAttachmentsViaAPI.ps1
 
-write-host "wrapup 3/8... adding missing relations (this can take a long while). Some errors may appear but can be safely ignored."
+write-host "wrapup 3/9... adding missing relations (this can take a long while). Some errors may appear but can be safely ignored."
 # set retry to off/false in HuduAPI module, this will save time during adding potentially existent relations.
 if (get-command -name Set-HapiErrorsDirectory -ErrorAction SilentlyContinue){try {Set-HapiErrorsDirectory -skipRetry $true} catch {}}
 . .\Get-MissingRelations.ps1
 
 @($AssetRelationsToCreate) + @($ConfigurationRelationsToCreate) | ForEach-Object {try {New-HuduRelation -FromableType  $_.FromableType -FromableID    $_.FromableID -ToableType    $_.ToableType -ToableID      $_.ToableID} catch {Write-Host "Skipped or errored: $_" -ForegroundColor Yellow}}
 
-write-host "wrapup 4/8... archiving passwords, assets, configurations as they had been in ITGlue (this can take a while)"
+write-host "wrapup 4/9... archiving passwords, assets, configurations as they had been in ITGlue (this can take a while)"
 $DocsCsv = import-csv "$ITGLueExportPath\documents.csv"
 $ArchivedPasswords = $MatchedPasswords |? {$_.itgobject.attributes.archived -eq $true}
 $ArchivedConfigurations = $MatchedConfigurations |? {$_.ITGObject.attributes.archived -eq $true}    
 $ArchivedAssets = $MatchedAssets |? {$_.ITGObject.attributes.archived -eq $true}
 $ArchivedDocs = $DocsCsv |? {$_.archived -eq 'yes'}
 
-write-host "wrapup 5/8... archiving items..."
+write-host "wrapup 5/9... archiving items..."
 $ptaresults = $ArchivedPasswords | % {if ($_.huduid -and $_.huduid -gt 0) {Set-HuduPasswordArchive -id $_.huduid -Archive $true}}
 $ctaresults = $ArchivedConfigurations |% {if ($_.huduid -and $_.huduid -gt 0) {Set-HuduAssetArchive -Id $_.huduid -CompanyId $_.huduobject.company_id -Archive $true}}
 $ataresults = $ArchivedAssets |% {if ($_.huduid -and $_.huduid -gt 0) {Set-HuduAssetArchive -Id $_.huduid -CompanyId $_.huduobject.company_id -Archive $true}}
@@ -2527,23 +2527,22 @@ foreach ($obj in @(
     @{Name = "docs";            Archived = $dtaresults ?? @() })) {
     $obj.Archived | ConvertTo-Json -depth 75 | Out-File $(join-path $settings.MigrationLogs "archived-$($obj.Name).json")
 }
-write-host "wrapup 6/8... Setting Standalone articles with attachments to filename..."
+write-host "wrapup 6/9... Setting Standalone articles with attachments to filename..."
 foreach ($a in $(Get-HuduArticles | where-object {$_.content -eq "Empty Document in IT Glue Export - Please Check IT Glue" -and $_.name -ilike "*.*"})){Set-HuduArticle -id $a.id -content "Please see attached file, $($a.name)"}
 if (get-command -name Set-HapiErrorsDirectory -ErrorAction SilentlyContinue){try {Set-HapiErrorsDirectory -skipRetry $false} catch {}}
 
-write-host "wrapup 7/8... Placing password folders if user-configured to do so... $($importPasswordFolders)"
+write-host "wrapup 7/9... Placing password folders if user-configured to do so... $($importPasswordFolders)"
 if ($true -eq $importPasswordFolders){
     . .\public\Process-PasswordFolders.ps1
 }
-write-host "wrapup 8/8... Placing checklists / checklist templates if user-configured to do so... $($importChecklists)"
+write-host "wrapup 8/9... Placing checklists / checklist templates if user-configured to do so... $($importChecklists)"
 if ($true -eq $importChecklists){
     . .\public\Process-Checklists.ps1
 }
-foreach ($auxilliaryObj in @(@{Name = "passwordfolders"; Created = $MatchedPasswordFolders ?? @() }, @{Name = "checklists"; Created = $MatchedChecklists ?? @() })) {
-    $auxilliaryObj.Created | ConvertTo-Json -depth 75 | Out-File $(join-path $settings.MigrationLogs "created-$($auxilliaryObj.Name).json")
-}
+
 if ($true -eq $allowSettingFlagsAndTypes){
-    $targets = @{
+    write-host "wrapup 9/9... Applying optional flags and flag types..."
+    $TaggingTargets = @{
     "Company"        = $MatchedCompanies.HuduCompanyObject | Where-Object { $_.archived -ne $true }
     "Passwords"      = $MatchedPasswords.HuduObject        | Where-Object { $_.archived -ne $true }
     "Articles"       = $MatchedArticles.HuduObject         | Where-Object { $_.archived -ne $true }
@@ -2552,19 +2551,23 @@ if ($true -eq $allowSettingFlagsAndTypes){
     "Location"       = $MatchedLocations                   | Where-Object { $_.archived -ne $true }
     }
 
-    foreach ($objectType in $targets.GetEnumerator()) {
+    foreach ($objectType in $TaggingTargets.GetEnumerator()) {
     $key   = $objectType.Key
     $items = @($objectType.Value)
 
     if ($ObjectFlagMap -and $ObjectFlagMap.ContainsKey($key) -and $null -ne $ObjectFlagMap[$key]) {
         Write-Host "Setting optional flags for $key ($($items.Count)) objects per user configuration"
         $items | ForEach-Object {
-        Set-OptionalFlags -ObjectFlagMap $ObjectFlagMap -Object $_ -ObjectType $key
+            Set-OptionalFlags -ObjectFlagMap $ObjectFlagMap -Object $_ -ObjectType $key
         }
     } else {
         Write-Host "No optional flags configured for $key, skipping"
     }
     }
+} else {write-host "wrapup 9/9... Skipping optional flags and flag types..."}
+
+foreach ($auxilliaryObj in @(@{Name = "passwordfolders"; Created = $MatchedPasswordFolders ?? @() }, @{Name = "checklists"; Created = $MatchedChecklists ?? @() })) {
+    $auxilliaryObj.Created | ConvertTo-Json -depth 75 | Out-File $(join-path $settings.MigrationLogs "created-$($auxilliaryObj.Name).json")
 }
 ############################### End ###############################
 
