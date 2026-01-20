@@ -1,28 +1,45 @@
 
-function Add-OptionalFlags {
-    param (
-        [System.Object[]]$ObjectFlagMap,
-        [PSCustomObject]$object,
-        [string]$objectType
-    )
-    $translatedObjectType = switch ($objectType.ToLower()) {
-        "company"       {"Company"}
-        "location"      {"Asset"}
-        "contacts"      {"Asset"}
-        "configuration" {"Asset"}
-        "asset"         {"Asset"}
-        "articles"      {"Article"}
-        "website"       {"Websites"}
-        "passwords"      {"Password"}
-        default         { $objectType }
-    }
+function Set-OptionalFlags {
+  param(
+    [hashtable]$ObjectFlagMap,
+    [pscustomobject]$Object,
+    [string]$ObjectType
+  )
+  if ($null -eq $Object -or $null -eq $object.id -or $object.id -lt 1) {
+    write-warning "bad object id $($object.id)"
+    return
+  }
 
-        try {
-            New-HuduFlag -FlagTypeID $ObjectFlagMap["$objectType"].id -flagabletype "$translatedObjectType" -flagableId $object.id
-        } catch {
-            Write-Error "Failed to add flag to $objectType $($object.Name). Error: $_"
-        }
-    
+
+  $mapKey = switch ($ObjectType.ToLower()) {
+    'company'        { 'Companies' }
+    'configuration'  { 'Configurations' }
+    'location'       { 'Locations' }
+    default          { $ObjectType }
+  }
+
+  $flagableType = switch ($ObjectType.ToLower()) {
+    'company'        { 'Company' }
+    'articles'       { 'Article' }
+    'websites'       { 'Website' }
+    'passwords'      { 'AssetPassword' }
+    'contacts'       { 'Asset' }
+    'configuration'  { 'Asset' }
+    'location'       { 'Asset' }
+    default          { 'Asset' }
+  }
+
+  $flagType = $ObjectFlagMap[$mapKey]
+  if (-not $flagType) {
+    Write-Warning "No FlagType configured for ObjectType='$ObjectType' (mapKey='$mapKey'). Skipping."
+    return
+  }
+
+  try {
+    New-HuduFlag -FlagTypeID $flagType.id -FlagableType $flagableType -Flagable_Id $Object.id
+  } catch {
+    Write-Error "Failed to add flag to $ObjectType '$($Object.Name)'. Error: $_"
+  }
 }
 
 function Get-UserFlagSetup {
