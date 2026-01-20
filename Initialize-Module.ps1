@@ -456,6 +456,7 @@ if ($InitType -eq 'Full') {
     }
         
 }
+}
 ############################ Migration Logs Path ##############################
 $MigrationLogs = $environmentSettings.MigrationLogs
 
