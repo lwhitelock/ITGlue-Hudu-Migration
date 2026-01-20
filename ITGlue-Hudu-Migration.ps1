@@ -2545,14 +2545,14 @@ if ($true -eq $allowSettingFlagsAndTypes){
     if (get-command -name Set-HapiErrorsDirectory -ErrorAction SilentlyContinue){try {Set-HapiErrorsDirectory -skipRetry $true} catch {}}
 
     $TaggingTargets = @{
-    "Company"        = $MatchedCompanies.HuduCompanyObject | Where-Object { $_.archived -ne $true } ?? @()
-    "Passwords"      = $MatchedPasswords.HuduObject        | Where-Object { $_.archived -ne $true } ?? @()
-    "Articles"       = $MatchedArticles.HuduObject         | Where-Object { $_.archived -ne $true } ?? @()
-    "Contacts"       = $MatchedContacts.HuduObject         | Where-Object { $_.archived -ne $true } ?? @()
-    "Configurations" = $MatchedConfigurations.HuduObject   | Where-Object { $_.archived -ne $true } ?? @()
-    "Locations"      = $MatchedLocations.HuduObject        | Where-Object { $_.archived -ne $true } ?? @()
-    "Websites"       = $MatchedWebsites.HuduObject         | Where-Object { $_.archived -ne $true } ?? @()
-    "Checklists"     = $MatchedChecklists.HuduProcedure    | Where-Object { $_.archived -ne $true } ?? @()
+    # "Company"        = $MatchedCompanies.HuduCompanyObject | Where-Object { $_.archived -ne $true }
+    # "Passwords"      = $MatchedPasswords.HuduObject        | Where-Object { $_.archived -ne $true }
+    # "Articles"       = $MatchedArticles.HuduObject         | Where-Object { $_.archived -ne $true }
+    # "Contacts"       = $MatchedContacts.HuduObject         | Where-Object { $_.archived -ne $true }
+    # "Configurations" = $MatchedConfigurations.HuduObject   | Where-Object { $_.archived -ne $true }
+    # "Locations"      = $MatchedLocations.HuduObject        | Where-Object { $_.archived -ne $true }
+    # "Websites"       = $MatchedWebsites.HuduObject         | Where-Object { $_.archived -ne $true }
+    "Checklists"     = $MatchedChecklists.HuduProcedure    | Where-Object { $_.HuduProcedureTasks.count -gt 0 }
     }
 
     foreach ($objectType in $TaggingTargets.GetEnumerator()) {
@@ -2570,6 +2570,7 @@ if ($true -eq $allowSettingFlagsAndTypes){
     }
     if (get-command -name Set-HapiErrorsDirectory -ErrorAction SilentlyContinue){try {Set-HapiErrorsDirectory -skipRetry $false} catch {}}
 } else {write-host "wrapup 9/9... Skipping optional flags and flag types..."}
+
 
 foreach ($auxilliaryObj in @(@{Name = "passwordfolders"; Created = $MatchedPasswordFolders ?? @() }, @{Name = "checklists"; Created = $MatchedChecklists ?? @() })) {
     $auxilliaryObj.Created | ConvertTo-Json -depth 75 | Out-File $(join-path $settings.MigrationLogs "created-$($auxilliaryObj.Name).json")
