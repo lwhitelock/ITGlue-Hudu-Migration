@@ -348,7 +348,6 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Companies.json")) {
                     $HuduNewCompany = (New-HuduCompany -name $($unmatchedcompany.CompanyName) -nickname $unmatchedcompany.ITGCompanyObject.attributes."short-name" -notes $CompanyNotes -CompanyType $unmatchedcompany.attributes.'organization-type-name').company
                     $CompaniesMigrated = $CompaniesMigrated + 1
                 }
-                Add-OptionalFlags -objectFlagMap $objectFlagMap -object $HuduNewCompany -objectType "Company"
 
                 $unmatchedcompany.matched = $true
                 $unmatchedcompany.HuduID = $HuduNewCompany.id
@@ -501,7 +500,6 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Locations.json")) {
 
     #Import Locations
     $MatchedLocations = Import-Items @LocImportSplat
-    $MatchedLocations | foreach-object {Add-OptionalFlags -objectFlagMap $objectFlagMap -objectType "Location" -object $_.HuduObject}
 
     $ITGLocationsHashTable = @{}
     foreach ($ITGL in $MatchedLocations) {
@@ -953,7 +951,6 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Configurations.json")
             }
         }
 
-    $MatchedConfigurations | foreach-object {Add-OptionalFlags -objectFlagMap $objectFlagMap -objectType "Configuration" -object $_.HuduObject}
 
 
     } else {
@@ -1103,7 +1100,6 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Contacts.json")) {
 
     #Import Locations
     $MatchedContacts = Import-Items @ConImportSplat
-    $MatchedContacts | foreach-object {Add-OptionalFlags -objectFlagMap $objectFlagMap -objectType "Contacts" -object $_.HuduObject}
 
     Write-Host "Contacts Complete"
 
@@ -2005,7 +2001,6 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Articles.json")) {
             $Article.Imported = "Created-By-Script"
 			
         } 
-        $MatchedArticles | foreach-object {Add-OptionalFlags -objectFlagMap $objectFlagMap -objectType "Articles" -object $_.HuduObject}
 
         $MatchedArticles | ConvertTo-Json -depth 100 | Out-File "$MigrationLogs\Articles.json"
         $ArticleErrors | ConvertTo-Json -depth 100 | Out-File "$MigrationLogs\ArticleErrors.json"
@@ -2267,7 +2262,6 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Passwords.json")) {
         }
     }
 
-    $MatchedPasswords | foreach-object {Add-OptionalFlags -objectFlagMap $objectFlagMap -objectType "Passwords" -object $_.HuduObject}
     # Save the results to resume from if needed
     $MatchedPasswords | ConvertTo-Json -depth 100 | Out-File "$MigrationLogs\Passwords.json"
     $ManualActions | ConvertTo-Json -depth 100 | Out-File "$MigrationLogs\ManualActions.json"
@@ -2548,6 +2542,32 @@ if ($true -eq $importChecklists){
 foreach ($auxilliaryObj in @(@{Name = "passwordfolders"; Created = $MatchedPasswordFolders ?? @() }, @{Name = "checklists"; Created = $MatchedChecklists ?? @() })) {
     $auxilliaryObj.Created | ConvertTo-Json -depth 75 | Out-File $(join-path $settings.MigrationLogs "created-$($auxilliaryObj.Name).json")
 }
+if ($true -eq $allowSettingFlagsAndTypes){
+foreach ($objectType in @{
+    "Company"        = $MatchedCompanies.HuduCompanyObject | where-object {$_.archived -ne $true}
+    "Passwords"      = $MatchedPasswords.HuduObject | where-object {$_.archived -ne $true}
+    "Articles"       = $MatchedArticles.HuduObject | where-object {$_.archived -ne $true}
+    "Contacts"       = $MatchedContacts.HuduObject | where-object {$_.archived -ne $true}
+    "Configuration"  = $MatchedConfigurations.HuduObject | where-object {$_.archived -ne $true}
+    "Location"       = $MatchedLocations | where-object {$_.archived -ne $true}
+}) {
+        if ($ObjectFlagMap -and $ObjectFlagMap.containskey("$($objectType.Key)") -and $null -ne $ObjectFlagMap["$($objectType.Key)"]) {
+            Write-Host "Setting optional flags for $($objectType.Key)s as per user configuration"
+            $objectType.Value | foreach-object {Set-OptionalFlags -objectFlagMap $objectFlagMap -object $_.huduObject -objectType "$($objectType.Key)"}
+        } else {
+            Write-Host "No optional flags configured for $($objectType.Key)s, skipping"
+        }
+    }
+}
+
+$matchedCompanies | foreach-object {Add-OptionalFlags -objectFlagMap $objectFlagMap -object $_.huduObject -objectType "Company"}
+    $MatchedPasswords | foreach-object {Add-OptionalFlags -objectFlagMap $objectFlagMap -objectType "Passwords" -object $_.HuduObject}
+        $MatchedArticles | foreach-object {Add-OptionalFlags -objectFlagMap $objectFlagMap -objectType "Articles" -object $_.HuduObject}
+    $MatchedContacts | foreach-object {Add-OptionalFlags -objectFlagMap $objectFlagMap -objectType "Contacts" -object $_.HuduObject}
+    $MatchedConfigurations | foreach-object {Add-OptionalFlags -objectFlagMap $objectFlagMap -objectType "Configuration" -object $_.HuduObject}
+    $MatchedLocations | foreach-object {Add-OptionalFlags -objectFlagMap $objectFlagMap -objectType "Location" -object $_.HuduObject}
+
+
 ############################### End ###############################
 
 $FinalHtml = "$Head $MigrationReport $ManualActionsReport $footer"

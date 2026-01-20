@@ -1,7 +1,7 @@
 
 function Add-OptionalFlags {
     param (
-        [hashtable]$ObjectFlagMap,
+        [System.Object[]]$ObjectFlagMap,
         [PSCustomObject]$object,
         [string]$objectType
     )
@@ -17,13 +17,12 @@ function Add-OptionalFlags {
         default         { $objectType }
     }
 
-    if ($ObjectFlagMap -and $ObjectFlagMap.containskey("$objectType") -and $null -ne $ObjectFlagMap["$objectType"]){
         try {
             New-HuduFlag -FlagTypeID $ObjectFlagMap["$objectType"].id -flagabletype "$translatedObjectType" -flagableId $object.id
         } catch {
             Write-Error "Failed to add flag to $objectType $($object.Name). Error: $_"
         }
-    }
+    
 }
 
 function Get-UserFlagSetup {
