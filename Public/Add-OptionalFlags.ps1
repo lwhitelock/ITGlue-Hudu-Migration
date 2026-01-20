@@ -10,14 +10,16 @@ function Set-OptionalFlags {
     return
   }
 
-
+  # possible cononical names for object types (itglue-side). Generally mapped in flag map as plurals
   $mapKey = switch ($ObjectType.ToLower()) {
     'company'        { 'Companies' }
     'configuration'  { 'Configurations' }
     'location'       { 'Locations' }
+    'Checklist'      { 'Checklists' }
     default          { $ObjectType }
   }
 
+  # cononical names from itglue-side mapped to flagable_types on hudu-side. these have more open-ended naming
   $flagableType = switch ($ObjectType.ToLower()) {
     'company'        { 'Company' }
     'articles'       { 'Article' }
@@ -26,6 +28,8 @@ function Set-OptionalFlags {
     'contacts'       { 'Asset' }
     'configuration'  { 'Asset' }
     'location'       { 'Asset' }
+    'checklist'      { 'Procedure' }
+    'checklists'     { 'Procedure' }
     default          { 'Asset' }
   }
 
@@ -72,7 +76,7 @@ function Get-UserFlagSetup {
             }
         }
 
-        $FlagableObjects = @("Companies","Locations","Contacts","Configurations","Assets","Articles","Websites","Passwords")
+        $FlagableObjects = @("Companies","Locations","Contacts","Configurations","Assets","Articles","Websites","Passwords","Checklists")
         Write-Host "Done setting up flagtypes, Now we can attribute them to certain source objects to-be migrated."
         foreach ($flagable in $FlagableObjects){
             $selectedFlagType = $null; $selectedFlagType = Select-ObjectFromList -message "Select the Flag Type to attribute to incoming '$($flagable)' objects. Select '0' or 'None' to skip attributing this flagtype." -objects $SelectableFlagTypes -allowNull $true -inspectObjects $true;

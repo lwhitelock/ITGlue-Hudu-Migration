@@ -2545,13 +2545,14 @@ if ($true -eq $allowSettingFlagsAndTypes){
     if (get-command -name Set-HapiErrorsDirectory -ErrorAction SilentlyContinue){try {Set-HapiErrorsDirectory -skipRetry $true} catch {}}
 
     $TaggingTargets = @{
-    "Company"        = $MatchedCompanies.HuduCompanyObject | Where-Object { $_.archived -ne $true }
-    "Passwords"      = $MatchedPasswords.HuduObject        | Where-Object { $_.archived -ne $true }
-    "Articles"       = $MatchedArticles.HuduObject         | Where-Object { $_.archived -ne $true }
-    "Contacts"       = $MatchedContacts.HuduObject         | Where-Object { $_.archived -ne $true }
-    "Configurations" = $MatchedConfigurations.HuduObject   | Where-Object { $_.archived -ne $true }
-    "Locations"      = $MatchedLocations.HuduObject        | Where-Object { $_.archived -ne $true }
-    "Websites"       = $MatchedWebsites.HuduObject         | Where-Object { $_.archived -ne $true }
+    "Company"        = $MatchedCompanies.HuduCompanyObject | Where-Object { $_.archived -ne $true } ?? @()
+    "Passwords"      = $MatchedPasswords.HuduObject        | Where-Object { $_.archived -ne $true } ?? @()
+    "Articles"       = $MatchedArticles.HuduObject         | Where-Object { $_.archived -ne $true } ?? @()
+    "Contacts"       = $MatchedContacts.HuduObject         | Where-Object { $_.archived -ne $true } ?? @()
+    "Configurations" = $MatchedConfigurations.HuduObject   | Where-Object { $_.archived -ne $true } ?? @()
+    "Locations"      = $MatchedLocations.HuduObject        | Where-Object { $_.archived -ne $true } ?? @()
+    "Websites"       = $MatchedWebsites.HuduObject         | Where-Object { $_.archived -ne $true } ?? @()
+    "Checklists"     = $MatchedChecklists.HuduProcedure    | Where-Object { $_.archived -ne $true } ?? @()
     }
 
     foreach ($objectType in $TaggingTargets.GetEnumerator()) {
