@@ -176,3 +176,19 @@ foreach ($itgcompanyID in ($matchedpasswords.ITGObject.attributes.'organization-
         }
     }
 }
+
+# if you want password folders that only contain passwords from a single company to be moved, run the below block or set this var to true
+$companyPasswordFolderAttributionMove = $companyPasswordFolderAttributionMove ?? $false
+if ($true -eq $companyPasswordFolderAttributionMove){
+    $allPasswordFolders = get-hudupasswordfolders | where-object {-not $_.company_id -or $_.company_id -lt 1 -or $null -eq $_.company_id}
+    $allPasswords = get-hudupasswords
+    foreach ($folder in $allPasswordFolders) {
+        $passwordsInFolder = $allPasswords | where-object { $_.password_folder_id -eq $folder.id }
+        $companyGroups = $($passwordsInFolder.company_id | where-object {$_ -and $_ -ge 1}) | select-object -Unique
+        if ($companyGroups.Count -eq 1) {
+            $targetCompanyId = [int]$companyGroups[0]
+            Write-Host "Moving global password folder '$($folder.name)' to company $targetCompanyId"
+            set-hudupasswordfolder -id $folder.id -company_id $targetCompanyId
+        }
+    }
+}
