@@ -126,16 +126,10 @@ $CurrentVersion =  Set-ExternalModulesInitialized `
                 -DisallowedVersions @([version]"2.37.0")
 
 if ($true -eq $allowSettingFlagsAndTypes){
-    if (-not (Get-Command -Name Get-HuduFlagTypes -ErrorAction SilentlyContinue)) { 
-        Write-Host "Flags and Flag Types aren't available in your HuduAPI module version. Skipping."
-        $allowSettingFlagsAndTypes = $false
-    } elseif ($currentVersion -lt [version]("2.40.0")){
-        Write-Host "Flags and Flag Types aren't available in your hudu version. Upgrade your hudu instance and try again if it's a dealbreaker."
-        $allowSettingFlagsAndTypes = $false
-    } else {
-        $flagsResult = Get-UserFlagSetup; $ObjectFlagMap = $flagsResult.ObjectFlagMap ?? @{}; $allowSettingFlagsAndTypes = $flagsResult.AllowSettingFlags ?? $false;
-    }
-}                
+    . .\Public\Get-UserFlagPreferences.ps1
+} else {
+    $allowSettingFlagsAndTypes = $false; $flagPasswordsByType = $false; $ObjectFlagMap = @{};
+}
 # Check if we have a logs folder
 
 if ($backups -ne "Y" -or $backups -ne "y") {
@@ -2542,33 +2536,7 @@ if ($true -eq $importChecklists){
 
 if ($true -eq $allowSettingFlagsAndTypes){
     write-host "wrapup 9/9... Applying optional flags and flag types..."
-    if (get-command -name Set-HapiErrorsDirectory -ErrorAction SilentlyContinue){try {Set-HapiErrorsDirectory -skipRetry $true} catch {}}
-
-    $TaggingTargets = @{
-    "Company"        = $MatchedCompanies.HuduCompanyObject | Where-Object { $_.archived -ne $true }
-    "Passwords"      = $MatchedPasswords.HuduObject        | Where-Object { $_.archived -ne $true }
-    "Articles"       = $MatchedArticles.HuduObject         | Where-Object { $_.archived -ne $true }
-    "Contacts"       = $MatchedContacts.HuduObject         | Where-Object { $_.archived -ne $true }
-    "Configurations" = $MatchedConfigurations.HuduObject   | Where-Object { $_.archived -ne $true }
-    "Locations"      = $MatchedLocations.HuduObject        | Where-Object { $_.archived -ne $true }
-    "Websites"       = $MatchedWebsites.HuduObject         | Where-Object { $_.archived -ne $true }
-    "Checklists"     = $MatchedChecklists.HuduProcedure    | Where-Object { $_.HuduProcedureTasks.count -gt 0 }
-    }
-
-    foreach ($objectType in $TaggingTargets.GetEnumerator()) {
-    $key   = $objectType.Key
-    $items = @($objectType.Value)
-
-    if ($ObjectFlagMap -and $ObjectFlagMap.ContainsKey($key) -and $null -ne $ObjectFlagMap[$key]) {
-        Write-Host "Setting optional flags for $key ($($items.Count)) objects per user configuration"
-        $items | ForEach-Object {
-            Set-OptionalFlags -ObjectFlagMap $ObjectFlagMap -Object $_ -ObjectType $key
-        }
-    } else {
-        Write-Host "No optional flags configured for $key, skipping"
-    }
-    }
-    if (get-command -name Set-HapiErrorsDirectory -ErrorAction SilentlyContinue){try {Set-HapiErrorsDirectory -skipRetry $false} catch {}}
+    . .\public\Add-HuduFlagsFlagtypes.ps1
 } else {write-host "wrapup 9/9... Skipping optional flags and flag types..."}
 
 
