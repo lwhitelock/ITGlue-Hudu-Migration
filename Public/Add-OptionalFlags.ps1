@@ -22,6 +22,7 @@ function Set-OptionalFlags {
   # cononical names from itglue-side mapped to flagable_types on hudu-side. these have more open-ended naming
   $flagableType = switch ($ObjectType.ToLower()) {
     'company'        { 'Company' }
+    'companies'      { 'Company' }
     'articles'       { 'Article' }
     'websites'       { 'Website' }
     'passwords'      { 'AssetPassword' }
