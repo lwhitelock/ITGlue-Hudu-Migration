@@ -38,7 +38,7 @@ foreach ($objectType in $TaggingTargets.GetEnumerator()) {
     $key   = $objectType.Key
     $items = @($objectType.Value)
 
-    if ($ObjectFlagMap -and $ObjectFlagMap.ContainsKey($key) -and $null -ne $ObjectFlagMap[$key]) {
+    if ($ObjectFlagMap -and $ObjectFlagMap.$key -and $null -ne $ObjectFlagMap.$key) {
         Write-Host "Setting optional flags for $key ($($items.Count)) objects per user configuration"
         $items | ForEach-Object {
             Set-OptionalFlags -ObjectFlagMap $ObjectFlagMap -Object $_ -ObjectType $key
