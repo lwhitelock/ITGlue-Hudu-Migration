@@ -1,7 +1,7 @@
 
 function Set-OptionalFlags {
   param(
-    [hashtable]$ObjectFlagMap,
+    [system.object[]]$ObjectFlagMap,
     [pscustomobject]$Object,
     [string]$ObjectType
   )
@@ -33,7 +33,7 @@ function Set-OptionalFlags {
     default          { 'Asset' }
   }
 
-  $flagType = $ObjectFlagMap[$mapKey]
+  $flagType = $ObjectFlagMap.$mapKey
   if (-not $flagType) {
     Write-Warning "No FlagType configured for ObjectType='$ObjectType' (mapKey='$mapKey'). Skipping."
     return
