@@ -89,6 +89,7 @@ $NonInteractive             = 2
 $importChecklists           = 1
 $importPasswordFolders      = 1
 $GlobalPasswordFolderMode = $true # or $false
+$companyPasswordFolderAttributionMove = $null # $false or $true- If using global password folders mode, this effectively allows for password folders that only have passwords for one company localized to that compoany or de-globalized
 
 # If you want to scope migration to just come companies, select 2, otherwise leave at 1 for typical, full migration
 $ScopedMigration            = 1
