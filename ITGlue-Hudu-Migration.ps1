@@ -74,37 +74,55 @@ if (-not (Get-Command -Name Get-UserFlagSetup -ErrorAction SilentlyContinue)) { 
 
 
 ###################### Initial Setup and Confirmations ###############################
-Write-Host "#######################################################" -ForegroundColor Green
-Write-Host "#                                                     #" -ForegroundColor Green
-Write-Host "#          IT Glue to Hudu Migration Script           #" -ForegroundColor Green
-Write-Host "#                                                     #" -ForegroundColor Green
-Write-Host "#          Version: 2.0  -Beta                        #" -ForegroundColor Green
-Write-Host "#          Date: 02/07/2023                           #" -ForegroundColor Green
-Write-Host "#                                                     #" -ForegroundColor Green
-Write-Host "#          Author: Luke Whitelock                     #" -ForegroundColor Green
-Write-Host "#                  https://mspp.io                    #" -ForegroundColor Green
-Write-Host "#          Contributors: John Duprey                  #" -ForegroundColor Green
-Write-Host "#                        Mendy Green                  #" -ForegroundColor Green
-Write-Host "#                  https://MSPGeek.org                #" -ForegroundColor Green
-Write-Host "#                  https://mendyonline.com            #" -ForegroundColor Green
-Write-Host "#                                                     #" -ForegroundColor Green
-Write-Host "#######################################################" -ForegroundColor Green
-Write-Host "# Note: This is an unofficial script, please do not   #" -ForegroundColor Green
-Write-Host "# contact Hudu support if you run into issues.        #" -ForegroundColor Green
-Write-Host "# For support please visit the Hudu Sub-Reddit:       #" -ForegroundColor Green
-Write-Host "# https://www.reddit.com/r/hudu/                      #" -ForegroundColor Green
-Write-Host "# The #v-hudu channel on the MSPGeek Slack/Discord:   #" -ForegroundColor Green
-Write-Host "# https://join.mspgeek.com/                           #" -ForegroundColor Green
-Write-Host "# Or log an issue in the Github Respository:          #" -ForegroundColor Green
-Write-Host "# https://github.com/lwhitelock/ITGlue-Hudu-Migration #" -ForegroundColor Green
-Write-Host "#######################################################" -ForegroundColor Green
-Write-Host " Instructions:                                       " -ForegroundColor Green
-Write-Host " Please view Luke's blog post:                       " -ForegroundColor Green
-Write-Host " https://mspp.io/automated-it-glue-to-hudu-migration-script/     " -ForegroundColor Green
-Write-Host " for detailed instructions                           " -ForegroundColor Green
-Write-Host "#######################################################" -ForegroundColor Green
-Write-Host "# Please keep ALL COPIES of the Migration Logs folder. This can save you." -ForegroundColor Gray
-Write-Host "# Please DO NOT CHANGE ANYTHING in the Migration Logs folder. This can save you." -ForegroundColor Gray
+Write-Host @'
+#######################################################"
+#
+#          IT Glue to Hudu Migration Script           
+#
+#          Version: 3.14.159
+#          Date: 02/02/2026
+#
+#          Original Author: Luke Whitelock
+#                  https://mspp.io
+#          Contributors: John Duprey
+#                        Mendy Green
+#                        Mason Stelter
+#                  https://MSPGeek.org                
+#                  https://mendyonline.com            
+#                                                     
+######################################################
+This is the Hudu Technologies Fork of an amazing open-source project.
+
+The original project was started by Luke Whitelock and often being maintained by Mendy Green and community contributors. 
+This fork is tested for and intended to be used with the very newest Hudu versions.
+
+If you encounter any issues while using this version/fork, feel free to contact hudu support
+or reach out to the community for assistance.
+
+Email: support@usehudu.com
+Chat: support@hudumagic.com
+https://community.hudu.com/
+
+# The #v-hudu channel on the MSPGeek Slack/Discord:   
+# https://join.mspgeek.com/                           
+# Or log an issue here:
+# https://github.com/Hudu-Technologies-Inc/ITGlue-Hudu-Migration/issues
+
+ Instructions:                                       
+ Please view Luke's blog post:                       
+ https://mspp.io/automated-it-glue-to-hudu-migration-script/
+ for instructions specific to this fork, please see README.md and/or SwitchingLayouts.md [if applicable]
+   .-.-.   .-.-.   .-.-.   .-.-.   .-.-.   .-.-.   .-.-.   .-.-
+ / / \ \ / / \ \ / / \ \ / / \ \ / / \ \ / / \ \ / / \ \ / / \
+`-'   `-`-'   `-`-'   `-`-'   `-`-'   `-`-'   `-`-'   `-`-'
+'@ -ForegroundColor Green
+
+write-host @'
+<*><*><*><*><*><*><*><*><*><*><*><*><*><*><*><*><*><*><*><*>- !!!
+Please keep ALL COPIES of the Migration Logs folder. This can save you.
+Please DO NOT CHANGE ANYTHING in the Migration Logs folder. This can save you.
+<*><*><*><*><*><*><*><*><*><*><*><*><*><*><*><*><*><*><*><*>- !!!
+'@ -ForegroundColor DarkCyan
 
 # CMA
 Write-Host "######################################################" -ForegroundColor Red
