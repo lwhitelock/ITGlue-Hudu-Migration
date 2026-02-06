@@ -99,7 +99,7 @@ function Set-SmooshAssetFieldsToField {
         if ("$($($sourceasset.fields | where-object {$_.label -eq $sourcefieldsmoosh}).value)" -ilike '*list_id*'){
             $precastValue=$field.value;
             $listItemId = $null; 
-            $listItemId = $(SafeDecode $field.value).list_ids[0]
+            $listItemId = $(SafeDecode "$($($sourceasset.fields | where-object {$_.label -eq $sourcefieldsmoosh}).value)").list_ids[0]
             $textToUse = $($(get-hudulists).list_items | where-object {$_.id -eq $listItemId} | select-object -first 1).name
             Write-Host "non-empty source val [for smoosh] appears to contain listIDs; Raw val '$($precastValue)'... $($textToUse)" -foregroundColor DarkCyan
         } else {
@@ -128,6 +128,7 @@ $smooshin
     write-host "$($($smoosh | ConvertTo-Json -depth 66).ToString())"
     return $smoosh
 }
+
 function Get-RelinkableAssetTagLayoutFields {
     param (
         [int]$fromLayoutId
