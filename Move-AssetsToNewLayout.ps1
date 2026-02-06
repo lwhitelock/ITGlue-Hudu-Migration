@@ -92,15 +92,26 @@ function Set-SmooshAssetFieldsToField {
             if ($false -eq $includeBlanks) {continue}
         }
         
-    if ($includeLabelInSmooshedValues){
-        $header = "$sourcefieldsmoosh -"
-    } else {$header = ""}
-    
-    $smooshin=@"
+        if ($includeLabelInSmooshedValues){
+            $header = "$sourcefieldsmoosh -"
+        } else {$header = ""}
+        $textToUse = ""
+        if ("$($($sourceasset.fields | where-object {$_.label -eq $sourcefieldsmoosh}).value)" -ilike '*list_id*'){
+            $precastValue=$field.value;
+            $listItemId = $null; 
+            $listItemId = $(SafeDecode "$($($sourceasset.fields | where-object {$_.label -eq $sourcefieldsmoosh}).value)").list_ids[0]
+            $textToUse = $($(get-hudulists).list_items | where-object {$_.id -eq $listItemId} | select-object -first 1).name
+            Write-Host "non-empty source val [for smoosh] appears to contain listIDs; Raw val '$($precastValue)'... $($textToUse)" -foregroundColor DarkCyan
+        } else {
+            $textToUse = "$($($sourceasset.fields | where-object {$_.label -ieq $sourcefieldsmoosh}).value)"
+        }
+        # generate single entry
+        $smooshin=@"
 $header
-$($($sourceasset.fields | where-object {$_.label -eq $sourcefieldsmoosh}).value)
+$textToUse
 "@
-$smoosh=@"
+        # append to smoosh
+        $smoosh=@"
 $smoosh
 $lineDelmit
 $smooshin
