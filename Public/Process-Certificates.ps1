@@ -64,6 +64,49 @@ foreach ($cert in $sslCerts) {
         "upgrade-insecure-requests"="1"
         } -OutFile "$debug_folder\$($certid).pdf"
 }
+function Normalize-WebURL {
+    param(
+        [Parameter(Mandatory)]
+        [string]$Url
+    )
+
+    $Url = $Url.Trim()
+    if ([string]::IsNullOrWhiteSpace($Url)) { return $null }
+
+    # 1) UNC paths: \\server\share\path or //server/share/path
+    if ($Url -match '^(\\\\|//)(?<host>[^\\/]+)(?<rest>.*)$') {
+        $parsedHost = $matches.host
+        $rest = $matches.rest -replace '\\','/'
+        $rest = $rest.Trim()
+
+        if ($rest -and -not $rest.StartsWith('/')) {
+            $rest = '/' + $rest
+        }
+
+        $normalized = "https://$parsedHost$rest"
+        return $normalized.TrimEnd('/')
+    }
+
+    # 2) file:// URLs (local or UNC-ish)
+    if ($Url -match '^file://(?<rest>.+)$') {
+        $rest = $matches.rest.TrimStart('\','/')
+        $rest = $rest -replace '\\','/'
+        $normalized = "https://$rest"
+        return $normalized.TrimEnd('/')
+    }
+
+    # 3) Any other scheme: http://, ftp://, whatever://
+    if ($Url -match '^(?<scheme>[a-z][a-z0-9+\-.]*://)(?<rest>.+)$') {
+        $rest = $matches.rest.TrimStart('/')
+        $normalized = "https://$rest"
+        return $normalized.TrimEnd('/')
+    }
+
+    # 4) No scheme at all → assume https://
+    return ("https://$Url").TrimEnd('/','\')
+}
+
+
 function Test-IsHtmlFile {
     param([string]$Path)
 
@@ -83,20 +126,42 @@ foreach ($c in $sslcerts) {
     $orgname = $c.attributes.'organization-name'
     $pdfpath = get-childitem "$debug_folder\$($c.id).pdf"
     $docTitle = "Certificate - $($c.attributes.name)"
-    $articleExists = $null; $articleExists = get-huduarticles -name "$docTitle" | Select-Object -first 1;
+    $article =$null; $company = $null; $articleExists = $null; $website = $null;
+
+
+    $company = get-huducompanies -name $orgname | Select-Object -first 1; $company=$company.company ?? $company;
+    $articleExists = get-huduarticles -name "$docTitle" -CompanyId $company.id | Select-Object -first 1;
     if ($null -ne $articleExists) {
         write-host "Article with title $docTitle already exists in Hudu, skipping import for certificate $($c.id)"
-        continue
-    }
-    try {
-        if ($true -eq $(Test-IsHtmlFile $(resolve-path "$debug_folder\$($c.id).pdf"))){
-            $company = get-huducompanies -name $orgname | Select-Object -first 1; $company=$company.company ?? $company;
-            new-huduarticle -Name "$docTitle" -CompanyId $company.id -content "$(get-content $pdfpath.FullName -Raw)"
-        } else {
-            write-host "Processing certificate $($c.id) for organization $($orgname) with title $($docTitle)"
-            Set-HuduArticleFromPDF -pdfPath $pdfpath.FullName -companyName $orgname -title $docTitle -useTextOnly $true
+    } else {
+        try {
+            if ($true -eq $(Test-IsHtmlFile $(resolve-path "$debug_folder\$($c.id).pdf"))){
+                write-host "Creating Article $docTitle for $orgname from HTML Blob for certificate $($c.id)"
+                $article = new-huduarticle -Name "$docTitle" -CompanyId $company.id -content "$(get-content $pdfpath.FullName -Raw)"
+                $article =$article.article ?? $article
+            } else {
+                write-host "Processing certificate $($c.id) pdf for organization $($orgname) with title $($docTitle)"
+                $result = Set-HuduArticleFromPDF -pdfPath $pdfpath.FullName -companyName $orgname -title $docTitle -useTextOnly $true
+                $article = $result.huduarticle.article ?? $result.huduarticle
+            }
+        } catch {
+            write-error "Error during creation of article from certificate download... $($_)"
         }
-    } catch {
-        write-error $_
     }
+
+    if (-not $([string]::IsNullOrWhiteSpace($c.attributes.host))) {
+        $article = $article ?? $articleExists
+        $site = Normalize-WebURL -url $($c.attributes.host -replace '\*.','')
+        $website = Get-HuduWebsites -Name $site | Select-Object -first 1
+        if ($null -eq $website){
+            new-huduwebsite -CompanyId $company.id -Name $site
+            $website = Get-HuduWebsites -Name $site | Select-Object -first 1
+        }
+        $website = $website.website ?? $website
+        if ($null -ne $website -and $null -ne $article -and $null -ne $website.id -and $website.id -gt 0) {
+            write-host "Linking certificate article to website $($website.name) in Hudu"
+            New-HuduRelation -FromableType "Article" -FromableID $articleExists.id -ToableType "Website" -ToableID $website.id
+        }
+        
+    }    
 }
