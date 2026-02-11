@@ -64,3 +64,38 @@ foreach ($cert in $sslCerts) {
         "upgrade-insecure-requests"="1"
         } -OutFile "$debug_folder\$($certid).pdf"
 }
+function Test-IsHtmlFile {
+    param([string]$Path)
+
+    $stream = [System.IO.File]::OpenRead($Path)
+    $buffer = New-Object byte[] 4096
+    $read = $stream.Read($buffer, 0, $buffer.Length)
+    $stream.Dispose()
+
+    $text = [System.Text.Encoding]::UTF8.GetString($buffer, 0, $read).TrimStart()
+
+    return $text.StartsWith('<!DOCTYPE', 'InvariantCultureIgnoreCase') -or
+           $text.StartsWith('<html', 'InvariantCultureIgnoreCase')
+}
+. .\public\articles-anywhere.ps1
+
+foreach ($c in $sslcerts) {
+    $orgname = $c.attributes.'organization-name'
+    $pdfpath = get-childitem "$debug_folder\$($c.id).pdf"
+    $docTitle = "Certificate - $($c.attributes.name)"
+    $articleExists = $null; $articleExists = get-huduarticles -name "$docTitle" | Select-Object -first 1;
+    if ($null -ne $articleExists) {
+        write-host "Article with title $docTitle already exists in Hudu, skipping import for certificate $($c.id)"
+        continue
+    }
+    try {
+        if ($true -eq $(Test-IsHtmlFile $(resolve-path "$debug_folder\$($c.id).pdf"))){
+            $company = get-huducompanies -name $orgname | Select-Object -first 1; $company=$company.company ?? $company;
+            new-huduarticle -Name "$docTitle" -CompanyId $company.id -content "$(get-content $pdfpath.FullName -Raw)"
+        }
+        write-host "Processing certificate $($c.id) for organization $($orgname) with title $($docTitle)"
+        Set-HuduArticleFromPDF -pdfPath $pdfpath.FullName -companyName $orgname -title $docTitle -useTextOnly $true
+    } catch {
+        write-error $_
+    }
+}
