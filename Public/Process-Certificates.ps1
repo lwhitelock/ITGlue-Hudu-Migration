@@ -92,9 +92,10 @@ foreach ($c in $sslcerts) {
         if ($true -eq $(Test-IsHtmlFile $(resolve-path "$debug_folder\$($c.id).pdf"))){
             $company = get-huducompanies -name $orgname | Select-Object -first 1; $company=$company.company ?? $company;
             new-huduarticle -Name "$docTitle" -CompanyId $company.id -content "$(get-content $pdfpath.FullName -Raw)"
+        } else {
+            write-host "Processing certificate $($c.id) for organization $($orgname) with title $($docTitle)"
+            Set-HuduArticleFromPDF -pdfPath $pdfpath.FullName -companyName $orgname -title $docTitle -useTextOnly $true
         }
-        write-host "Processing certificate $($c.id) for organization $($orgname) with title $($docTitle)"
-        Set-HuduArticleFromPDF -pdfPath $pdfpath.FullName -companyName $orgname -title $docTitle -useTextOnly $true
     } catch {
         write-error $_
     }
