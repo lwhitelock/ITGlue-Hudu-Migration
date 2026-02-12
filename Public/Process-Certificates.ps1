@@ -4,6 +4,9 @@ if (-not (Get-Command -Name Get-ITGlueJWTAuth -ErrorAction SilentlyContinue)) { 
 if (-not (Get-Command -Name Get-ITGlueSslCertificates -ErrorAction SilentlyContinue)) { . .\Public\Get-ITGlueSslCertificates.ps1 }
 if (-not (Get-Command -Name Get-ITGlueChecklists -ErrorAction SilentlyContinue)) { . .\Public\Get-Checklists.ps1 }
 
+# this can be ran after the main migration script to process SSL Certificates and import them as articles in Hudu, then link to websites if a host is found in the certificate attributes.
+# Note that the script will attempt to download the PDF for each certificate and if the download fails (for example due to auth issues) it will skip that certificate and continue with the next ones, so you can re-run the script after fixing any issues and it will only process the certificates that were not successfully processed in previous runs.
+# If you have issue saving your session cookies with cookie-manager extension, you can also download a certificate in chrome browser with developer console (f12) open, locate the request for the certificate PDF, right-click and "Copy as powershell", then paste that where the session cookies are added below.
 
 $ITGlueJWT = $ITGlueJWT ?? (Read-Host "Please enter your ITGlue JWT as retrieved from browser.")
 $ITGlueJWT = Get-ITGlueJWTAuth -ITglueJWT $ITglueJWT
@@ -130,7 +133,7 @@ foreach ($c in $sslcerts) {
 
 
     $company = get-huducompanies -name $orgname | Select-Object -first 1; $company=$company.company ?? $company;
-    $articleExists = get-huduarticles -name "$docTitle" -CompanyId $company.id | Select-Object -first 1;
+    $articleExists = get-huduarticles -name "$docTitle" -CompanyId $company.id | Select-Object -first 1; $articleExists = $articleExists.article ?? $articleExists;
     if ($null -ne $articleExists) {
         write-host "Article with title $docTitle already exists in Hudu, skipping import for certificate $($c.id)"
     } else {
@@ -150,7 +153,7 @@ foreach ($c in $sslcerts) {
     }
 
     if (-not $([string]::IsNullOrWhiteSpace($c.attributes.host))) {
-        $article = $article ?? $articleExists
+        $article = get-huduarticles -name "$docTitle" -CompanyId $company.id | Select-Object -first 1;
         $site = Normalize-WebURL -url $($c.attributes.host -replace '\*.','')
         $website = Get-HuduWebsites -Name $site | Select-Object -first 1
         if ($null -eq $website){
@@ -158,10 +161,12 @@ foreach ($c in $sslcerts) {
             $website = Get-HuduWebsites -Name $site | Select-Object -first 1
         }
         $website = $website.website ?? $website
-        if ($null -ne $website -and $null -ne $article -and $null -ne $website.id -and $website.id -gt 0) {
+        if ($null -ne $website -and $null -ne $article -and $null -ne $website.id -and $website.id -gt 0 -and $article.id -gt 0) {
             write-host "Linking certificate article to website $($website.name) in Hudu"
-            New-HuduRelation -FromableType "Article" -FromableID $articleExists.id -ToableType "Website" -ToableID $website.id
+            New-HuduRelation -FromableType "Article" -FromableID $article.id -ToableType "Website" -ToableID $website.id
         }
         
-    }    
+    } else {
+        write-host "No host found for certificate $($c.id), skipping website linking."
+    }
 }
