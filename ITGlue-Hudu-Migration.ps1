@@ -132,22 +132,16 @@ Write-Host "recover to the state from before the script was run" -ForegroundColo
 Write-Host "######################################################" -ForegroundColor Red
 Write-Host "######################################################" -ForegroundColor Red
 Write-Host "This Script has the potential to ruin your Hudu environment" -ForegroundColor Red
-Write-Host "It is unofficial and you run it entirely at your own risk" -ForegroundColor Red
+Write-Host "You run it entirely at your own risk" -ForegroundColor Red
 Write-Host "You accept full responsibility for any problems caused by running it" -ForegroundColor Red
 Write-Host "######################################################" -ForegroundColor Red
 
 # Prompt for backups, initialize modules, check versions
 $backups=$(if ($true -eq $NonInteractive) {"Y"} else {Read-Host "Y/n"})
 $ScriptStartTime = $(Get-Date -Format "o")
-$CurrentVersion =  Set-ExternalModulesInitialized `
-                -RequiredHuduVersion ([version]"2.39.4") `
-                -DisallowedVersions @([version]"2.37.0")
+$CurrentVersion =  Set-ExternalModulesInitialized -RequiredHuduVersion ([version]"2.39.6") -DisallowedVersions @([version]"2.37.0")
 
-if ($true -eq $allowSettingFlagsAndTypes){
-    . .\Public\Get-UserFlagPreferences.ps1
-} else {
-    $allowSettingFlagsAndTypes = $false; $flagPasswordsByType = $false; $ObjectFlagMap = @{};
-}
+if ($true -eq $allowSettingFlagsAndTypes){. .\Public\Get-UserFlagPreferences.ps1} else {$allowSettingFlagsAndTypes = $false; $flagPasswordsByType = $false; $ObjectFlagMap = @{};}
 # Check if we have a logs folder
 
 if ($backups -ne "Y" -or $backups -ne "y") {
@@ -173,14 +167,6 @@ if (Test-Path -Path "$MigrationLogs") {
 
 # Setup some variables
 $ManualActions = [System.Collections.ArrayList]@()
-
-$ErroredItemsFolder = if ($ErroredItemsFolder) {$ErroredItemsFolder} else {(Get-EnsuredPath -path $(join-path $(Resolve-Path .).path "debug"))}
-
-############################### Companies ###############################
-
-#Grab existing companies in Hudu
-$HuduCompanies = Get-HuduCompanies
-
 $MergedOrganizationSettings = @{
     Types        = @()
     TargetCompany = $null
@@ -188,6 +174,13 @@ $MergedOrganizationSettings = @{
 $MatchedPasswordFolders = @()
 $MatchedChecklists = @()
 $objectFlagMap = $objectFlagMap ?? @{}
+
+$ErroredItemsFolder = if ($ErroredItemsFolder) {$ErroredItemsFolder} else {(Get-EnsuredPath -path $(join-path $(Resolve-Path .).path "debug"))}
+
+############################### Companies ###############################
+
+#Grab existing companies in Hudu
+$HuduCompanies = Get-HuduCompanies
 
 #Check for Company Resume
 if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Companies.json")) {
