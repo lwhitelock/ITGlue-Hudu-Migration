@@ -1353,14 +1353,11 @@ foreach ($originalasset in $sourceassets) {
         $totalcounts.assetsmoved=$totalcounts.assetsmoved+1
         write-host "created asset $($newasset.id), adding relations now."
         # add relations
+
         $sourceToables  = $($($allrelations | where-object {$_.toable_type -eq 'Asset' -and $originalasset.id -eq $_.toable_id }) ?? @())
         write-host "$($sourceToables.count) toable relations"
         $sourceFromables  = $($($allrelations | where-object {$_.fromable_type -eq 'Asset' -and $originalasset.id -eq $_.fromable_id }) ?? @())
         write-host "$($sourceFromables.count) fromable relations"
-    $sourceToables  = $($($allrelations | where-object {$_.toable_type -eq 'Asset' -and $originalasset.id -eq $_.toable_id }) ?? @())
-     write-host "$($sourceToables.count) toable relations"
-    $sourceFromables  = $($($allrelations | where-object {$_.fromable_type -eq 'Asset' -and $originalasset.id -eq $_.fromable_id }) ?? @())
-     write-host "$($sourceFromables.count) fromable relations"
         $relationsTo = $sourceToables | Where-Object { $_.toable_id -eq $sourceAsset.id }
         foreach ($rel in $relationsTo) {
             try {
@@ -1401,22 +1398,17 @@ foreach ($originalasset in $sourceassets) {
         }
     }    
 }
-Write-host "wrap-up"
+Write-host "wrap-up" -ForegroundColor cyan
 $newlayoutname = $null
 if ("yes" -eq $(Select-ObjectFromList -objects @("yes","no") -message "would you like to rename source layout ($($sourceassetlayout.name))" -allowNull $false)){
     $newlayoutname = read-host "what is the new name for $($sourceassetlayout.name)"
 }
 if ([string]::IsNullOrWhiteSpace($newlayoutname)) {$newlayoutname = $sourceassetlayout.name}
-
-if ("yes" -eq $(Select-ObjectFromList -objects @("yes","no") -message "would you like to archive source layout ($($sourceassetlayout.name))" -allowNull $false)){
-    $setsourcelayoutarchived = $true
-}
 if ("yes" -eq $(Select-ObjectFromList -objects @("yes","no") -message "would you like to archive source layout's assets? ($($sourceassets.count) total)" -allowNull $false)){
     $setsourceassetsarchived = $true
 }
-
-if ($newlayoutname -ne $sourceassetlayout.name -or $true -eq $setsourcelayoutarchived){
-    Set-HuduAssetLayout -id $sourceassetlayout.id -Name $newlayoutname -Active $false
+if ($newlayoutname -ne $sourceassetlayout.name){
+    Set-HuduAssetLayout -id $sourceassetlayout.id -Name $newlayoutname
 }
 if ($true -eq $setsourceassetsarchived) {
     foreach ($originalasset in $sourceassets) {
