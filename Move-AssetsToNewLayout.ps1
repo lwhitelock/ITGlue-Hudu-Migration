@@ -1117,7 +1117,7 @@ read-host "$($sourceassets.count) source assets and $($destassets.count) dest as
 $sourceassetsIDX=0
 foreach ($originalasset in $sourceassets) {
     $sourceassetsIDX=$sourceassetsIDX+1
-    $linkableToAssetInfo = $null; $NewAssetName = $originalasset.name; $matchedMap = $null;
+    $linkableToAssetInfo = $null; $NewAssetName = $originalasset.name; $matchedMap = $null; $match = $null;
     write-host "matching existing assets to asset $sourceassetsIDX of $($sourceassets.count) in destination layout assets ($($destassets.count) total) to determine if overlap"
     $match = $destassets | where-object {$_.company_id -eq $originalasset.company_id -and $_.name -like "*$($originalasset.name)*"} | Select-Object -First 1
     $match = $match.asset ?? $match
@@ -1293,16 +1293,20 @@ foreach ($originalasset in $sourceassets) {
      }
 
 
-
+    # prepare any typical asset properties, falling back to a match if a match is present + configured for merge
     $propPairs = @(
         @{ Dest = 'PrimarySerial';       Source = 'primary_serial' }
         @{ Dest = 'PrimaryMail';         Source = 'primary_mail' }
         @{ Dest = 'PrimaryModel';        Source = 'primary_model' }
         @{ Dest = 'PrimaryManufacturer'; Source = 'primary_manufacturer' }
     )
-
     foreach ($pairing in $propPairs) {
-        $commonPropValue = $originalAsset.($pairing.Source)
+        if ($null -ne $matchedMap -and $matchedMap.count -gt 0){
+            write-host "using matched asset for fallback to common property $($pairing.Source) since merging on match is enabled"
+            $commonPropValue = $originalAsset.($pairing.Source) ?? $match.($pairing.Source)
+        } else {
+            $commonPropValue = $originalAsset.($pairing.Source)
+        }
         if (-not [string]::IsNullOrEmpty("$commonPropValue")) {
             Write-Host "using value $commonPropValue from source $($pairing.source)->$($pairing.dest)"
             $newAssetRequest[$pairing.Dest] = $commonPropValue
