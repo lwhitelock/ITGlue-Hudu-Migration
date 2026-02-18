@@ -1,7 +1,7 @@
 
 function Set-OptionalFlags {
   param(
-    [hashtable]$ObjectFlagMap,
+    [system.object[]]$ObjectFlagMap,
     [pscustomobject]$Object,
     [string]$ObjectType
   )
@@ -22,6 +22,7 @@ function Set-OptionalFlags {
   # cononical names from itglue-side mapped to flagable_types on hudu-side. these have more open-ended naming
   $flagableType = switch ($ObjectType.ToLower()) {
     'company'        { 'Company' }
+    'companies'      { 'Company' }
     'articles'       { 'Article' }
     'websites'       { 'Website' }
     'passwords'      { 'AssetPassword' }
@@ -33,7 +34,7 @@ function Set-OptionalFlags {
     default          { 'Asset' }
   }
 
-  $flagType = $ObjectFlagMap[$mapKey]
+  $flagType = $ObjectFlagMap.$mapKey
   if (-not $flagType) {
     Write-Warning "No FlagType configured for ObjectType='$ObjectType' (mapKey='$mapKey'). Skipping."
     return
@@ -73,10 +74,17 @@ function Get-UserFlagSetup {
             return [PSCustomObject]@{
                 AllowSettingFlags = $false
                 ObjectFlagMap     = @{}
+                $passwordFlagCategories = $false
             }
         }
+        $passwordFlagCategories = ("yes" -eq $(Select-Objectfromlist -objects @("yes","no") -message "Would you like to attribute flags to passwords per password-category" -allowNull $false -inspectObjects $false) -eq "no")
+        if ($true -eq $passwordFlagCategories){
+            $FlagableObjects = @("Companies","Locations","Contacts","Configurations","Assets","Articles","Websites","Checklists")
+        } else {
+            $FlagableObjects = @("Companies","Locations","Contacts","Configurations","Assets","Articles","Websites","Passwords","Checklists")
+        }
 
-        $FlagableObjects = @("Companies","Locations","Contacts","Configurations","Assets","Articles","Websites","Passwords","Checklists")
+
         Write-Host "Done setting up flagtypes, Now we can attribute them to certain source objects to-be migrated."
         foreach ($flagable in $FlagableObjects){
             $selectedFlagType = $null; $selectedFlagType = Select-ObjectFromList -message "Select the Flag Type to attribute to incoming '$($flagable)' objects. Select '0' or 'None' to skip attributing this flagtype." -objects $SelectableFlagTypes -allowNull $true -inspectObjects $true;
@@ -90,6 +98,7 @@ function Get-UserFlagSetup {
             return [PSCustomObject]@{
                 AllowSettingFlags = $false
                 ObjectFlagMap     = $ObjectFlagMap
+                passwordFlagCategories = $passwordFlagCategories
             }
         }
     $completedFlagSetup = $true
@@ -97,5 +106,7 @@ function Get-UserFlagSetup {
     return [PSCustomObject]@{
         AllowSettingFlags = $allowSettingFlagsAndTypes
         ObjectFlagMap     = $ObjectFlagMap
+        passwordFlagCategories = $passwordFlagCategories
     }
 }
+
