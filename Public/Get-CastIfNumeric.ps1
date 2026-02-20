@@ -36,23 +36,55 @@ function Test-DateAfter {
 
 function Get-CoercedDate {
     param(
-        [Parameter(Mandatory)][string]$InputDate,
+        [Parameter(Mandatory)]
+        [object]$InputDate,  # allow string or [datetime]
+
         [datetime]$Cutoff = [datetime]'1000-01-01',
+
         [ValidateSet('DD.MM.YYYY','YYYY.MM.DD','MM/DD/YYYY')]
         [string]$OutputFormat = 'MM/DD/YYYY'
     )
 
-    $Inv    = [System.Globalization.CultureInfo]::InvariantCulture
-    $Styles = [System.Globalization.DateTimeStyles]::AllowWhiteSpaces -bor `
-              [System.Globalization.DateTimeStyles]::AssumeLocal
-    $Accepted = [string[]]@('MM/dd/yyyy HH:mm:ss','MM/dd/yyyy hh:mm:ss tt')
+    $Inv = [System.Globalization.CultureInfo]::InvariantCulture
 
-    $dt = $null
-    try {
-        if (-not [datetime]::TryParseExact($InputDate, $Accepted, $Inv, $Styles, [ref]$dt)) {
-            return $null
+    # 1) If it's already a DateTime, trust it
+    if ($InputDate -is [datetime]) {
+        $dt = [datetime]$InputDate
+    }
+    else {
+        $text = "$InputDate".Trim()
+        if ([string]::IsNullOrWhiteSpace($text)) { return $null }
+
+        # 2) Try strict formats first via ParseExact
+        $formats = @(
+            'MM/dd/yyyy HH:mm:ss'
+            'MM/dd/yyyy hh:mm:ss tt'
+            'MM/dd/yyyy'
+        )
+
+        $dt   = $null
+        $ok   = $false
+
+        foreach ($fmt in $formats) {
+            try {
+                $dt = [System.DateTime]::ParseExact($text, $fmt, $Inv)
+                $ok = $true
+                break
+            } catch {
+                # ignore and try next format
+            }
         }
-    } catch { return $null }
+
+        # 3) Fallback: general Parse (handles lots of “normal” date strings)
+        if (-not $ok) {
+            try {
+                $dt = [System.DateTime]::Parse($text, $Inv)
+            } catch {
+                return $null
+            }
+        }
+    }
+
     if ($dt -lt $Cutoff) { return $null }
 
     switch ($OutputFormat) {
@@ -78,7 +110,6 @@ function Get-NormalizedDropdownOptions {
   }
   if ($out.Count -eq 0) { @('None','N/A') } elseif ($out.Count -eq 1) { @('None',$out[0] ?? "N/A") } else { $out.ToArray() }
 }
-
 function Get-UniqueListName {
   param([Parameter(Mandatory)][string]$BaseName,[bool]$allowReuse=$false)
 
