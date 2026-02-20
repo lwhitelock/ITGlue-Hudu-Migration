@@ -45,12 +45,18 @@ $FontAwesomeUpgrade = Get-FontAwesomeMap
 # Add Timed (Noninteractive) Messages Helper
 . $PSScriptRoot\Public\Write-TimedMessage.ps1
 
-# Add numeral casting helper method
+# Add numeral casting helper method, populated items helper
 . $PSScriptRoot\Public\Get-CastIfNumeric.ps1
+. $PSScriptRoot\Public\Get-ITGFieldPopulated.ps1
 
 # Add migration scope helper
 . $PSScriptRoot\Public\Set-MigrationScope.ps1
 
+# Auxilliary Items
+. $PSScriptRoot\Public\Get-Checklists.ps1
+. $PSScriptRoot\Public\Get-PasswordFolders.ps1
+. $PSScriptRoot\Public\JWT-Auth.ps1
+. $PSScriptRoot\Public\Normalize-String.ps1
 
 ############################### End of Functions ###############################
 
@@ -177,7 +183,8 @@ if (Test-Path -Path "$MigrationLogs") {
 # Setup some variables
 
 $ManualActions = [System.Collections.ArrayList]@()
-
+$MatchedPasswordFolders = @()
+$MatchedChecklists = @()
 
 ############################### Companies ###############################
 
@@ -1159,21 +1166,24 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\AssetLayouts.json")) 
             Write-Host "Fetching Flexible Assets from IT Glue (This may take a while)"
             $FlexAssetsSelect = { (Get-ITGlueFlexibleAssets -page_size 1000 -page_number $i -filter_flexible_asset_type_id $UpdateLayout.ITGID -include related_items).data }
             $FlexAssets = Import-ITGlueItems -ItemSelect $FlexAssetsSelect
-		
-				
-		
+            $fullyPopulated = if ($FlexLayoutFields -and $FlexLayoutFields.count -gt 1 -and $FlexAssets -and $FlexAssets.count -gt 1) {Get-ITGFieldPopulated -FlexLayoutFields $FlexLayoutFields -FlexAssets $FlexAssets} else {@{}}
+
             $UpdateLayoutFields = foreach ($ITGField in $FlexLayoutFields) {
+                $ITGFieldRequired = [bool]$ITGField.Attributes.required
+                if ($ITGField.attributes.kind -eq "Tag"){
+                    $requiredForHudu = $false
+                } else {
+                    $requiredForHudu = $ITGFieldRequired -and ($($fullyPopulated[$ITGField.Attributes.name] ?? $false) -eq $true)
+                }
                 $LayoutField = @{
                     label        = $ITGField.Attributes.name
                     show_in_list = $ITGField.Attributes."show-in-list"
                     position     = $ITGField.Attributes.order
-                    required     = $ITGField.Attributes.required
+                    required     = $requiredForHudu
                     hint         = $ITGField.Attributes.hint
                 }
 
                 $supported = $true
-		
-
                 switch ($ITGField.Attributes.kind) {
                     "Checkbox" {
                         $LayoutField.add("field_type", "CheckBox")
@@ -1190,7 +1200,15 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\AssetLayouts.json")) 
                     }
                     "Select" {
                         $ListName = "$($UpdateLayout.HuduObject.Name)-$($ITGField.Attributes.name)"
-                        $ListItems = Get-NormalizedDropdownOptions -OptionsRaw "$($ITGField.Attributes."default-value")"
+                        $ListItems = Get-NormalizedDropdownOptions -OptionsRaw "$($ITGField.Attributes.'default-value')"
+                        $fieldKey = $ITGField.Attributes.'name-key'
+                        # if there are other values than the list items ITG advertises, collect those for listselect as well.
+                        if ($null -ne $FlexAssets -and $FlexAssets.count -gt 0) {
+                            $ListItems = @(
+                                $ListItems
+                                Get-ITGFieldUniqueValues -FlexAssets $FlexAssets -FieldKey $fieldKey
+                            ) | Where-Object { -not [string]::IsNullOrWhiteSpace($_) } | Sort-Object { $_.ToLowerInvariant().Trim() } -Unique                                                    
+                        }
                         $ListObject = $($(Get-HuduLists -name $ListName | Select-Object -First 1) ?? $(New-HuduList -Items $ListItems -Name "$(Get-UniqueListName -BaseName $ListName -allowReuse $false)"))
                         $LayoutField.add("list_id", $ListObject.Id)
                         $LayoutField.add("field_type", "ListSelect")
@@ -1298,22 +1316,17 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\AssetLayouts.json")) 
 
 }
 
-############################### Flexible Assets ###############################
+############################### Creating Base Flexible Assets ###############################
 #Check for Assets Resume
-if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Assets.json")) {
-    Write-Host "Loading Previous Asset Migration"
-    $MatchedAssets = Get-Content "$MigrationLogs\Assets.json" -raw | Out-String | ConvertFrom-Json -depth 100
-    $MatchedAssetPasswords = Get-Content "$MigrationLogs\AssetPasswords.json" -raw | Out-String | ConvertFrom-Json -depth 100
-    $RelationsToCreate = [System.Collections.ArrayList](Get-Content "$MigrationLogs\RelationsToCreate.json" -raw | Out-String | ConvertFrom-Json -depth 100)
-    $ManualActions = [System.Collections.ArrayList](Get-Content "$MigrationLogs\ManualActions.json" -raw | Out-String | ConvertFrom-Json -depth 100)
+if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\AssetsBase.json")) {
+    Write-Host "Loading Previous Base Assets Migration"
+    $MatchedAssets = Get-Content "$MigrationLogs\AssetsBase.json" -raw | Out-String | ConvertFrom-Json -depth 100
 } else {
     # Load raw passwords for embedded fields and future use
     $ITGPasswordsRaw = Import-CSV -Path "$ITGLueExportPath\passwords.csv"
     
     if ($ImportFlexibleAssets -eq $true) {
-        $RelationsToCreate = [System.Collections.ArrayList]@()
-        $MatchedAssets = [System.Collections.ArrayList]@()
-        $MatchedAssetPasswords = [System.Collections.ArrayList]@()
+		$MatchedAssets = [System.Collections.ArrayList]@()
 
         #We need to do a first pass creating empty assets with just the ITG migrated data. This builds an array we need to use to lookup relations when populating the entire assets
         
@@ -1354,8 +1367,26 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Assets.json")) {
             }
 		
         }
-	
-	
+
+    $MatchedAssets | ConvertTo-Json -depth 100 | Out-File "$MigrationLogs\AssetsBase.json"
+    Write-TimedMessage -Timeout 3 -Message "Snapshot Point: Base Assets Created. Continue?"  -DefaultResponse "continue to Populate Assets, please."
+	}
+}
+############################### Populating Flexible Assets ###############################
+#Check for Assets Populate Resume
+if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Assets.json")) {
+    Write-Host "Loading Previous Migration Assets"
+    $MatchedAssets = Get-Content "$MigrationLogs\Assets.json" -raw | Out-String | ConvertFrom-Json -depth 100
+    $MatchedAssetPasswords = Get-Content "$MigrationLogs\AssetPasswords.json" -raw | Out-String | ConvertFrom-Json -depth 100
+    $RelationsToCreate = [System.Collections.ArrayList](Get-Content "$MigrationLogs\RelationsToCreate.json" -raw | Out-String | ConvertFrom-Json -depth 100)
+    $ManualActions = [System.Collections.ArrayList](Get-Content "$MigrationLogs\ManualActions.json" -raw | Out-String | ConvertFrom-Json -depth 100)
+} else {
+    if ($ImportFlexibleAssets -eq $true) {
+        $RelationsToCreate = [System.Collections.ArrayList]@()
+        $MatchedAssetPasswords = [System.Collections.ArrayList]@()
+		
+		# Load raw passwords for embedded fields and future use
+		$ITGPasswordsRaw = Import-CSV -Path "$ITGLueExportPath\passwords.csv"
         #We now need to loop through all Assets again updating the assets to their final version
         foreach ($UpdateAsset in $MatchedAssets) {
             Write-Host "Populating $($UpdateAsset.Name)"
@@ -2326,6 +2357,14 @@ foreach ($companyFound in $UpdateCompanyNotes.HuduCompanyObject) {
 }
 $companyNotesUpdated | ConvertTo-Json -depth 100 |Out-file "$MigrationLogs\ReplacedCompaniesURL.json"
 Write-TimedMessage -Timeout 3 -Message "Snapshot Point: Company Notes URLs Replaced. Continue?"  -DefaultResponse "continue to Manual Actions, please."
+
+
+if ($true -eq $importPasswordFolders){
+    . .\public\Process-PasswordFolders.ps1
+}
+if ($true -eq $importChecklists){
+    . .\public\Process-Checklists.ps1
+}
 
 ############################### Generate Manual Actions Report ###############################
 
