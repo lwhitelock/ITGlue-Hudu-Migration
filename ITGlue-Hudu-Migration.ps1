@@ -52,6 +52,11 @@ $FontAwesomeUpgrade = Get-FontAwesomeMap
 # Add migration scope helper
 . $PSScriptRoot\Public\Set-MigrationScope.ps1
 
+# Auxilliary Items
+. $PSScriptRoot\Public\Get-Checklists.ps1
+. $PSScriptRoot\Public\Get-PasswordFolders.ps1
+. $PSScriptRoot\Public\JWT-Auth.ps1
+. $PSScriptRoot\Public\Normalize-String.ps1
 
 ############################### End of Functions ###############################
 
@@ -178,7 +183,8 @@ if (Test-Path -Path "$MigrationLogs") {
 # Setup some variables
 
 $ManualActions = [System.Collections.ArrayList]@()
-
+$MatchedPasswordFolders = @()
+$MatchedChecklists = @()
 
 ############################### Companies ###############################
 
@@ -2366,6 +2372,14 @@ foreach ($companyFound in $UpdateCompanyNotes.HuduCompanyObject) {
 }
 $companyNotesUpdated | ConvertTo-Json -depth 100 |Out-file "$MigrationLogs\ReplacedCompaniesURL.json"
 Write-TimedMessage -Timeout 3 -Message "Snapshot Point: Company Notes URLs Replaced. Continue?"  -DefaultResponse "continue to Manual Actions, please."
+
+
+if ($true -eq $importPasswordFolders){
+    . .\public\Process-PasswordFolders.ps1
+}
+if ($true -eq $importChecklists){
+    . .\public\Process-Checklists.ps1
+}
 
 ############################### Generate Manual Actions Report ###############################
 
