@@ -1,4 +1,7 @@
 # Check if this is a direct run, and load the logs if so the first time.
+if (-not (Get-Command -Name Get-EnsuredPath -ErrorAction SilentlyContinue)) { . $PSScriptRoot\Public\Init-OptionsAndLogs.ps1 }
+$ErroredItemsFolder = $(Get-EnsuredPath -path $(join-path $(Resolve-Path .).path "debug"))
+
 if (-not ($FirstTimeLoad -eq 1)) {
     # General Settings Load
     . $PSScriptRoot\..\Initialize-Module.ps1 -InitType 'Lite'
@@ -7,32 +10,16 @@ if (-not ($FirstTimeLoad -eq 1)) {
     . $PSScriptRoot\..\Private\ConvertTo-HuduURL.ps1
 
     Write-Host "Checking for Matched Variables"
-
-    Write-Host "Loading Passwords Log"
     if (-not $MatchedPasswords) {$MatchedPasswords = (Get-Content -path "$MigrationLogs\Passwords.json" | ConvertFrom-json -depth 100) }
     if (-not $MatchedAssetPasswords) {$MatchedAssetPasswords = (Get-Content -path "$MigrationLogs\AssetPasswords.json" | ConvertFrom-json -depth 100) }
-
-    Write-Host "Loading Locations Log"
-    if (-not $MatchedLocations) {$MatchedLocations = (Get-Content -path "$MigrationLogs\Locations.json" | ConvertFrom-json -depth 100) }
-    
-    Write-host "Loading Articles Log"
+    if (-not $MatchedArticleBase) {$MatchedArticleBase = Get-Content "$MigrationLogs\ArticleBase.json" -raw | Out-String | ConvertFrom-Json -depth 100}
     if (-not $MatchedArticles) {$MatchedArticles = (Get-Content -path "$MigrationLogs\Articles.json" | ConvertFrom-json -depth 100) }
-    
     if (-not $MatchedCompanies) {$MatchedCompanies = (Get-Content -path "$MigrationLogs\Companies.json" | ConvertFrom-json -depth 100) }
-
-    Write-host "Loading Configuration Log"
     if (-not $MatchedConfigurations) {$MatchedConfigurations = Get-Content "$MigrationLogs\Configurations.json" -raw | Out-String | ConvertFrom-Json -depth 100}
-    
-    Write-host "Loading Asset Log"
     if (-not $MatchedAssets) {$MatchedAssets = Get-Content "$MigrationLogs\Assets.json" -raw | Out-String | ConvertFrom-Json -depth 100}
-    
     # Set the context so logs don't run again unless the powershell window gets closed.
     $FirstTimeLoad = 1
 }
-
-
-Write-Host "Loading Websites Log"
-$ITGlueWebsites = Get-Content "$MigrationLogs\Websites.json" | ConvertFrom-json
 
 # Load Invoke-ImageTest()
 . $PSScriptRoot\Private\Invoke-ImageTest.ps1
@@ -151,15 +138,18 @@ if ((get-host).version.major -ne 7) {
 }
 
 
-# Get the Hudu API Module if not installed
-## 2.4.5 is required for the New-HuduUpload function
-if ((Get-Module -ListAvailable -Name HuduAPI).version -ge '2.4.5') {
+$HAPImodulePath = "C:\Users\$env:USERNAME\Documents\GitHub\HuduAPI\HuduAPI\HuduAPI.psm1"
+if (Test-Path $HAPImodulePath) {
+    Import-Module $HAPImodulePath -Force
+    Write-Host "Module imported from $HAPImodulePath"
+} elseif ((Get-Module -ListAvailable -Name HuduAPI).version -ge '2.4.4') {
+    Write-Host "Module imported from $HAPImodulePath"
     Import-Module HuduAPI
 } else {
-    Install-Module HuduAPI -MinimumVersion '2.4.5'
+    Install-Module HuduAPI -MinimumVersion 2.4.5 -Scope CurrentUser
     Import-Module HuduAPI
 }
-
+  
 #Login to Hudu
 New-HuduAPIKey $HuduAPIKey
 New-HuduBaseUrl $HuduBaseDomain
@@ -182,9 +172,21 @@ else {
 }
 
 ## Starting main script
-Write-Host "Starting script. Press CTRL+C to cancel" -ForegroundColor Yellow
-Pause
+Write-Host "Starting script in 10 seconds. Press CTRL+C to cancel" -ForegroundColor Yellow
+start-sleep 10
 
+Write-host "Loading Asset Log"
+$ITGlueAssets = Get-Content "$MigrationLogs\Assets.json" | ConvertFrom-json
+Write-host "Loading Articles Log"
+$ITGlueDocuments = Get-Content "$MigrationLogs\Articles.json" | ConvertFrom-json
+Write-host "Loading Configuration Log"
+$ITGlueConfigurations = Get-Content "$MigrationLogs\Configurations.json" | ConvertFrom-json
+Write-Host "Loading Locations Log"
+$ITGlueLocations = Get-Content "$MigrationLogs\Locations.json" | ConvertFrom-json
+Write-Host "Loading Websites Log"
+$ITGlueWebsites = Get-Content "$MigrationLogs\Websites.json" | ConvertFrom-json
+Write-Host "Loading Passwords Log"
+$ITGluePasswords = Get-Content "$MigrationLogs\Passwords.json" | ConvertFrom-json
 
 $AttachmentsToUpload = Get-ChildItem -Path $AttachmentsPath -Recurse -File
 $filesById = $AttachmentsToUpload | Group-Object { $_.Directory.Name } -AsHashTable -AsString
@@ -195,37 +197,56 @@ $FoundLocationsToAttach = $MatchedLocations | Where-Object {$filesById.ContainsK
 $FoundPasswordsToAttach = $MatchedPasswords| Where-Object {$filesById.ContainsKey([string]$_.ITGID)}
 
 
-if ($FoundAssetsToAttach) {Add-HuduAttachment -FoundAssetsToAttach $FoundAssetsToAttach -UploadType "Asset"}
-if ($FoundConfigurationsToAttach) {Add-HuduAttachment -FoundAssetsToAttach $FoundConfigurationsToAttach -UploadType "Asset"}
-if ($FoundDocumentsToAttach) {Add-HuduAttachment -FoundAssetsToAttach $FoundDocumentsToAttach -UploadType "Article"}
-if ($FoundLocationsToAttach) {Add-HuduAttachment -FoundAssetsToAttach $FoundLocationsToAttach -UploadType "Asset"}
-if ($FoundWebsitesToAttach) {Add-HuduAttachment -FoundAssetsToAttach $FoundWebsitesToAttach -UploadType "Website"}
-if ($FoundPasswordsToAttach) {Add-HuduAttachment -FoundAssetsToAttach $FoundPasswordsToAttach -UploadType "AssetPassword"}
+if ($FoundAssetsToAttach -and $FoundAssetsToAttach.count -gt 0) {Add-HuduAttachment -FoundAssetsToAttach $FoundAssetsToAttach -UploadType "Asset"}
+if ($FoundConfigurationsToAttach -and $FoundConfigurationsToAttach.count -gt 0) {Add-HuduAttachment -FoundAssetsToAttach $FoundConfigurationsToAttach -UploadType "Asset"}
+if ($FoundDocumentsToAttach -and $FoundDocumentsToAttach.count -gt 0) {Add-HuduAttachment -FoundAssetsToAttach $FoundDocumentsToAttach -UploadType "Article"}
+if ($FoundLocationsToAttach -and $FoundLocationsToAttach.count -gt 0) {Add-HuduAttachment -FoundAssetsToAttach $FoundLocationsToAttach -UploadType "Asset"}
+if ($FoundWebsitesToAttach -and $FoundWebsitesToAttach.count -gt 0) {Add-HuduAttachment -FoundAssetsToAttach $FoundWebsitesToAttach -UploadType "Website"}
+if ($FoundPasswordsToAttach -and $FoundPasswordsToAttach.count -gt 0) {Add-HuduAttachment -FoundAssetsToAttach $FoundPasswordsToAttach -UploadType "AssetPassword"}
 
-if (!($CSVMapping = Get-Content "$MigrationLogs\AttachmentFields-CSVMap.json"|ConvertFrom-Json -Depth 10)) {
+
+$CSVMapPath = "$MigrationLogs\AttachmentFields-CSVMap.json"
+if (-not (Test-Path $CSVMapPath)) {write-host "no optional CSV map found at $CSVMapPath. Attachments complete!"; exit}
+
+if (!($CSVMapping = Get-Content $CSVMapPath|ConvertFrom-Json -Depth 10)) {
     $CSVMapping = Build-CSVMapping
 }
 
 if ($CSVMapping) {
     foreach ($n in $CSVMapping) { 
-        $CSVPath = Join-Path -Path $ITGLueExportPath -ChildPath $n.csv_file
-        $CSV = Import-Csv -Path $CSVPath
-        $CSVHeader = $n.csv_header 
-    
-        $CSVAttachmentsToUpload = $CSV | Where-Object {$_.$CSVHeader}
-        foreach ($record in $CSVAttachmentsToUpload) {
-            $FileReferences = $record.$CSVHeader.split(',').trim()
-            foreach ($fr in $FileReferences) {
-                $FileToUpload = Get-Item -path (Join-Path -Path $ITGlueExportPath -ChildPath "$($n.foldername)\$($fr)")
-                $HuduAssetID = $MatchedAssets |Where-Object {$_.itgid -eq $record.id}  |Select-Object -ExpandProperty HuduID
-                $HuduAssetName = $MatchedAssets |Where-Object {$_.itgid -eq $record.id}  |Select-Object -ExpandProperty Name
-                Write-Host "Uploading $($FileToUpload.fullname) to Hudu Asset $($HuduAssetName) - $($HuduAssetID)" -ForegroundColor Blue
-                $HuduUpload = New-HuduUpload -FilePath $FileToUpload.fullname -uploadable_id $HuduAssetID -uploadable_type 'Asset'
+        try {
+            $CSVPath = Join-Path -Path $ITGLueExportPath -ChildPath $n.csv_file
+            $CSV = Import-Csv -Path $CSVPath
+            $CSVHeader = $n.csv_header 
+        
+            $CSVAttachmentsToUpload = $CSV | Where-Object {$_.$CSVHeader}
+            foreach ($record in $CSVAttachmentsToUpload) {
+                $FileReferences = $record.$CSVHeader.split(',').trim()
+                foreach ($fr in $FileReferences) {
+                    $FileToUpload = Get-Item -path (Join-Path -Path $ITGlueExportPath -ChildPath "$($n.foldername)\$($fr)")
+                    $HuduAssetID = $ITGlueAssets |Where-Object {$_.itgid -eq $record.id}  |Select-Object -ExpandProperty HuduID
+                    $HuduAssetName = $ITGlueAssets |Where-Object {$_.itgid -eq $record.id}  |Select-Object -ExpandProperty Name
+                    Write-Host "Uploading $($FileToUpload.fullname) to Hudu Asset $($HuduAssetName) - $($HuduAssetID)" -ForegroundColor Blue
+                    $HuduUpload = New-HuduUpload -FilePath $FileToUpload.fullname -uploadable_id $HuduAssetID -uploadable_type 'Asset'
 
+                }
             }
-        }
+    } catch {
+        try {
+            Write-ErrorObjectsToFile -ErrorObject @{
+                CSVMapping = $CSVMapping    
+                CSV = $CSV
+                N   = $n
+                Error = $_
+                record = $record
+                file_ref = $fr
+            } -Name "Upload_$CSVHeader"
+            } catch {
+                write-host "upload err - $($record ?? 'record') - $($CSVHeader ?? 'header')"
+            }
+        }  
     }
 }
-
 Write-Host "All attachments have been processed."
-Pause
+    
+

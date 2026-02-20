@@ -53,7 +53,7 @@ if (-not ($FirstTimeLoad -eq 1)) {
                         Field_Name    = "N/A"
                         Notes         = "Attached Files not Supported"
                         Action        = "Manually Upload files to Related Files"
-                        Data          = $attachdir.fullname
+                        Data          = "$($attachdir.fullname)"
                         Hudu_URL      = $Article.HuduObject.url
                         ITG_URL       = "$ITGURL/$($Article.ITGLocator)"
                     }
@@ -125,7 +125,7 @@ if (-not ($FirstTimeLoad -eq 1)) {
                                     if ($Magick = New-Object ImageMagick.MagickImage($imagePath)) {
                                         $OriginalFullImagePath = $imagePath
                                         $imagePath = "$($imagePath).$($Magick.format)"
-                                        $MovedItem = Move-Item -Path $OriginalFullImagePath -Destination $imagePath
+                                        $MovedItem = Move-Item -Path "$OriginalFullImagePath" -Destination "$imagePath"
                                     }
                                 }                        
                                 $imageType = Invoke-ImageTest($imagePath)
@@ -135,11 +135,11 @@ if (-not ($FirstTimeLoad -eq 1)) {
                                         $UploadImage = New-HuduPublicPhoto -FilePath "$imagePath" -record_id $Article.HuduID -record_type 'Article'
                                         $NewImageURL = $UploadImage.public_photo.url.replace($HuduBaseDomain, '')
                                         $ImgLink = $html.Links | Where-Object {$_.innerHTML -eq $imgHTML}
-                                        Write-Host "Setting image to: $NewImageURL"
-                                        $_.src = [string]$NewImageURL
+                                        Write-Host "Setting image to: '$NewImageURL'"
+                                        $_.src = [string]"$NewImageURL"
                                         
                                         # Update Links for this image
-                                        $ImgLink.href = [string]$NewImageUrl
+                                        $ImgLink.href = [string]"$NewImageUrl"
 
                                     }
                                     catch {
@@ -151,7 +151,7 @@ if (-not ($FirstTimeLoad -eq 1)) {
                                         }
                                     }
                                     if ($Magick -and $MovedItem) {
-                                        Move-Item -Path $imagePath -Destination $OriginalFullImagePath
+                                        Move-Item -Path "$imagePath" -Destination "$OriginalFullImagePath"
                                     }
             
                                 }
@@ -182,7 +182,9 @@ if (-not ($FirstTimeLoad -eq 1)) {
                             
                 }
             
-                if ($page_out -eq '') {
+                if ($page_out.Length -lt 1) { 
+
+                }else {
                     $page_out = 'Empty Document in IT Glue Export - Please Check IT Glue'
                     [PSCustomObject]@{
                         ErrorType       = 'Empty Document'

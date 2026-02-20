@@ -20,14 +20,15 @@
 # Add/enhance the migration areas to use the new API features of Hudu
 
 
-
-
 param(
     [Parameter(Mandatory=$true)]
     [ValidateSet("Full", "Lite")]
     [string] $InitType
 )
-
+if ((get-host).version.major -ne 7) {
+    Write-Host "Powershell 7 Required" -foregroundcolor Red
+    exit 1
+}
 ############################### Settings ###############################
 # Define the path to the settings.json file in the user's AppData folder
 
@@ -37,6 +38,8 @@ if($IsWindows){
 } else {
     $settingsTop = Join-Path "$home" ".config"
 }
+if (-not (Get-Command -Name Get-EnsuredPath -ErrorAction SilentlyContinue)) { . $PSScriptRoot\Public\Init-OptionsAndLogs.ps1 }
+$debugfolder = $(Get-EnsuredPath -path $(join-path $(Resolve-Path .).path "debug"))
 
 # Define the path to the settings.json file in the detected platform's folder:
 # Running on Windows will save to the user's AppData
@@ -57,42 +60,8 @@ function ConvertSecureStringToPlainText {
     [System.Runtime.InteropServices.Marshal]::ZeroFreeBSTR($BSTR)
     return $plainText
 }
-function Select-ObjectFromList($objects, $message, $allowNull = $false) {
-    $validated = $false
-    while (-not $validated) {
-        if ($allowNull) { Write-Host "0: None/Custom" }
 
-        for ($i = 0; $i -lt $objects.Count; $i++) {
-            $object = $objects[$i]
-            $displayLine = if ($null -ne $object.OptionMessage) {
-                "$($i+1): $($object.OptionMessage)"
-            } elseif (-not $([string]::IsNullOrEmpty($object.attributes.name))) {
-                "$($i+1): $($object.attributes.name)"
-            } elseif (-not $([string]::IsNullOrEmpty($object.name))) {
-                "$($i+1): $($object.name)"
-            } else {
-                "$($i+1): $($object)"
-            }
-            Write-Host $displayLine -ForegroundColor $(if ($i % 2 -eq 0) { 'Cyan' } else { 'Yellow' })
-        }
 
-        $raw = Read-Host $message
-
-        $parsed = 0
-        if (-not [int]::TryParse($raw, [ref]$parsed)) {
-            Write-Host "Invalid input. Please enter a number." -ForegroundColor Red
-            continue
-        }
-
-        if ($parsed -eq 0 -and $allowNull) { return $null }
-
-        if ($parsed -ge 1 -and $parsed -le $objects.Count) {
-            return $objects[$parsed - 1]
-        } else {
-            Write-Host "Invalid selection. Please enter a number from the list." -ForegroundColor Red
-        }
-    }
-}
 
 # Prompt the user for various settings and save the responses
 function CollectAndSaveSettings {
@@ -124,10 +93,10 @@ function CollectAndSaveSettings {
             Write-Host "This doesn't seem to be a valid Hudu API key. It is $($HuduAPIKey.Length) characters long, but should be 24." -ForegroundColor Red
         }
     }
-    while ($ITGKey.Length -ne 101) {
-        $ITGKey = (Read-Host -Prompt 'Enter your ITGlue API Key (must have password access). Should be 101 characters.').Trim()
-        if ($ITGKey.Length -ne 101) {
-            Write-Host "This doesn't seem to be a valid ITGlue API key. It is $($ITGKey.Length) characters long, but should be 101." -ForegroundColor Red
+    while ($ITGKey.Length -notin 100..105) {
+        $ITGKey = (Read-Host -Prompt 'Enter your ITGlue API Key (must have password access). Should be 101-104 characters.').Trim()
+        if ($ITGKey.Length -notin 101..105) {
+            Write-Host "This doesn't seem to be a valid ITGlue API key. It is $($ITGKey.Length) characters long, but should be 101-104." -ForegroundColor Red
         }
     }
     $settings.ITGKey = ConvertTo-SecureString -String $ITGKey -AsPlainText -Force | ConvertFrom-SecureString
@@ -150,6 +119,7 @@ function CollectAndSaveSettings {
         $(Read-Host "Would you like a Prefix in front of ️Configuration names️ created in Hudu? This can make it easy to review and you can rename them later. Enter the prefix here, otherwise leave it blank. (e.g. ITGlue-)")
     $settings.FAPromptPrefix = $settings.FAPromptPrefix ??
         $(Read-Host "Would you like a Prefix in front of Asset Layout names created in Hudu? This can make it easy to review and you can rename them later. Enter the prefix here, otherwise leave it blank. (e.g. ITGlue-)")
+    $settings.IncludeITGlueID =  $settings.IncludeITGlueID ?? [bool]$($(Select-ObjectFromList -message "would you like to include ITGlue ID in your contacts, locations, and configurations layouts?" -objects @($true,$false) -allowNull $false) ?? $true)
 
     
     # 4. User-Entry Paths and Folders
@@ -364,6 +334,12 @@ if ($InitType -eq 'Full') {
         "2" {$ImportDomains = $false}
     }
 
+    while ($MergedOrganizationTypes -notin (1,2)) {$MergedOrganizationTypes = Read-Host "Would you like to merge certain organization types in ITGlue to a given existing hudu company?.`n 1) Operate as normal`n 2) Scope ITGlue Org Type to a Company in Hudu`n(1/2)"}
+    switch ($MergedOrganizationTypes) {
+        "1" {$MergedOrganizationTypes = $false}
+        "2" {$MergedOrganizationTypes = $true}
+    }    
+
     # Choose if you would like to enable monitoring for the imported websites.
     while ($DisableWebsiteMonitoring -notin (1,2)) {$DisableWebsiteMonitoring = Read-Host "1) Leave Website Monitoring enabled `n2) Disable Website Monitoring`n(1/2)"}
     switch ($DisableWebsiteMonitoring) {
@@ -439,7 +415,7 @@ if ($InitType -eq 'Full') {
         "1" {$NonInteractive = $false}
         "2" {$NonInteractive = $true}
     }    
-    ############################### Unattended ###############################
+    ############################### Scoping ###############################
     while ($ScopedMigration -notin (1,2)) {$ScopedMigration = Read-Host "1) Run normally `n2) Perform migration scoped to certain companies `n(1/2)"}
     switch ($ScopedMigration) {
         "1" {$ScopedMigration = $false}
@@ -451,12 +427,38 @@ if ($InitType -eq 'Full') {
         "2" {$importChecklists = $true}
         "1" {$importChecklists = $false}
     }
+
     ############################ PasswordFolders ############################
-    while ($importPasswordFolders -notin (1,2)) {$importPasswordFolders = Read-Host "[ADVANCED, default 1/$false] Would you like to import Password Folders? (requires web access to ITGlue).`n 1) Yes`n 2) No, Skip Checklists`n(1/2)"}
+    while ($importPasswordFolders -notin (1,2)) {$importPasswordFolders = Read-Host "[ADVANCED, default 1/$false] Would you like to import Password Folders? (requires web access to ITGlue).`n 1) Yes`n 2) No, Skip Password Folders`n(1/2)"}
     switch ($importPasswordFolders) {
-        "2" {$importPasswordFolders = $true; $GlobalPasswordFolderMode = [bool]$("global" -eq $(Select-ObjectFromList -message "Password folder import mode-" -objects @("global","per-company")));}
-        "1" {$importPasswordFolders = $false; $GlobalPasswordFolderMode = $null}
+        "2" {$importPasswordFolders = $true; 
+            $GlobalPasswordFolderMode =  $GlobalPasswordFolderMode ?? $([bool]$("global" -eq $(Select-ObjectFromList -message "Password folder import mode-" -objects @("global","per-company"))))
+            $companyPasswordFolderAttributionMove = $companyPasswordFolderAttributionMove ?? $(if ($true -eq $GlobalPasswordFolderMode) {[bool]$("yes" -eq $(Select-ObjectFromList -message "Password Folders with only one company of passwords- do you want to move those to company-scope password folders? (if you aren't sure, 'yes' is generally a good bet)" -objects @("yes","no")))} else {$false})
+        }
+        "1" {$importPasswordFolders = $false; $GlobalPasswordFolderMode = $null; $companyPasswordFolderAttributionMove = $false}
+    }    
+
+    ############################ Image Anchors Regex ############################
+    while ($OptionalImageAnchorReplace -notin (1,2)) {$OptionalImageAnchorReplace = Read-Host "[Other, default 1/$true] Would you like to replace links to hosted images in Hudu? (Not commonly needed but can be good for images-as-links in articles).`n 1) Yes`n 2) No, skip image-links`n(1/2)"}
+    switch ($OptionalImageAnchorReplace) {
+        "1" {$OptionalImageAnchorReplace = $true}
+        "2" {$OptionalImageAnchorReplace = $false}
+    }    
+    while ($skipIntegratorLayouts -notin @($true, $false)){
+        $skipIntegratorLayoutsInput = Read-Host "[Other, default false] Would you like to skip importing Integrator Layouts? These are often containing data that goes unused.`n 1) Yes`n 2) No, import all layouts`n(1/2)"
+        switch ($skipIntegratorLayoutsInput) {
+            "1" {$skipIntegratorLayouts = $true}
+            "2" {$skipIntegratorLayouts = $false}
+        }
     }
+    while ($allowSettingFlagsAndTypes -notin @(1,2, $true, $false)){
+        $allowSettingFlagsAndTypes = Read-Host "Would you like to apply flags and flag types during the migration? This requires Hudu version 2.40.0 or later.`n 1) Yes`n 2) No, skip setting Flags and FlagTypes`n(1/2)"
+        switch ($allowSettingFlagsAndTypes) {
+            "1" {$allowSettingFlagsAndTypes = $true}
+            "2" {$allowSettingFlagsAndTypes = $false}
+    }
+        
+}
 }
 ############################ Migration Logs Path ##############################
 $MigrationLogs = $environmentSettings.MigrationLogs

@@ -12,6 +12,12 @@ $PFMappings = $PFMappings ?? @{}
 # $PFMappings["Software &"]="Software & Applications"
 # $PFMappings["Software and"]="Software & Applications"
 
+function ChoseBest-ByName {
+    param ([string]$Name,[array]$choices)
+return $($choices | ForEach-Object {
+[pscustomobject]@{Choice = $_; Score  = $(Get-SimilaritySafe -a "$Name" -b $_.name);}} | where-object {$_.Score -ge 0.98} | Sort-Object Score -Descending | select-object -First 1).Choice
+}
+
 function remove-hudupasswordfromfolder {
     Param (
         [Parameter(Mandatory = $true)]
@@ -167,6 +173,22 @@ foreach ($itgcompanyID in ($matchedpasswords.ITGObject.attributes.'organization-
                 $passwordError = "error encountered assigning folder $_"
             }
             $MatchedPasswordFolders+=[PSCustomObject]@{FolderError=$FolderError; companyError=$companyError; ITGCompanyID= $itgcompanyID; HuduCompanyID=$($existingpass.company_id ?? $HuduCompanyId); ITGPasswordFolder= $passwordFolder; HuduPasswordFolder=$existingFolder; HuduPasswords=$passwordsForFolder; FolderName=$FolderName; PasswordError=$passwordError; Modified = $passChanged; existingFolderPresent=$existingFolderPresent}
+        }
+    }
+}
+
+# if you want password folders that only contain passwords from a single company to be moved, run the below block or set this var to true
+$companyPasswordFolderAttributionMove = $companyPasswordFolderAttributionMove ?? $false
+if ($true -eq $companyPasswordFolderAttributionMove){
+    $allPasswordFolders = get-hudupasswordfolders | where-object {-not $_.company_id -or $_.company_id -lt 1 -or $null -eq $_.company_id}
+    $allPasswords = get-hudupasswords
+    foreach ($folder in $allPasswordFolders) {
+        $passwordsInFolder = $allPasswords | where-object { $_.password_folder_id -eq $folder.id }
+        $companyGroups = $($passwordsInFolder.company_id | where-object {$_ -and $_ -ge 1}) | select-object -Unique
+        if ($companyGroups.Count -eq 1) {
+            $targetCompanyId = [int]$companyGroups[0]
+            Write-Host "Moving global password folder '$($folder.name)' to company $targetCompanyId"
+            set-hudupasswordfolder -id $folder.id -company_id $targetCompanyId
         }
     }
 }
