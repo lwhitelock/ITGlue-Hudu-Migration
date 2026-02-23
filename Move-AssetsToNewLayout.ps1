@@ -1295,13 +1295,16 @@ foreach ($originalasset in $sourceassets) {
     $sourceassetsIDX=$sourceassetsIDX+1
     $linkableToAssetInfo = $null; $NewAssetName = $originalasset.name; $matchedMap = $null; $match = $null;
     write-host "matching existing assets to asset $sourceassetsIDX of $($sourceassets.count) in destination layout assets ($($destassets.count) total) to determine if overlap"
-    $match = $destassets | where-object {$_.company_id -eq $originalasset.company_id -and $_.name -like "*$($originalasset.name)*"} | Select-Object -First 1
+    $match = $destassets | where-object {$_.company_id -eq $originalasset.company_id -and ($_.name -ilike "$($originalasset.name)*" -or $_.name -ilike "*$($originalasset.name)")} | Select-Object -First 1
     $match = $match.asset ?? $match
     if ($match -and $null -ne $match -and $null -ne $match.fields) {
         $totalcounts.assetsmatched=$totalcounts.assetsmatched+1
         if ($true -eq $MergeOnMatch){
             write-host "Matched existing asset '$($match.name)' (ID: $($match.id)) in destination layout for source asset '$($originalasset.name)' (ID: $($originalasset.id)) - will compile complete list of fields from both"
-            $matchedMap     = FieldListToMap $match.fields
+            $matchedMap = @{}
+            foreach ($f in ($match.fields ?? @())) {
+            if ($f.label) { $matchedMap[$f.label] = $f.value }
+            }
         } elseif ($true -eq $SkipOnMatch) {
             write-host "match found in dest layout. (#$($totalcounts.assetsmatched)) thus far"
             write-host "original: $($($originalasset | ConvertTo-Json -depth 6).ToString())" -ForegroundColor Yellow
@@ -1534,7 +1537,7 @@ foreach ($originalasset in $sourceassets) {
         write-host "$($sourceToables.count) toable relations"
         $sourceFromables  = $($($allrelations | where-object {$_.fromable_type -eq 'Asset' -and $originalasset.id -eq $_.fromable_id }) ?? @())
         write-host "$($sourceFromables.count) fromable relations"
-        $relationsTo = $sourceToables | Where-Object { $_.toable_id -eq $sourceAsset.id }
+        $relationsTo = $sourceToables | Where-Object { $_.toable_id -eq $originalasset.id }
         foreach ($rel in $relationsTo) {
             try {
                 $newToable+=New-HuduRelation -FromableType $rel.fromable_type -FromableId $rel.fromable_id -ToableType "Asset" -ToableId $newAsset.id
@@ -1545,7 +1548,7 @@ foreach ($originalasset in $sourceassets) {
                 Write-ErrorObjectsToFile -ErrorObject @{Err= $_; From = $relationsFrom; To=$relationsTo} -Name "NCREL-TOABLE-$($newasset.name)"
             }
         }
-        $relationsFrom = $sourceFromables | Where-Object { $_.fromable_id -eq $sourceAsset.id }
+        $relationsFrom = $sourceFromables | Where-Object { $_.fromable_id -eq $originalasset.id }
         foreach ($rel in $relationsFrom) {
             try {
                 $newFromable=New-HuduRelation -FromableType "Asset" -FromableId $newAsset.id -ToableType $rel.toable_type -ToableId $rel.toable_id
