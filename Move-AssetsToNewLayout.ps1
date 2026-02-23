@@ -1,5 +1,7 @@
-[version]$RequiredPSversion = [version]"7.5.1"
-$currentPSVersion = (Get-Host).Version
+$RequiredPSversion = [version]'7.5.1'
+$currentPSVersion  = $PSVersionTable.PSVersion
+if ($currentPSVersion -lt $RequiredPSversion) { throw "Need PowerShell $RequiredPSversion+, you have $currentPSVersion" } else {write-host "PowerShell version $currentPSVersion is compatible." -ForegroundColor Green}
+
 Write-Host "Required PowerShell version: $RequiredPSversion" -ForegroundColor Blue
 
 if ($currentPSVersion -lt $RequiredPSversion) {
@@ -440,8 +442,7 @@ function Get-HuduModule {
 }
 
 function Set-HuduInstance {
-    $HuduBaseURL = $HuduBaseURL ?? 
-        $((Read-Host -Prompt 'Set the base domain of your Hudu instance (e.g https://myinstance.huducloud.com)') -replace '[\\/]+$', '') -replace '^(?!https://)', 'https://'
+    $HuduBaseURL = $HuduBaseURL ?? $((Read-Host -Prompt 'Set the base domain of your Hudu instance (e.g https://myinstance.huducloud.com)') -replace '[\\/]+$', '') -replace '^(?!https://)', 'https://'
     $HuduAPIKey = $HuduAPIKey ?? "$(read-host "Please Enter Hudu API Key")"
     while ($HuduAPIKey.Length -ne 24) {
         $HuduAPIKey = (Read-Host -Prompt "Get a Hudu API Key from $($settings.HuduBaseDomain)/admin/api_keys").Trim()
@@ -1014,7 +1015,7 @@ function Merge-HuduFieldMaps {
         [string]$Mode = 'Merge-FillBlanks',
 
         # For Merge-Concat: which field types should be concatenated?
-        [string[]]$ConcatTypes = @('RichText','Text','MultiText','Notes'),
+        [string[]]$ConcatTypes = @('RichText','Text', "Heading", "ConfidentialText","Password"),
 
         # Separators
         [string]$RichTextSeparator = "<br><hr>",
@@ -1300,11 +1301,11 @@ if ($(test-path "$mapfile")) {
 $srcfields=@()
 $sourceListItemMap = @{}
 foreach ($field in $sourceassetlayout.fields | Where-Object {$_.field_type -ne "AssetTag"}) { # assettag fields are carried over as relationships
-    if ($field.field_type -eq "ListSelect" -and $null -ne $field.list_id){
+    if ($field.field_type -ieq "ListSelect" -and $null -ne $field.list_id){
         $typicalValues = $(Get-HuduLists -id $field.list_id).list_items ?? @()
         $sourceListItemMap["$($field.label)"]=$typicalValues.name
         $srcfields+=@{label = $field.label; field_type = $field.field_type; list_id=$field.list_id; typicalValues=$typicalValues; required = $($field.required ?? $false)}
-    } elseif ($field.field_type -eq 'DropDown' -and -not ([string]::IsNullOrEmpty($field.options))){
+    } elseif ($field.field_type -ieq 'DropDown' -and -not ([string]::IsNullOrEmpty($field.options))){
         $typicalValues = $(Get-NormalizedDropdownOptions $field.options) ?? @()
         $srcfields+=@{label = $field.label; field_type = $field.field_type; typicalValues=$typicalValues; required = $($field.required ?? $false)}
     } else {
@@ -1394,7 +1395,10 @@ foreach ($originalasset in $sourceassets) {
     $sourceassetsIDX=$sourceassetsIDX+1
     $linkableToAssetInfo = $null; $NewAssetName = $originalasset.name; $matchedMap = $null; $match = $null; $newAsset = $null;
     write-host "matching existing assets to asset $sourceassetsIDX of $($sourceassets.count) in destination layout assets ($($destassets.count) total) to determine if overlap"
-    $match = $destassets | where-object {$_.company_id -eq $originalasset.company_id -and ($_.name -ilike "$($originalasset.name)*" -or $_.name -ilike "*$($originalasset.name)")} | Select-Object -First 1
+    $match = $destassets | Where-Object { $_.company_id -eq $originalasset.company_id -and $_.name -ieq $originalasset.name } | Select-Object -First 1
+    if (-not $match -and $originalasset.name.length -gt 6) {
+        $match = $destassets | where-object {$_.company_id -eq $originalasset.company_id -and ($_.name -ilike "$($originalasset.name)*" -or $_.name -ilike "*$($originalasset.name)")} | Select-Object -First 1
+    }
     $match = $match.asset ?? $match
     if ($match -and $null -ne $match -and $null -ne $match.fields) {
         $totalcounts.assetsmatched=$totalcounts.assetsmatched+1
@@ -1558,8 +1562,7 @@ foreach ($originalasset in $sourceassets) {
         write-host "Merging transformed fields with matched existing asset fields..."
         $transformedMap = Convert-FieldArrayToMap $transformedFields 
         $finalMap = Merge-HuduFieldMaps `
-            -SourceMap $transformedMap -DestMap $matchedMap -LayoutFields $destassetlayout.fields `
-            -Mode $mergeMode -ConcatTypes @('RichText','Text') `
+            -SourceMap $transformedMap -DestMap $matchedMap -LayoutFields $destassetlayout.fields -Mode $mergeMode `
             -StampProvenance:$true -SourceStamp "From $($sourceassetlayout.name)" -DestStamp   "Existing $($destassetlayout.name)"
         $newAssetRequest["Fields"] = LabelValueMapToFields -Map $finalMap -LayoutFields $destassetlayout.fields
         $newAssetRequest["Id"]     = $match.id
