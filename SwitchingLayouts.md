@@ -67,15 +67,49 @@ Migrate assets between **Hudu** layouts while flexibly mapping fields, concatena
 
 ## Matching Items in Destination
 
-You have a few options for matched objects in the destination layout.
-Not too long ago, these would be skipped and logged when encountered, but now we have the option to merge information into the matched asset.
-This is particularly useful when you are moving assets that describe the same real-world objects together.
+When moving assets into a destination layout, the tool attempts to detect whether a source asset already exists in the destination. This helps avoid accidental duplicates and gives you control over how overlapping assets are handled.
 
-Conditions for match are:
-- asset in source and destination have the same company and same name
-- asset in destination has name that starts with or ends with source asset name (if asset name longer than 6 chars) and is in same company
+### How a Match Is Determined
+An asset in the source layout is considered a **match** to an asset in the destination layout when **both** of the following are true:
 
-For example, if you are moving Config-Server into Server Assets layout, you may have previously described the same object in both. Now, we can join information where possible between these two assets.
+- The source and destination assets belong to the **same company**, and
+- One of these name conditions applies:
+  - The names are exactly the same, **or**
+  - The destination asset’s name starts with or ends with the source asset’s name (only when the source name is longer than 6 characters)
+
+> The minimum character length prevents very short or generic names from being matched too aggressively.
+
+Matches most commonly occur when different layouts describe the **same real-world object** in different ways (for example, a server represented once as a configuration item and once as a general asset).
+
+---
+
+### What Happens When a Match Is Found
+When a match is detected, you’ll be prompted to choose how to proceed. The behavior depends on your answers.
+
+#### Option A: Do **Not** Merge on Match
+If you answer **No** to the initial merge prompt, you are choosing not to combine the source and destination assets. You’ll then be asked what to do next:
+
+- **Skip moving the source asset** — the destination asset is left unchanged, and the source asset is ignored
+- **Keep both assets** — the source asset is copied into the destination layout, typically with a modified name so both can coexist
+
+This was the original default behavior, but it’s generally less desirable when both assets describe the same thing.
+
+**Example:**
+If you are moving a *Config-Server* asset into a *Server Assets* layout and both already describe the same server:
+- You can skip moving the source asset, or
+- You can keep both assets with slightly different names
+
+---
+
+#### Option B: Merge on Match (Recommended)
+If you answer **Yes** to merging on match, the tool will **combine information** from the source and destination assets instead of treating them as separate objects.
+
+This is especially useful when consolidating layouts that describe the same physical or logical resources in different ways.
+
+**Example:**
+If *Config-Server* and *Server Assets* both describe the same machine, merging allows you to retain and unify information from both representations rather than choosing one and discarding the other.
+
+After choosing to merge, you’ll be prompted to select a **merge strategy** that determines how individual field values are combined.
 
 There are three merge modes you can choose from if you don't want to skip matches in destination:
 

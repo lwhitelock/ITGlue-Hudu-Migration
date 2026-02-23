@@ -998,11 +998,25 @@ function Merge-HuduFieldMaps {
 
     $labels = @($SourceMap.Keys + $DestMap.Keys) | Select-Object -Unique
     foreach ($label in $labels) {
+        $listItemId = $null; $humanReadable = $null;
         $src = $SourceMap[$label]
         $dst = $DestMap[$label]
-
         $srcBlank = Is-BlankValue $src
         $dstBlank = Is-BlankValue $dst
+        # only fetched-dest will be in non-human format when list
+        if (-not $dstBlank -and $dst -ilike '*list_id*'){
+            try {
+                $listItemId = $(SafeDecode $dst).list_ids[0]
+                $humanReadable = $($(get-hudulists).list_items | where-object {$_.id -eq $listItemId} | select-object -first 1).name
+            } catch {
+                Write-Host "Error transforming list_id source value '$dst' — $_"
+            }
+            if (-not ([string]::IsNullOrWhiteSpace($humanReadable))) {
+                $dst = $humanReadable
+                write-host "existing dest value for '$label' is a list item ID ($listItemId), transformed to human-readable '$dst'"
+            }
+        }
+        
 
         $fieldType = $typeByLabel[$label]
         if (-not $fieldType) { $fieldType = 'Text' }
@@ -1247,7 +1261,7 @@ write-host "$($totallayouts - $usablelayouts) omitted and marked inactive. $tota
 $choice=Set-LayoutsForTransfer -allLayouts $assetlayouts
 $sourceassetlayout = $choice.SourceLayout
 $destassetlayout = $choice.DestLayout
-$MergeOnMatch = [bool]$("yes" -eq $(Select-ObjectFromList -message "if an asset in source layout $($sourceassetlayout.name) has a Name that matches a Name in dest layout $($destassetlayout.name), should we merge source into dest (yes) or overwrite dest with source (no)?" -objects @("yes","no")))
+$MergeOnMatch = [bool]$("yes" -eq $(Select-ObjectFromList -message "if an asset in source layout $($sourceassetlayout.name) has a Name that matches a Name in dest layout $($destassetlayout.name), should we merge data from source into dest asset (yes) or do something else (no)?" -objects @("yes","no")))
 $SkipOnMatch = if ($MergeOnMatch -eq $true) {$false} else {[bool]$("yes" -eq $(Select-ObjectFromList -message "if an asset in source layout $($sourceassetlayout.name) has a Name that matches a Name in dest layout $($destassetlayout.name), should we skip adding source asset into dest (yes) or create both (no)?" -objects @("yes","no")))}
 $MergeMode = if ($MergeOnMatch -eq $true) {$(Select-Objectfromlist -message "which merge mode / approach for matching assets in destination?" -objects @('Merge-FillBlanks','Merge-PreferSource','Merge-Concat'))} else {$null}
 
@@ -1528,7 +1542,7 @@ foreach ($originalasset in $sourceassets) {
         $transformedMap = Convert-FieldArrayToMap $transformedFields 
         $finalMap = Merge-HuduFieldMaps `
             -SourceMap $transformedMap -DestMap $matchedMap -LayoutFields $destassetlayout.fields -Mode $mergeMode `
-            -StampProvenance:$true -SourceStamp "From $($sourceassetlayout.name)" -DestStamp   "Existing $($destassetlayout.name)"
+            -StampProvenance:$true -SourceStamp "From $($sourceassetlayout.name) " -DestStamp   "Existing $($destassetlayout.name) "
         $newAssetRequest["Fields"] = LabelValueMapToFields -Map $finalMap -LayoutFields $destassetlayout.fields
         $newAssetRequest["Id"]     = $match.id
     } elseif ($transformedFields -and $transformedFields.count -gt 0){
