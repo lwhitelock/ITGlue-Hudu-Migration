@@ -25,34 +25,6 @@ function Get-CastIfNumeric {
     }
     return $null
 }
-function Normalize-String {
-    param (
-        [Parameter(Mandatory = $true)]
-        [string]$InputString,
-        [switch]$PreserveWhitespace,
-        [switch]$PreserveExtension
-    )
-    $extension = ""
-    $basename = $InputString
-    if ($PreserveExtension) {
-        $extension = [IO.Path]::GetExtension($InputString)
-        $basename = [IO.Path]::GetFileNameWithoutExtension($InputString)
-    }
-
-    # Normalize Unicode (decompose accents), then remove non-ASCII
-    $normalized = $basename.Normalize([Text.NormalizationForm]::FormD)
-    $chars = $normalized.ToCharArray() | Where-Object {
-        ([Globalization.CharUnicodeInfo]::GetUnicodeCategory($_) -ne 'NonSpacingMark')
-    }
-    $ascii = -join $chars
-    if ($PreserveWhitespace) {
-        $ascii = $ascii -replace '[^a-zA-Z0-9 _-]', ''
-    } else {
-        $ascii = $ascii -replace '[^a-zA-Z0-9]', ''
-    }
-    return "$ascii$extension"
-}
-
 
 function Limit-FilenameLength {
     param (
@@ -237,13 +209,6 @@ function Get-SimilaritySafe { param([string]$A,[string]$B)
     write-host "$a ... $b SCORED $score"
     return $score
 }
-
-function ChoseBest-ByName {
-    param ([string]$Name,[array]$choices,[string]$prop='name')
-return $($choices | ForEach-Object {
-[pscustomobject]@{Choice = $_; Score  = $(Get-SimilaritySafe -a "$Name" -b $(if ([string]::IsNullOrEmpty($prop)){$_} else {$_.$prop}))}} | where-object {$_.Score -ge 0.97} | Sort-Object Score -Descending | select-object -First 1).Choice
-}
-
 
 function Get-CastIfBoolean {
     [CmdletBinding()]
@@ -506,7 +471,7 @@ $excludeHTMLinSMOOSH = $false
 
 # include description of related objects in smoosh
 # related objects will have a 1-line description based on related object type and name
-$describeRelatedInSmoosh = $true
+$describeRelatedInSmoosh = $false
 
 # include label - above value in smooshed? IE - 
 # label -
