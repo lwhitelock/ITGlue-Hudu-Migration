@@ -1392,7 +1392,7 @@ read-host "$($sourceassets.count) source assets and $($destassets.count) dest as
 $sourceassetsIDX=0
 foreach ($originalasset in $sourceassets) {
     $sourceassetsIDX=$sourceassetsIDX+1
-    $linkableToAssetInfo = $null; $NewAssetName = $originalasset.name; $matchedMap = $null; $match = $null;
+    $linkableToAssetInfo = $null; $NewAssetName = $originalasset.name; $matchedMap = $null; $match = $null; $newAsset = $null;
     write-host "matching existing assets to asset $sourceassetsIDX of $($sourceassets.count) in destination layout assets ($($destassets.count) total) to determine if overlap"
     $match = $destassets | where-object {$_.company_id -eq $originalasset.company_id -and ($_.name -ilike "$($originalasset.name)*" -or $_.name -ilike "*$($originalasset.name)")} | Select-Object -First 1
     $match = $match.asset ?? $match
@@ -1558,14 +1558,9 @@ foreach ($originalasset in $sourceassets) {
         write-host "Merging transformed fields with matched existing asset fields..."
         $transformedMap = Convert-FieldArrayToMap $transformedFields 
         $finalMap = Merge-HuduFieldMaps `
-            -SourceMap $transformedMap `
-            -DestMap $matchedMap `
-            -LayoutFields $destassetlayout.fields `
-            -Mode $mergeMode `
-            -ConcatTypes @('RichText','Text') `
-            -StampProvenance:$true `
-            -SourceStamp "From $($sourceassetlayout.name) asset $($originalasset.id)" `
-            -DestStamp   "Existing $($destassetlayout.name) asset $($match.id)"
+            -SourceMap $transformedMap -DestMap $matchedMap -LayoutFields $destassetlayout.fields `
+            -Mode $mergeMode -ConcatTypes @('RichText','Text') `
+            -StampProvenance:$true -SourceStamp "From $($sourceassetlayout.name)" -DestStamp   "Existing $($destassetlayout.name)"
         $newAssetRequest["Fields"] = LabelValueMapToFields -Map $finalMap -LayoutFields $destassetlayout.fields
         $newAssetRequest["Id"]     = $match.id
     } elseif ($transformedFields -and $transformedFields.count -gt 0){
@@ -1648,7 +1643,6 @@ foreach ($originalasset in $sourceassets) {
                 write-host "created toable rel $($newToable.id)"
                 $totalcounts.toablescreated= if ($newToable) {$totalcounts.toablescreated+1} else {$totalcounts.toablescreated}
             } catch {
-                $totalcounts.errored=$totalcounts.errored+1
                 Write-ErrorObjectsToFile -ErrorObject @{Err= $_; From = $relationsFrom; To=$relationsTo} -Name "NCREL-TOABLE-$($newasset.name)"
             }
         }
@@ -1659,7 +1653,6 @@ foreach ($originalasset in $sourceassets) {
                 write-host "created fromable rel $($newFromable.id)"
                 $totalcounts.fromablescreated= if ($newFromable) {$totalcounts.fromablescreated+1} else {$totalcounts.fromablescreated}
             } catch {
-                $totalcounts.errored=$totalcounts.errored+1
                 Write-ErrorObjectsToFile -ErrorObject @{Err= $_; From = $relationsFrom; To=$relationsTo} -Name "NCREL-FROMABLE-$($newasset.name)"
             }            
         }
