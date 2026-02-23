@@ -78,20 +78,6 @@ function Limit-FilenameLength {
         }
     }
 }
-function Normalize-Text {
-    param([string]$s)
-    if ([string]::IsNullOrWhiteSpace($s)) { return $null }
-    $s = $s.Trim().ToLowerInvariant()
-    $s = [regex]::Replace($s, '[\s_-]+', ' ')  # "primary_email" -> "primary email"
-    # strip diacritics (prénom -> prenom)
-    $formD = $s.Normalize([System.Text.NormalizationForm]::FormD)
-    $sb = New-Object System.Text.StringBuilder
-    foreach ($ch in $formD.ToCharArray()){
-        if ([System.Globalization.CharUnicodeInfo]::GetUnicodeCategory($ch) -ne
-            [System.Globalization.UnicodeCategory]::NonSpacingMark) { [void]$sb.Append($ch) }
-    }
-    ($sb.ToString()).Normalize([System.Text.NormalizationForm]::FormC)
-}
 function Test-Equiv {
     param([string]$A, [string]$B)
     $a = Normalize-Text $A; $b = Normalize-Text $B
@@ -1517,7 +1503,7 @@ foreach ($originalasset in $sourceassets) {
         continue
     }
     if ($null -ne $newAssetRequest.id -and $newAssetRequest.id -gt 0){
-        write-host "updated asset $($newasset.id), no need to re-relate items outside of previous asset-tags"
+        write-host "updated asset $($newasset.id), no need to re-relate or archive items outside of previous asset-tags"
     } else {
         # archive new asset if original was archived
         if ($originalasset.archived -eq $true) {
@@ -1538,6 +1524,8 @@ foreach ($originalasset in $sourceassets) {
         $sourceFromables  = $($($allrelations | where-object {$_.fromable_type -eq 'Asset' -and $originalasset.id -eq $_.fromable_id }) ?? @())
         write-host "$($sourceFromables.count) fromable relations"
         $relationsTo = $sourceToables | Where-Object { $_.toable_id -eq $originalasset.id }
+        
+        if (get-command -name Set-HapiErrorsDirectory -ErrorAction SilentlyContinue){try {Set-HapiErrorsDirectory -skipRetry $true} catch {}}
         foreach ($rel in $relationsTo) {
             try {
                 $newToable+=New-HuduRelation -FromableType $rel.fromable_type -FromableId $rel.fromable_id -ToableType "Asset" -ToableId $newAsset.id
@@ -1562,6 +1550,7 @@ foreach ($originalasset in $sourceassets) {
     }
     # add assettag linking regardless of match/merge or made assets
     if ($linkableToAssetInfo -and $linkableToAssetInfo.count -gt 0){
+        if (get-command -name Set-HapiErrorsDirectory -ErrorAction SilentlyContinue){try {Set-HapiErrorsDirectory -skipRetry $true} catch {}}
         write-host "Asset has external asset links, relinking $($linkableToAssetInfo.count) for $($originalasset.name)"
         foreach ($linkableToAsset in $linkableToAssetInfo) {
             $linkedAsset=$linkableToAsset.LinkedAsset
@@ -1575,7 +1564,9 @@ foreach ($originalasset in $sourceassets) {
                 Write-ErrorObjectsToFile -ErrorObject @{Err = $_; From = $relationsFrom; To=$relationsTo} -Name "NCREL-AL-$($newasset.name)"
             }
         }
-    }    
+    }
+    if (get-command -name Set-HapiErrorsDirectory -ErrorAction SilentlyContinue){try {Set-HapiErrorsDirectory -skipRetry $false} catch {}}
+
 }
 Write-host "wrap-up" -ForegroundColor cyan
 $newlayoutname = $null
@@ -1591,7 +1582,7 @@ if ($newlayoutname -ne $sourceassetlayout.name){
 }
 if ($true -eq $setsourceassetsarchived) {
     foreach ($originalasset in $sourceassets) {
-        $result=Set-HuduAssetArchive -id $assetarch.id -CompanyId $assetarch.company_id -archive $true
+        $result=Set-HuduAssetArchive -id $originalasset.id -CompanyId $originalasset.company_id -archive $true
         $totalcounts.assetsarchived=$(if ($result) {$totalcounts.assetsarchived+1} else {$totalcounts.assetsarchived})
     }
 }
