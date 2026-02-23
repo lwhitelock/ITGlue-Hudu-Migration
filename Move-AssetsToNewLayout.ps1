@@ -78,6 +78,76 @@ function Limit-FilenameLength {
         }
     }
 }
+
+function Get-FieldTypeByLabel {
+    param(
+        [Parameter(Mandatory)][object[]]$LayoutFields
+    )
+    $typeByLabel = @{}
+    foreach ($lf in ($LayoutFields ?? @())) {
+        if (-not $lf.label) { continue }
+        $typeByLabel[$lf.label] = ($lf.field_type ?? $lf.type ?? 'Text')
+    }
+    return $typeByLabel
+}
+
+function FieldsToLabelValueMap {
+    param([object[]]$Fields)
+
+    $map = @{}
+    foreach ($f in ($Fields ?? @())) {
+        if (-not $f) { continue }
+        $label = $f.label
+        if ([string]::IsNullOrWhiteSpace($label)) { continue }
+        $map[$label] = $f.value
+    }
+    return $map
+}
+
+function LabelValueMapToFields {
+    param(
+        [Parameter(Mandatory)][hashtable]$Map,
+        [object[]]$LayoutFields = $null
+    )
+
+    $out = @()
+
+    # Preserve layout ordering if given
+    if ($LayoutFields) {
+        $layoutLabels = @($LayoutFields | ForEach-Object { $_.label } | Where-Object { $_ })
+        foreach ($lab in $layoutLabels) {
+            if ($Map.ContainsKey($lab)) {
+                $out += @{ $lab = $Map[$lab] }
+            }
+        }
+        # Any extras not in layout
+        foreach ($k in $Map.Keys | Where-Object { $_ -notin $layoutLabels }) {
+            $out += @{ $k = $Map[$k] }
+        }
+    } else {
+        foreach ($k in $Map.Keys) { $out += @{ $k = $Map[$k] } }
+    }
+
+    return $out
+}
+
+function Is-BlankValue {
+    param([object]$Value)
+    if ($null -eq $Value) { return $true }
+
+    # AddressData / objects should count as blank only if no meaningful fields
+    if ($Value -is [hashtable] -or $Value -is [System.Collections.IDictionary] -or $Value -is [pscustomobject]) {
+        try {
+            $pairs = $Value.PSObject.Properties | ForEach-Object { $_.Value }
+            return -not ($pairs | Where-Object { -not (Is-BlankValue $_) } | Select-Object -First 1)
+        } catch {
+            return $false
+        }
+    }
+
+    return [string]::IsNullOrWhiteSpace([string]$Value)
+}
+
 function Test-Equiv {
     param([string]$A, [string]$B)
     $a = Normalize-Text $A; $b = Normalize-Text $B
@@ -934,58 +1004,98 @@ function Convert-FieldArrayToMap {
     return $map
 }
 
-function Merge-FieldMaps {
+function Merge-HuduFieldMaps {
+    [CmdletBinding()]
     param(
-        [Parameter(Mandatory)][hashtable]$TransformedMap,
-        [Parameter(Mandatory)][hashtable]$MatchedMap,
-        [Parameter(Mandatory)][object[]]$LayoutFields,   # destassetlayout.fields
-        [bool]$preferOriginal = $true,
-        [string]$RichTextSeparator = "`n`n---`n`n"
+        [Parameter(Mandatory)][hashtable]$SourceMap,   # transformed/source
+        [Parameter(Mandatory)][hashtable]$DestMap,     # matched/dest existing
+        [Parameter(Mandatory)][object[]]$LayoutFields, # dest layout fields
+        [ValidateSet('Merge-FillBlanks','Merge-PreferSource','Merge-Concat')]
+        [string]$Mode = 'Merge-FillBlanks',
+
+        # For Merge-Concat: which field types should be concatenated?
+        [string[]]$ConcatTypes = @('RichText','Text','MultiText','Notes'),
+
+        # Separators
+        [string]$RichTextSeparator = "<br><hr>",
+        [string]$TextSeparator     = "`n`n---`n`n",
+
+        # Provenance stamping
+        [switch]$StampProvenance,
+        [string]$SourceStamp = "Imported (source)",
+        [string]$DestStamp   = "Existing (dest)"
     )
 
-    # Build label -> field_type lookup once
-    $typeByLabel = @{}
-    foreach ($lf in $LayoutFields) {
-        if ($lf.label) { $typeByLabel[$lf.label] = ($lf.field_type ?? $lf.type) }
-    }
+    $typeByLabel = Get-FieldTypeByLabel -LayoutFields $LayoutFields
 
     $out = @{}
-    $allLabels = @($TransformedMap.Keys + $MatchedMap.Keys) | Select-Object -Unique
 
-    foreach ($label in $allLabels) {
-        $t = $TransformedMap[$label]
-        $m = $MatchedMap[$label]
+    $labels = @($SourceMap.Keys + $DestMap.Keys) | Select-Object -Unique
+    foreach ($label in $labels) {
+        $src = $SourceMap[$label]
+        $dst = $DestMap[$label]
+
+        $srcBlank = Is-BlankValue $src
+        $dstBlank = Is-BlankValue $dst
+
         $fieldType = $typeByLabel[$label]
+        if (-not $fieldType) { $fieldType = 'Text' }
 
-        $tBlank = [string]::IsNullOrWhiteSpace([string]$t)
-        $mBlank = [string]::IsNullOrWhiteSpace([string]$m)
+        switch ($Mode) {
 
-        if ($fieldType -eq "RichText") {
-            if (-not $tBlank -and -not $mBlank) {
-                $out[$label] = ([string]$t) + $RichTextSeparator + ([string]$m)
-            } elseif (-not $tBlank) {
-                $out[$label] = $t
-            } elseif (-not $mBlank) {
-                $out[$label] = $m
+            'Merge-FillBlanks' {
+                # dest wins unless blank
+                if (-not $dstBlank) {
+                    $out[$label] = $dst
+                } elseif (-not $srcBlank) {
+                    $out[$label] = $src
+                }
             }
-            continue
-        }
 
-        # Non-richtext: prefer transformed unless it's blank
-        if ($preferOriginal) {
-            if (-not $mBlank) {
-                $out[$label] = $m
-            } elseif (-not $tBlank) {
-                $out[$label] = $t
+            'Merge-PreferSource' {
+                # source wins unless blank
+                if (-not $srcBlank) {
+                    $out[$label] = $src
+                } elseif (-not $dstBlank) {
+                    $out[$label] = $dst
+                }
             }
-            continue
-        } else {
-            if (-not $tBlank) {
-                $out[$label] = $t
-            } elseif (-not $mBlank) {
-                $out[$label] = $m
+
+            'Merge-Concat' {
+                $isConcat = $ConcatTypes -contains $fieldType
+
+                if (-not $isConcat) {
+                    # For non-concat field types, default to PreferSource (tweak if you prefer)
+                    if (-not $srcBlank) { $out[$label] = $src }
+                    elseif (-not $dstBlank) { $out[$label] = $dst }
+                    break
+                }
+
+                # Concat path (only when both present)
+                if (-not $srcBlank -and -not $dstBlank) {
+
+                    $sep = if ($fieldType -eq 'RichText') { $RichTextSeparator } else { $TextSeparator }
+
+                    if ($StampProvenance) {
+                        if ($fieldType -eq 'RichText') {
+                            $lhs = "<div><strong>$SourceStamp</strong></div>$src"
+                            $rhs = "<div><strong>$DestStamp</strong></div>$dst"
+                            $out[$label] = "$lhs$sep$rhs"
+                        } else {
+                            $lhs = "$SourceStamp`n$src"
+                            $rhs = "$DestStamp`n$dst"
+                            $out[$label] = "$lhs$sep$rhs"
+                        }
+                    } else {
+                        $out[$label] = ([string]$src) + $sep + ([string]$dst)
+                    }
+
+                } elseif (-not $srcBlank) {
+                    $out[$label] = $src
+                } elseif (-not $dstBlank) {
+                    $out[$label] = $dst
+                }
             }
-            continue
         }
     }
 
@@ -1173,6 +1283,9 @@ $sourceassetlayout = $choice.SourceLayout
 $destassetlayout = $choice.DestLayout
 $MergeOnMatch = [bool]$("yes" -eq $(Select-ObjectFromList -message "if an asset in source layout $($sourceassetlayout.name) has a Name that matches a Name in dest layout $($destassetlayout.name), should we merge source into dest (yes) or overwrite dest with source (no)?" -objects @("yes","no")))
 $SkipOnMatch = if ($MergeOnMatch -eq $true) {$false} else {[bool]$("yes" -eq $(Select-ObjectFromList -message "if an asset in source layout $($sourceassetlayout.name) has a Name that matches a Name in dest layout $($destassetlayout.name), should we skip adding source asset into dest (yes) or create both (no)?" -objects @("yes","no")))}
+$MergeMode = if ($MergeOnMatch -eq $true) {$(Select-Objectfromlist -message "which merge mode / approach for matching assets in destination?" -objects @('Merge-FillBlanks','Merge-PreferSource','Merge-Concat'))} else {$null}
+
+
 
 foreach ($layout in @($sourceassetlayout, $destassetlayout)){
     write-host "getting relinkable fields from layout $($layout.name)..."
@@ -1287,10 +1400,7 @@ foreach ($originalasset in $sourceassets) {
         $totalcounts.assetsmatched=$totalcounts.assetsmatched+1
         if ($true -eq $MergeOnMatch){
             write-host "Matched existing asset '$($match.name)' (ID: $($match.id)) in destination layout for source asset '$($originalasset.name)' (ID: $($originalasset.id)) - will compile complete list of fields from both"
-            $matchedMap = @{}
-            foreach ($f in ($match.fields ?? @())) {
-            if ($f.label) { $matchedMap[$f.label] = $f.value }
-            }
+            $matchedMap = FieldsToLabelValueMap $match.fields
         } elseif ($true -eq $SkipOnMatch) {
             write-host "match found in dest layout. (#$($totalcounts.assetsmatched)) thus far"
             write-host "original: $($($originalasset | ConvertTo-Json -depth 6).ToString())" -ForegroundColor Yellow
@@ -1446,12 +1556,18 @@ foreach ($originalasset in $sourceassets) {
 
      if ($null -ne $matchedmap -and $matchedmap.count -gt 0){
         write-host "Merging transformed fields with matched existing asset fields..."
-        $transformedMap = Convert-FieldArrayToMap $transformedFields
-        $finalMap = Merge-FieldMaps -TransformedMap $transformedMap `
-                                    -MatchedMap $matchedMap `
-                                    -LayoutFields $destassetlayout.fields
-        $newAssetRequest["Fields"]=$(MapToFieldList -Map $finalMap -LayoutFields $destassetlayout.fields)
-        $newAssetRequest["Id"]=$match.id # set to found match id, since we're updating/merging on match if this is set.
+        $transformedMap = Convert-FieldArrayToMap $transformedFields 
+        $finalMap = Merge-HuduFieldMaps `
+            -SourceMap $transformedMap `
+            -DestMap $matchedMap `
+            -LayoutFields $destassetlayout.fields `
+            -Mode $mergeMode `
+            -ConcatTypes @('RichText','Text') `
+            -StampProvenance:$true `
+            -SourceStamp "From $($sourceassetlayout.name) asset $($originalasset.id)" `
+            -DestStamp   "Existing $($destassetlayout.name) asset $($match.id)"
+        $newAssetRequest["Fields"] = LabelValueMapToFields -Map $finalMap -LayoutFields $destassetlayout.fields
+        $newAssetRequest["Id"]     = $match.id
     } elseif ($transformedFields -and $transformedFields.count -gt 0){
         $newAssetRequest["Fields"]=$transformedFields
         write-host $($($transformedFields | convertto-json -depth 5).ToString())
@@ -1528,7 +1644,7 @@ foreach ($originalasset in $sourceassets) {
         if (get-command -name Set-HapiErrorsDirectory -ErrorAction SilentlyContinue){try {Set-HapiErrorsDirectory -skipRetry $true} catch {}}
         foreach ($rel in $relationsTo) {
             try {
-                $newToable+=New-HuduRelation -FromableType $rel.fromable_type -FromableId $rel.fromable_id -ToableType "Asset" -ToableId $newAsset.id
+                $newToable=New-HuduRelation -FromableType $rel.fromable_type -FromableId $rel.fromable_id -ToableType "Asset" -ToableId $newAsset.id
                 write-host "created toable rel $($newToable.id)"
                 $totalcounts.toablescreated= if ($newToable) {$totalcounts.toablescreated+1} else {$totalcounts.toablescreated}
             } catch {
@@ -1566,7 +1682,6 @@ foreach ($originalasset in $sourceassets) {
         }
     }
     if (get-command -name Set-HapiErrorsDirectory -ErrorAction SilentlyContinue){try {Set-HapiErrorsDirectory -skipRetry $false} catch {}}
-
 }
 Write-host "wrap-up" -ForegroundColor cyan
 $newlayoutname = $null
