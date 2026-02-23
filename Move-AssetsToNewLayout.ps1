@@ -259,7 +259,7 @@ function Set-SmooshAssetFieldsToField {
         } else {$header = ""}
         $textToUse = ""
         if ("$($($sourceasset.fields | where-object {$_.label -eq $sourcefieldsmoosh}).value)" -ilike '*list_id*'){
-            $precastValue=$field.value;
+            $precastValue="$($($sourceasset.fields | where-object {$_.label -eq $sourcefieldsmoosh}).value)"
             $listItemId = $null; 
             $listItemId = $(SafeDecode "$($($sourceasset.fields | where-object {$_.label -eq $sourcefieldsmoosh}).value)").list_ids[0]
             $textToUse = $($(get-hudulists).list_items | where-object {$_.id -eq $listItemId} | select-object -first 1).name
