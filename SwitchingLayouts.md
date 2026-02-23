@@ -84,11 +84,47 @@ There are three merge modes you can choose from if you don't want to skip matche
 - Merge-FillBlanks (destination wins, source fills gaps)
     - Use this when the destination asset is the “source of truth” and you only want to backfill missing fields.
 
+```
+┌─────────┐      ┌─────────┐
+│ ■ ■ □   │      │ ■ □ ■   │
+└─────────┘      └─────────┘
+        │            │
+        └──────┬─────┘
+               ▼
+        ┌─────────┐
+        │ ■ ■ ■   │
+        └─────────┘
+```
+
 - Merge-PreferSource (source wins, destination is fallback)
     - Use this when the incoming/source asset is considered more correct or more up-to-date, but you still want to retain destination values when the source doesn’t have anything.
 
+```
+┌─────────┐      ┌─────────┐
+│ ■ ■ □   │      │ □ ■ ■   │
+└─────────┘      └─────────┘
+        │            │
+        └──────┬─────┘
+               ▼
+        ┌─────────┐
+        │ ■ ■ ■   │
+        └─────────┘
+```
+
 - Merge-Concat (keep both/append for text-like fields, choose winner for others)
     - Use this when you don’t want to lose either side’s content for “notes” or text fields. For text-like field types (e.g. RichText/Text/Heading/Confidentialtext/Password), it concatenates source + destination with separators, adding provenance stamps to show which info came from where.
+
+```
+┌─────────┐      ┌─────────┐
+│ ■ ■ ■   │      │ ■ ■ ■   │
+└─────────┘      └─────────┘
+        │            │
+        └──────┬─────┘
+               ▼
+        ┌───────────────┐
+        │ ■ ■ ■ ▌ ■ ■ ■ │
+        └───────────────┘
+```
 
 ## The Mapping File (`mapping.ps1`)
 
