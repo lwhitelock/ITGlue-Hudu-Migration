@@ -65,6 +65,70 @@ Migrate assets between **Hudu** layouts while flexibly mapping fields, concatena
 
 ---
 
+## Matching Items in Destination
+
+You have a few options for matched objects in the destination layout. Firstly, you can either skip merging by answering (2, no) for the first question related to actions you'd like to take during a match in destination.
+If you choose to skip merging, you can either then select to skip moving a matched item from source or overwrite item on destination.
+
+Otherwise, you can select 1, yes to merge on match in destination. This is particularly useful when you are moving assets to a layout that may also describe the same real-world objects.
+
+If you do elect to merge-on-match, you have a few subsequent strategies, depending on what works best for your needs-
+
+Conditions for match are:
+- asset in source and destination have the same company and same name
+- asset in destination has name that starts with or ends with source asset name (if asset name longer than 6 chars) and is in same company
+
+For example, if you are moving Config-Server into Server Assets layout, you may have previously described the same object in both. Now, we can join information where possible between these two assets.
+
+There are three merge modes you can choose from if you don't want to skip matches in destination:
+
+<img width="2168" height="240" alt="image" src="https://github.com/user-attachments/assets/1d4a5018-3e47-4721-8cbc-e8fc7b0d4a4b" />
+
+- Merge-FillBlanks (destination wins, source fills gaps)
+    - Use this when the destination asset is the “source of truth” and you only want to backfill missing fields.
+
+```
+┌─────────┐      ┌─────────┐
+│ ■ ■ □   │      │ ■ □ ■   │
+└─────────┘      └─────────┘
+        │            │
+        └──────┬─────┘
+               ▼
+        ┌─────────┐
+        │ ■ ■ ■   │
+        └─────────┘
+```
+
+- Merge-PreferSource (source wins, destination is fallback)
+    - Use this when the incoming/source asset is considered more correct or more up-to-date, but you still want to retain destination values when the source doesn’t have anything.
+
+```
+┌─────────┐      ┌─────────┐
+│ ■ ■ □   │      │ □ ■ ■   │
+└─────────┘      └─────────┘
+        │            │
+        └──────┬─────┘
+               ▼
+        ┌─────────┐
+        │ ■ ■ ■   │
+        └─────────┘
+```
+
+- Merge-Concat (keep both/append for text-like fields, choose winner for others)
+    - Use this when you don’t want to lose either side’s content for “notes” or text fields. For text-like field types (e.g. RichText/Text/Heading/Confidentialtext/Password), it concatenates source + destination with separators, adding provenance stamps to show which info came from where.
+
+```
+┌─────────┐      ┌─────────┐
+│ ■ ■ ■   │      │ ■ ■ ■   │
+└─────────┘      └─────────┘
+        │            │
+        └──────┬─────┘
+               ▼
+        ┌───────────────┐
+        │ ■ ■ ■ ▌ ■ ■ ■ │
+        └───────────────┘
+```
+
 ## The Mapping File (`mapping.ps1`)
 
 The script generates `mapping.ps1` with placeholders you can fill. It contains three key blocks:
