@@ -206,7 +206,7 @@ function Get-Similarity {
 function Get-SimilaritySafe { param([string]$A,[string]$B)
     if ([string]::IsNullOrWhiteSpace($A) -or [string]::IsNullOrWhiteSpace($B)) { return 0.0 }
     $score = Get-Similarity $A $B
-    write-host "$a ... $b SCORED $score"
+    write-host "$A ... $B SCORED $score"
     return $score
 }
 
