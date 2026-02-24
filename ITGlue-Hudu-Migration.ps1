@@ -1142,7 +1142,7 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\AssetLayouts.json")) 
     # Match to existing layouts
     $MatchedLayouts = foreach ($ITGLayout in $FlexLayouts) {
         if ($skipIntegratorLayouts -and $true -eq $skipIntegratorLayouts){
-            if ("$($ITGLayout.attributes.name)" -ilike "*(auto)*"){
+            if ("$($ITGLayout.attributes.name)" -ilike "*(auto)*" -or "$($ITGLayout.attributes.name)" -ilike "*(liongard)*" -or "$($ITGLayout.attributes.name)" -ieq "datto device"){
                 Write-warning "Skipping Integrator Layout $($ITGLayout.attributes.name)"
                 continue
             }
