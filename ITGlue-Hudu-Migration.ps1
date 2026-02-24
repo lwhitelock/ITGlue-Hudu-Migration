@@ -1142,7 +1142,7 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\AssetLayouts.json")) 
     # Match to existing layouts
     $MatchedLayouts = foreach ($ITGLayout in $FlexLayouts) {
         if ($skipIntegratorLayouts -and $true -eq $skipIntegratorLayouts){
-            if ("$($ITGLayout.attributes.name)" -ilike "*(auto)*"){
+            if ("$($ITGLayout.attributes.name)" -ilike "*(auto)*" -or "$($ITGLayout.attributes.name)" -ilike "*(liongard)*"){
                 Write-warning "Skipping Integrator Layout $($ITGLayout.attributes.name)"
                 continue
             }
@@ -1245,7 +1245,7 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\AssetLayouts.json")) 
 
         foreach ($UpdateLayout in $MatchedLayouts) {
             if ($skipIntegratorLayouts -and $true -eq $skipIntegratorLayouts){
-                if ("$($UpdateLayout.Name)" -ilike "*(auto)*"){
+                if ("$($UpdateLayout.Name)" -ilike "*(auto)*" -or "$($UpdateLayout.Name)" -ilike "*(liongard)*"){
                     Write-Host "Skipping Integrator Layout $($UpdateLayout.Name)" -ForegroundColor Yellow
                     continue
                 }
