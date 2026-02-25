@@ -178,7 +178,7 @@ foreach ($itgcompanyID in ($matchedpasswords.ITGObject.attributes.'organization-
 }
 
 # if you want password folders that only contain passwords from a single company to be moved, run the below block or set this var to true
-$companyPasswordFolderAttributionMove = $companyPasswordFolderAttributionMove ?? $false
+$companyPasswordFolderAttributionMove = $companyPasswordFolderAttributionMove ?? $true
 $minCompaniesForGlobalFolder = 10 # if a folder has passwords from fewer than this many companies, it will be moved to the company with the most passwords in that folder (if $companyPasswordFolderAttributionMove is true)
 if ($true -eq $companyPasswordFolderAttributionMove){
     $allPasswordFolders = get-hudupasswordfolders | where-object {-not $_.company_id -or $_.company_id -lt 1 -or $null -eq $_.company_id}
