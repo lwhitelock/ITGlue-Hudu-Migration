@@ -51,16 +51,16 @@ function Normalize-And-ConvertImage {
     # Create a safe temp copy before doing anything else
     $safeName = [guid]::NewGuid().ToString() + $originalExt
     $safePath = Join-Path $WorkingDirectory $safeName
-    write-verbose "MOVING IMAGE FROM $InputPath to SAFE PATH $safePath" -ForegroundColor Magenta
+    write-verbose "MOVING IMAGE FROM $InputPath to SAFE PATH $safePath"
 
     Copy-Item -Path $InputPath -Destination $safePath -Force
 
     # If no extension, guess and rename
     if (-not $originalExt) {
-        write-verbose "NO EXTENTION FOR PRESUMED IMAGE: $InputPath" -ForegroundColor Magenta
+        write-verbose "NO EXTENTION FOR PRESUMED IMAGE: $InputPath"
         $guessedExt = (New-Object ImageMagick.MagickImage($safePath)).Format.ToString().ToLower()
         $safePathWithExt = "$safePath.$guessedExt"
-        write-verbose "NO EXTENTION IMAGE MOVED TO: $safePathWithExt" -ForegroundColor Magenta
+        write-verbose "NO EXTENTION IMAGE MOVED TO: $safePathWithExt"
         Move-Item -Path $safePath -Destination $safePathWithExt -Force
         $safePath = $safePathWithExt
     }
@@ -68,13 +68,13 @@ function Normalize-And-ConvertImage {
     # Detect type
     $type = Get-ImageType $safePath
     $detectedAs = $type
-    write-verbose "IMAGE AT SAFEPATH $safePath detected as $detectedAs" -ForegroundColor Magenta
+    write-verbose "IMAGE AT SAFEPATH $safePath detected as $detectedAs"
 
     $preserveExt = @('jpg', 'jpeg', 'png') -contains $type
 
     # Convert if needed
     if ($type -and -not $preserveExt) {
-        write-verbose "IMAGE TYPE NOT IN ALLOWABLE SET... $safePath => $detectedAs converting to jpg" -ForegroundColor Magenta
+        write-verbose "IMAGE TYPE NOT IN ALLOWABLE SET... $safePath => $detectedAs converting to jpg"
         $Magick = New-Object ImageMagick.MagickImage($safePath)
         $convertedPath = [System.IO.Path]::ChangeExtension($safePath, 'jpg')
         $Magick.Format = [ImageMagick.MagickFormat]::Jpeg
@@ -88,7 +88,7 @@ function Normalize-And-ConvertImage {
     $directory = [IO.Path]::GetDirectoryName($safePath)
     $normalized = Normalize-String -InputString $filename -PreserveExtension -PreserveWhitespace
     $limited = Limit-FilenameLength -FullFilename $normalized -MaxLength $MaxLength -PreserveExtension
-    write-verbose "IMAGE FILENAME $InputPath NORMALIZED and LIMITED from $limited TO $normalized" -ForegroundColor Magenta
+    write-verbose "IMAGE FILENAME $InputPath NORMALIZED and LIMITED from $limited TO $normalized"
 
     # Rebuild parts
     $extension = [IO.Path]::GetExtension($limited)
@@ -99,7 +99,7 @@ function Normalize-And-ConvertImage {
 
     if ($basename.Length -lt 5) {
         $basename = $basename.PadRight(5, '_')
-        write-verbose "IMAGE BASENAME ($basename) from $InputPath NORMALIZED TO $basename" -ForegroundColor Magenta
+        write-verbose "IMAGE BASENAME ($basename) from $InputPath NORMALIZED TO $basename"
     }
 
     $finalFilename = "$basename$extension".ToLower()
@@ -107,7 +107,7 @@ function Normalize-And-ConvertImage {
 
     if ($safePath -ne $finalPath) {
         Copy-Item -Path $safePath -Destination $finalPath -Force
-        write-verbose "FINAL IMAGE FROM $InputPath PLACED AS $safePath" -ForegroundColor Magenta
+        write-verbose "FINAL IMAGE FROM $InputPath PLACED AS $safePath"
     }
 
     return @{
