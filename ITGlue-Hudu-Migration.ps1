@@ -1318,7 +1318,7 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\AssetLayouts.json")) 
                         $LayoutField.add("field_type", "RichText")
                     }
                     "Upload" {
-                        Write-Host "Upload fields are handled by an external script. $($ITGField.Attributes.name) in $($UpdateLayout.name)! Make sure you run the Add-HuduAttachmentsViaAPI.ps1 after"
+                        Write-Host "Upload fields are handled by an external script. $($ITGField.Attributes.name) in $($UpdateLayout.name)! Add-HuduAttachmentsViaAPI.ps1 will run after main migration to accomdate this."
                         $supported = $false
                     }
                     "Tag" {

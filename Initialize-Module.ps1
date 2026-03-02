@@ -439,18 +439,20 @@ if ($InitType -eq 'Full') {
     }    
 
     ############################ Image Anchors Regex ############################
-    while ($OptionalImageAnchorReplace -notin (1,2)) {$OptionalImageAnchorReplace = Read-Host "[Other, default 1/$true] Would you like to replace links to hosted images in Hudu? (Not commonly needed but can be good for images-as-links in articles).`n 1) Yes`n 2) No, skip image-links`n(1/2)"}
+    $OptionalImageAnchorReplace = $OptionalImageAnchorReplace ?? $true
+    while ($OptionalImageAnchorReplace -notin @(1,2, $true, $false)) {$OptionalImageAnchorReplace = Read-Host "[Other, default 1/$true] Would you like to replace links to hosted images in Hudu? (Not commonly needed but can be good for images-as-links in articles).`n 1) Yes`n 2) No, skip image-links`n(1/2)"}
     switch ($OptionalImageAnchorReplace) {
         "1" {$OptionalImageAnchorReplace = $true}
         "2" {$OptionalImageAnchorReplace = $false}
     }    
-    while ($skipIntegratorLayouts -notin @($true, $false)){
+    while ($skipIntegratorLayouts -notin @(1,2, $true, $false)){
         $skipIntegratorLayoutsInput = Read-Host "[Other, default false] Would you like to skip importing Integrator Layouts? These are often containing data that goes unused.`n 1) Yes`n 2) No, import all layouts`n(1/2)"
         switch ($skipIntegratorLayoutsInput) {
             "1" {$skipIntegratorLayouts = $true}
             "2" {$skipIntegratorLayouts = $false}
         }
     }
+    $allowSettingFlagsAndTypes = $allowSettingFlagsAndTypes ?? $false
     while ($allowSettingFlagsAndTypes -notin @(1,2, $true, $false)){
         $allowSettingFlagsAndTypes = Read-Host "Would you like to apply flags and flag types during the migration? This requires Hudu version 2.40.0 or later.`n 1) Yes`n 2) No, skip setting Flags and FlagTypes`n(1/2)"
         switch ($allowSettingFlagsAndTypes) {
