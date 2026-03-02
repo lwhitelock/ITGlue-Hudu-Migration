@@ -2550,7 +2550,6 @@ if ($true -eq $allowSettingFlagsAndTypes){
     . .\public\Add-HuduFlagsFlagtypes.ps1
 } else {write-host "wrapup 9/9... Skipping optional flags and flag types..."}
 
-
 foreach ($auxilliaryObj in @(@{Name = "passwordfolders"; Created = $MatchedPasswordFolders ?? @() }, @{Name = "checklists"; Created = $MatchedChecklists ?? @() })) {
     $auxilliaryObj.Created | ConvertTo-Json -depth 75 | Out-File $(join-path $settings.MigrationLogs "created-$($auxilliaryObj.Name).json")
 }
