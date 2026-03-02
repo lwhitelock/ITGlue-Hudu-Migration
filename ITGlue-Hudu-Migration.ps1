@@ -1874,18 +1874,18 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Articles.json")) {
                     }
                     # Test the path to ensure that a file extension exists, if no file extension we get problems later on. We rename it if there's no ext.
                     if ($imagePath -and (Test-Path $imagePath -ErrorAction SilentlyContinue)) {
-                        Write-Host "File present at purported image path: $imagePath... checking for image..." -ForegroundColor DarkRed
+                        write-verbose "File present at purported image path: $imagePath... checking for image..."
 
                             $imageType = Invoke-ImageTest $imagePath
                             if ($imageType) {
-                                Write-Host "$imagePath appears to contain image... normalizing..." -ForegroundColor DarkRed
+                                write-verbose "$imagePath appears to contain image... normalizing..."
                                 $imageInfo = Normalize-And-ConvertImage -InputPath $imagePath
-                                Write-Host "$imagePath => $($imageInfo.FinalPath)" -ForegroundColor DarkRed
+                                write-verbose "$imagePath => $($imageInfo.FinalPath)"
 
                                 $imagePath = $imageInfo.FinalPath ?? $imagePath
                                 $OriginalFullImagePath = $imageInfo.Original
 
-                                Write-Host "Uploading new/copied ITGlue image $OriginalFullImagePath => $imagePath"
+                                write-verbose "Uploading new/copied ITGlue image $OriginalFullImagePath => $imagePath"
                                 try {
                                     $UploadImage = New-HuduPublicPhoto -FilePath $imagePath.ToLower() -record_id $Article.HuduID -record_type 'Article'
                                 } catch {
@@ -1917,7 +1917,7 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Articles.json")) {
                                             Write-Host "Image link object found but 'href' property is not present on it"
                                         }
                                     } else {
-                                        Write-Host "Image link object was not found for innerHTML: $imgHTML"
+                                        write-verbose "Image link object was not found for innerHTML: $imgHTML"
                                     }
                                 } catch {
                     # issue during HTML replace / parse
