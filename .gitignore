@@ -16,3 +16,6 @@ mapping.ps1
 source-fields.json
 mapping.ps1.old
 cookiejar.json
+tempdownloads
+tempdownloads*
+tempdownloads\*
