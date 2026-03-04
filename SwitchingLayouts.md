@@ -11,7 +11,6 @@ Migrate assets between **Hudu** layouts while flexibly mapping fields, concatena
 > 3) Edit the generated `mapping.ps1` (and optionally use `SMOOSH`)  
 > 4) Run the transfer and review the summary counts
 
-
 ---
 
 ## Features
@@ -23,6 +22,16 @@ Migrate assets between **Hudu** layouts while flexibly mapping fields, concatena
 - **AddressData** helper block mapping (line1/line2/city/state/zip/country)  
 - **Relation handling**: optional relinking of related assets; control over archived relations  
 - Built-in checks + per-job settings
+
+## What Transfers / Merges Over?
+
+- any / all asset fields that you choose to map (any field type)
+- AssetTag-relations are converted into direct relations
+- related passwords
+- related procedures
+- related photos/public_photos [photos require Hudu Version 2.41.0 or later]
+- related articles
+- attached uploads
 
 ---
 
@@ -388,4 +397,7 @@ $includeLabelInSmooshedValues = $true
 23, Feb, 2026
 
 - **v0.6** – Constants allowed as fallback value + combinatory relations on match
-5, Mar, 2026
+3, Mar, 2026
+
+- **v0.8** – Password, Photo, PublicPhoto, Upload Reattribution
+4, Mar, 2026
