@@ -1666,10 +1666,18 @@ foreach ($originalasset in $sourceassets) {
             }
         }
     }
+    if (get-command -name Set-HapiErrorsDirectory -ErrorAction SilentlyContinue){try {Set-HapiErrorsDirectory -skipRetry $false} catch {}}
 
     # relink all photos, public photos, uploads, and passwords for asset if applicable, with error handling to log any failures but continue processing rest of assets and relations
-    Write-Host "Checking for and relinking photos, public photos, uploads, and passwords for asset if applicable..."
-    $allpasswords | where-object {$_.passwordable_id -eq $originalasset.id -and $_.passwordable_type -eq 'Asset'} | ForEach-Object {
+    $relatedUploads = $null; $relatedPhotos = $null; $relatedPublicPhotos = $null; $relatedPasswords = $null;
+    $relatedPasswords = $allpasswords | where-object {$_.passwordable_id -eq $originalasset.id -and $_.passwordable_type -eq 'Asset'};
+    $relatedPhotos = $allphotos | where-object {$_.photoable_id -eq $originalasset.id -and $_.photoable_type -eq 'Asset'};
+    $relatedPublicPhotos = $allPublicPhotos | where-object {$_.record_id -eq $originalasset.id -and $_.record_type -eq 'Asset'};
+    $relateduploads = $allUploads | where-object {$_.uploadable_id -eq $originalasset.id -and $_.uploadable_type -eq 'Asset'};
+    Write-Host "Checking for and relinking photos ($($relatedPhotos.count)), public photos ($($relatedPublicPhotos.count)), uploads ($($relatedUploads.count)), and passwords ($($relatedPasswords.count)) for asset..."
+
+
+    $relatedPasswords | ForEach-Object {
         try {
             Set-HuduPassword -Id $_.id -PasswordableId $newAsset.id -PasswordableType 'Asset' -description "$($_.description)`n--Relinked to asset $($originalasset.id) from layout $($sourceassetlayout.name)"
             write-host "relinked password $($_.id) to asset $($newAsset.id)"
@@ -1678,7 +1686,7 @@ foreach ($originalasset in $sourceassets) {
             Write-ErrorObjectsToFile -ErrorObject @{Err = $_; PasswordId = $_.id; AssetId = $newAsset.id} -Name "NCPASS-$($newasset.name)"
         }
     }
-    $allphotos | where-object {$_.photoable_id -eq $originalasset.id -and $_.photoable_type -eq 'Asset'} | ForEach-Object {
+    $relatedPhotos | ForEach-Object {
         try {
             Set-HuduPhoto -Id $_.id -PhotableId $newAsset.id -PhotableType 'Asset' -caption "$($_.caption)`n--Relinked to asset $($originalasset.id) from layout $($sourceassetlayout.name)"
             write-host "relinked photo $($_.id) to asset $($newAsset.id)"
@@ -1687,7 +1695,7 @@ foreach ($originalasset in $sourceassets) {
             Write-ErrorObjectsToFile -ErrorObject @{Err = $_; PhotoId = $_.id; AssetId = $newAsset.id} -Name "NCPHOTO-$($newasset.name)"
         }
     }
-    $allPublicPhotos | where-object {$_.record_id -eq $originalasset.id -and $_.record_type -eq 'Asset'} | ForEach-Object {
+    $relatedpublicPhotos | ForEach-Object {
         try {
             Set-HuduPublicPhoto -Id $_.numeric_id -record_id $newAsset.id -PhotableType 'Asset'
             write-host "relinked public photo $($_.numeric_id) to asset $($newAsset.id)"
@@ -1696,9 +1704,9 @@ foreach ($originalasset in $sourceassets) {
             Write-ErrorObjectsToFile -ErrorObject @{Err = $_; PublicPhotoId = $_.id; AssetId = $newAsset.id} -Name "NCPUBPHOTO-$($newasset.name)"
         }
     }
-    if ($huduVersion -and $huduVersion -ge "2.41.0"){
+    if ($huduVersion -and $huduVersion -ge "2.39.0"){
         $outpath = Get-EnsuredPath -path "tempdownloads"
-        $allUploads | where-object {$_.uploadable_id -eq $originalasset.id -and $_.uploadable_type -eq 'Asset'} | ForEach-Object {
+        $relatedUploads | ForEach-Object {
             try {
                 $download = get-huduuuploads -id $_.id -download -outdir $outpath; $download = $download.upload ?? $download;
                 if ($null -ne $download.localPath){
@@ -1711,10 +1719,6 @@ foreach ($originalasset in $sourceassets) {
             }
         }
     }
-
-
-
-    if (get-command -name Set-HapiErrorsDirectory -ErrorAction SilentlyContinue){try {Set-HapiErrorsDirectory -skipRetry $false} catch {}}
 }
 Write-host "wrap-up" -ForegroundColor cyan
 $newlayoutname = $null
