@@ -1396,13 +1396,7 @@ foreach ($originalasset in $sourceassets) {
         }
     }
 
-
     $transformedFields = @()
-    if ($CONSTANTS -and $CONSTANTS.count -gt 0) {
-        foreach ($c in $CONSTANTS){
-            $transformedFields += @{$c.to_label = $c.literal}
-        }
-    }
 
     foreach ($field in $originalasset.fields) {
         # acquire destination information
@@ -1482,6 +1476,18 @@ foreach ($originalasset in $sourceassets) {
             write-host "$($field.label) => *** [masked password] for value"
         } else {
             write-host "$($field.label) => $transformedlabel for value $($field.value)"
+        }
+    }
+    if ($CONSTANTS -and $CONSTANTS.Count -gt 0) {
+        foreach ($c in $CONSTANTS) {
+
+            if (-not ($transformedFields | Where-Object {
+                $_.Keys | Where-Object { $_ -ieq $c.to_label }
+            })) {
+                $transformedFields += @{ $c.to_label = $c.literal }
+            } else {
+                write-host "constant mapping for $($c.to_label) is configured but destination field already has a value from source mapping, skipping constant value assignment of $($c.literal)"
+            }
         }
     }
 
