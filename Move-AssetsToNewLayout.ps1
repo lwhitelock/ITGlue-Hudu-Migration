@@ -1666,6 +1666,8 @@ foreach ($originalasset in $sourceassets) {
             }
         }
     }
+
+    # relink all photos, public photos, uploads, and passwords for asset if applicable, with error handling to log any failures but continue processing rest of assets and relations
     Write-Host "Checking for and relinking photos, public photos, uploads, and passwords for asset if applicable..."
     $allpasswords | where-object {$_.passwordable_id -eq $originalasset.id -and $_.passwordable_type -eq 'Asset'} | ForEach-Object {
         try {
