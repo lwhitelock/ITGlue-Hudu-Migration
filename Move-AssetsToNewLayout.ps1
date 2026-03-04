@@ -1688,7 +1688,7 @@ foreach ($originalasset in $sourceassets) {
     }
     $relatedPhotos | ForEach-Object {
         try {
-            Set-HuduPhoto -Id $_.id -PhotableId $newAsset.id -PhotableType 'Asset' -caption "$($_.caption)`n--Relinked to asset $($originalasset.id) from layout $($sourceassetlayout.name)"
+            Set-HuduPhoto -Id $_.id -photoableID $newAsset.id -photoableType 'Asset' -caption "$($_.caption)`n--Relinked to asset $($originalasset.id) from layout $($sourceassetlayout.name)"
             write-host "relinked photo $($_.id) to asset $($newAsset.id)"
             $totalcounts.photosRelinked = $totalcounts.photosRelinked+1
         } catch {
@@ -1708,7 +1708,7 @@ foreach ($originalasset in $sourceassets) {
         $outpath = Get-EnsuredPath -path "tempdownloads"
         $relatedUploads | ForEach-Object {
             try {
-                $download = get-huduuuploads -id $_.id -download -outdir $outpath; $download = $download.upload ?? $download;
+                $download = get-huduuploads -id $_.id -download -outdir $outpath; $download = $download.upload ?? $download;
                 if ($null -ne $download.localPath){
                     new-huduupload -uploadable_id $newAsset.id -uploadable_type 'Asset' -FilePath $download.localpath
                 }
