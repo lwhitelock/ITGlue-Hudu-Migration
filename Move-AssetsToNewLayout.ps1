@@ -371,6 +371,16 @@ Related $($linkable.LinkedLayout.name) - $($linkable.LinkedAsset.name)
     }
     return $description
 }
+function Get-EnsuredPath {
+    param([string]$path)
+    $outpath = if (-not $path -or [string]::IsNullOrWhiteSpace($path)) { $(join-path $(Resolve-Path .).path "debug") } else {$path}
+    if (-not (Test-Path $outpath)) {
+        Get-ChildItem -Path "$outpath" -File -Recurse -Force | Remove-Item -Force
+        New-Item -ItemType Directory -Path $outpath -Force -ErrorAction Stop | Out-Null
+        write-host "path is now present: $outpath"
+    } else {write-host "path is present: $outpath"}
+    return $outpath
+}
 function Get-HuduModule {
     param (
         [string]$HAPImodulePath = "C:\Users\$env:USERNAME\Documents\GitHub\HuduAPI\HuduAPI\HuduAPI.psm1",
@@ -1231,27 +1241,25 @@ $propertyDump
 }
 
 # init and vars
-Get-HuduModule
-Set-HuduInstance
-$CONSTANTS=@()
-$SMOOSHLABELS=@()
-$mapping=@()
+Get-HuduModule; Set-HuduInstance;
+[version]$huduVersion = [version]($(get-huduappinfo).version)
+
+$CONSTANTS=@(); $SMOOSHLABELS=@(); $mapping=@();
 $mapfile = "mapping.ps1"
+$inspectlayouts = $false; $archivesource = $false;
 # $CreateAsIPAM=$true
-$inspectlayouts = $false
-$archivesource = $false
 
+# load relatables and assets for use in mapping and transfer
+write-host "$(if ($allassets -and $null -ne $allassets) {'using existing asset cache'} else {'refreshing asset cache'})"; $allassets = $allassets ?? $(get-huduassets);
+write-host "$(if ($allPasswords -and $null -ne $allPasswords) {'using existing passwordables cache'} else {'refreshing passwordables cache'})"; $allPasswords = $allPasswords ?? $(Get-HuduPasswords);
+write-host "$(if ($allUploads -and $null -ne $allUploads) {'using existing uploadables cache'} else {'refreshing uploadables cache'})"; $allUploads = $allUploads ?? $(Get-HuduUploads);
+write-host "$(if ($allPhotos -and $null -ne $allPhotos) {'using existing photos cache'} else {'refreshing photos cache'})"; $allphotos = $allPhotos ?? $(Get-HuduPhotos);
+write-host "$(if ($allPublicPhotos -and $null -ne $allPublicPhotos) {'using existing public photos cache'} else {'refreshing public photos cache'})"; $allPublicPhotos = $allPublicPhotos ?? $(Get-HuduPublicPhotos);
+write-host "$(if ($allrelations -and $null -ne $allrelations) {'using existing relations cache'} else {'refreshing relations cache'})"; $allrelations = $allrelations ?? $(Get-HuduRelations);
+write-host "refreshing layouts cache (every time)";$assetlayouts = get-huduassetlayouts; 
 
-#simpletransfer load datas
-write-host "$(if ($allassets -and $null -ne $allassets) {'using existing asset cache'} else {'refreshing asset cache'})"
-$allassets = $allassets ?? $(get-huduassets)
-write-host "refreshing layouts cache (every time)"
-$assetlayouts = get-huduassetlayouts 
 $totallayouts = $assetlayouts.count
-write-host "$(if ($allrelations -and $null -ne $allrelations) {'using existing relations cache'} else {'refreshing relations cache'})"
-$allrelations = $allrelations ?? $(Get-HuduRelations)
 write-host "adding/calculating addtitional properties for layouts"
-
 foreach ($layout in $assetlayouts) {$layout | Add-Member -NotePropertyName assetsInLayoutCount -NotePropertyValue $($allAssets | Where-Object {$_.asset_layout_id -eq $layout.id}).count -Force}
 
 $assetlayouts=$assetlayouts # | where-object {$_.assetsInLayoutCount -gt 0}
@@ -1264,8 +1272,6 @@ $destassetlayout = $choice.DestLayout
 $MergeOnMatch = [bool]$("yes" -eq $(Select-ObjectFromList -message "if an asset in source layout $($sourceassetlayout.name) has a Name that matches a Name in dest layout $($destassetlayout.name), should we merge data from source into dest asset (yes) or do something else (no)?" -objects @("yes","no")))
 $SkipOnMatch = if ($MergeOnMatch -eq $true) {$false} else {[bool]$("yes" -eq $(Select-ObjectFromList -message "if an asset in source layout $($sourceassetlayout.name) has a Name that matches a Name in dest layout $($destassetlayout.name), should we skip adding source asset into dest (yes) or create both (no)?" -objects @("yes","no")))}
 $MergeMode = if ($MergeOnMatch -eq $true) {$(Select-Objectfromlist -message "which merge mode / approach for matching assets in destination?" -objects @('Merge-FillBlanks','Merge-PreferSource','Merge-Concat'))} else {$null}
-
-
 
 foreach ($layout in @($sourceassetlayout, $destassetlayout)){
     write-host "getting relinkable fields from layout $($layout.name)..."
@@ -1357,7 +1363,9 @@ read-host "$($($addressMapsByDest.GetEnumerator()).count) Location Types in Targ
 
 
 $totalcounts = @{fromablescreated=0; toablescreated=0; assetsarchived=0; assetsmoved=0;
-                 assetsskipped=0; assetsmatched=0; errored=0; sourceassetcount=$sourceassets.count;}
+                 assetsskipped=0; assetsmatched=0; errored=0; sourceassetcount=$sourceassets.count;
+                 uploadsRelinked = 0; photosRelinked = 0; passwordsRelinked = 0; publicPhotosRelinked = 0;
+                }
 
 # write-out user-defined infos before start
 if ($mappingtosmooshed) {write-host "Smooshing $SMOOSHLABELS => $mappingtosmooshed; $(($mapping | Where-Object { $_.from -eq 'SMOOSH' }).to)"}
@@ -1658,6 +1666,52 @@ foreach ($originalasset in $sourceassets) {
             }
         }
     }
+    Write-Host "Checking for and relinking photos, public photos, uploads, and passwords for asset if applicable..."
+    $allpasswords | where-object {$_.passwordable_id -eq $originalasset.id -and $_.passwordable_type -eq 'Asset'} | ForEach-Object {
+        try {
+            Set-HuduPassword -Id $_.id -PasswordableId $newAsset.id -PasswordableType 'Asset' -description "$($_.description)`n--Relinked to asset $($originalasset.id) from layout $($sourceassetlayout.name)"
+            write-host "relinked password $($_.id) to asset $($newAsset.id)"
+            $totalcounts.passwordsRelinked = $totalcounts.passwordsRelinked+1
+        } catch {
+            Write-ErrorObjectsToFile -ErrorObject @{Err = $_; PasswordId = $_.id; AssetId = $newAsset.id} -Name "NCPASS-$($newasset.name)"
+        }
+    }
+    $allphotos | where-object {$_.photoable_id -eq $originalasset.id -and $_.photoable_type -eq 'Asset'} | ForEach-Object {
+        try {
+            Set-HuduPhoto -Id $_.id -PhotableId $newAsset.id -PhotableType 'Asset' -caption "$($_.caption)`n--Relinked to asset $($originalasset.id) from layout $($sourceassetlayout.name)"
+            write-host "relinked photo $($_.id) to asset $($newAsset.id)"
+            $totalcounts.photosRelinked = $totalcounts.photosRelinked+1
+        } catch {
+            Write-ErrorObjectsToFile -ErrorObject @{Err = $_; PhotoId = $_.id; AssetId = $newAsset.id} -Name "NCPHOTO-$($newasset.name)"
+        }
+    }
+    $allPublicPhotos | where-object {$_.record_id -eq $originalasset.id -and $_.record_type -eq 'Asset'} | ForEach-Object {
+        try {
+            Set-HuduPublicPhoto -Id $_.numeric_id -record_id $newAsset.id -PhotableType 'Asset'
+            write-host "relinked public photo $($_.numeric_id) to asset $($newAsset.id)"
+            $totalcounts.publicPhotosRelinked = $totalcounts.publicPhotosRelinked+1
+        } catch {
+            Write-ErrorObjectsToFile -ErrorObject @{Err = $_; PublicPhotoId = $_.id; AssetId = $newAsset.id} -Name "NCPUBPHOTO-$($newasset.name)"
+        }
+    }
+    if ($huduVersion -and $huduVersion -ge "2.41.0"){
+        $outpath = Get-EnsuredPath -path "tempdownloads"
+        $allUploads | where-object {$_.uploadable_id -eq $originalasset.id -and $_.uploadable_type -eq 'Asset'} | ForEach-Object {
+            try {
+                $download = get-huduuuploads -id $_.id -download -outdir $outpath; $download = $download.upload ?? $download;
+                if ($null -ne $download.localPath){
+                    new-huduupload -uploadable_id $newAsset.id -uploadable_type 'Asset' -FilePath $download.localpath
+                }
+                write-host "relinked upload $($_.id) to asset $($newAsset.id)"
+                $totalcounts.uploadsRelinked = $totalcounts.uploadsRelinked+1
+            } catch {
+                Write-ErrorObjectsToFile -ErrorObject @{Err = $_; UploadId = $_.id; AssetId = $newAsset.id} -Name "NCUPLOAD-$($newasset.name)"
+            }
+        }
+    }
+
+
+
     if (get-command -name Set-HapiErrorsDirectory -ErrorAction SilentlyContinue){try {Set-HapiErrorsDirectory -skipRetry $false} catch {}}
 }
 Write-host "wrap-up" -ForegroundColor cyan
