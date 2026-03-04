@@ -1596,17 +1596,20 @@ foreach ($originalasset in $sourceassets) {
         $totalcounts.errored=$totalcounts.errored+1
         continue
     }
-
-    # archive new asset if original was archived
-    if ($originalasset.archived -eq $true) {
-        Set-HuduAssetArchive -CompanyId $newAsset.company_id -Id $newAsset.id -Archive $true
-        $totalcounts.assetsarchived=$totalcounts.assetsarchived+1
+    if ($null -ne $newAssetRequest.id -and $newAssetRequest.id -gt 0){
+        write-host "updated asset $($newasset.id), no need to archive matched target asset (even if the matching source was archived.)"
+    } else {
+        # archive new asset if original was archived
+        if ($originalasset.archived -eq $true) {
+            Set-HuduAssetArchive -CompanyId $newAsset.company_id -Id $newAsset.id -Archive $true
+            $totalcounts.assetsarchived=$totalcounts.assetsarchived+1
+        }
+        # archive source asset if configured to do so
+        if ($archivesource -eq $true) {
+            Set-HuduAssetArchive -CompanyId $originalasset.company_id -Id $originalasset.id -Archive $true
+            $totalcounts.assetsarchived=$totalcounts.assetsarchived+1
+        }
     }
-    # archive source asset if configured to do so
-    if ($archivesource -eq $true) {
-        Set-HuduAssetArchive -CompanyId $originalasset.company_id -Id $originalasset.id -Archive $true
-        $totalcounts.assetsarchived=$totalcounts.assetsarchived+1
-    }        
     $totalcounts.assetsmoved=$totalcounts.assetsmoved+1
     write-host "created asset $($newasset.id), adding relations now."
     # add relations
