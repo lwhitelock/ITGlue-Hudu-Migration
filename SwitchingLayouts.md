@@ -384,10 +384,8 @@ $includeLabelInSmooshedValues = $true
 ## Changelog
 - **v0.3** – Initial public draft of SwitchingLayouts.MD, 19, Nov 2025
 
-## Changelog
 - **v0.5** – Addition of merge-on-match options
 23, Feb, 2026
 
-## Changelog
 - **v0.6** – Constants allowed as fallback value + combinatory relations on match
 5, Mar, 2026
