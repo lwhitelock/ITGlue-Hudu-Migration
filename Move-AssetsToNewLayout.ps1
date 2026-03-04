@@ -1396,14 +1396,8 @@ foreach ($originalasset in $sourceassets) {
         }
     }
 
-
     $transformedFields = @()
-    if ($CONSTANTS -and $CONSTANTS.count -gt 0) {
-        foreach ($c in $CONSTANTS){
-            $transformedFields += @{$c.to_label = $c.literal}
-        }
-    }
-
+    # map fields from source to dest, applying any transformations or mappings as needed based on user input in $mapping and the field types in source/dest layouts
     foreach ($field in $originalasset.fields) {
         # acquire destination information
         $transformedlabel = $sourcedestlabels[$field.label] ?? $null
@@ -1411,28 +1405,31 @@ foreach ($originalasset in $sourceassets) {
         $stripHTML = $($sourcedestStripHTML["$($field.label)"] ?? $false)
         $destFieldType = $sourceDestDataType["$($field.label)"] ?? 'Text'
 
-        # checking basic validity
+        # checking presence + validity
         if (-not $transformedlabel -or $null -eq $transformedlabel) {write-host "no destination mapping for source field $($field.label)"; continue;}
         if (-not $field.value -or $null -eq $field.value -or ([string]::IsNullOrWhiteSpace($field.value))) {
-                write-host "no source value for $($field.label)";
-                if ($true -eq $destTranslationFieldRequired) {
-                    write-host "no value for REQUIRED $($field.label) => $transformedlabel"
-                    $field.value = $($(read-host "target field $($field.label) => $transformedlabel is required but null, enter value") ?? "None")
-                } else {
-                    write-host "no value for optional $($field.label) => $transformedlabel"
+            write-host "no source value for $($field.label)";
+            # if empty + required, make sure we either have a constant mapped or prompt user for input.
+            if ($true -eq $destTranslationFieldRequired) {
+                if ($CONSTANTS | where-object {$_.to_label -eq $transformedlabel}){
+                    write-host "constant value of $($($CONSTANTS | where-object {$_.to_label -eq $transformedlabel} | select-object -first 1).literal) configured for required field $transformedlabel, using that value for required field."
                     continue
                 }
-        # pre-process listselect source values as huyman-readable
+                write-host "no value for REQUIRED $($field.label) => $transformedlabel"
+                $field.value = $($(read-host "target field $($field.label) => $transformedlabel is required but null, enter value") ?? "None")
+            } else {
+                write-host "no value for optional $($field.label) => $transformedlabel"
+                continue
+            }
+        # pre-process listselect source values as human-readable from sources
         } elseif ($field.value -ilike '*list_id*'){
             $precastValue=$field.value;
             $listItemId = $null; 
             $listItemId = $(SafeDecode $field.value).list_ids[0]
             $humanValue = $($(get-hudulists).list_items | where-object {$_.id -eq $listItemId} | select-object -first 1).name
-
             $field.value = $humanValue
             Write-Host "non-empty source val appears to contain listIDs; Raw val '$($precastValue)' as $destFieldType... $($field.value)" -foregroundColor DarkCyan
         }
-
         # handle listselect item-level mappings if present
         if ($ListSelectEquivilencyMaps.Keys -contains $transformedlabel) {
             $valueEquivilencies = $ListSelectEquivilencyMaps[$transformedlabel]
@@ -1446,7 +1443,6 @@ foreach ($originalasset in $sourceassets) {
             if ($true -eq $stripHTML) {
                 $field.value="$(Remove-HtmlTags -InputString "$($field.value)")"
             }
-
             if ($destFieldType -eq "Number"){
                 $precastValue=$field.value; $field.value = $(Get-CastIfNumeric $field.value) ?? $(Get-CastIfNumeric $($field.value -replace '\D+', ''));
                 Write-Host "non-empty source val on Number target; Casting '$($precastValue)' as int...$($field.value)"
@@ -1459,14 +1455,9 @@ foreach ($originalasset in $sourceassets) {
             }
             $transformedFields += @{$transformedlabel = $field.value}
         } else {
+            # mapping for non-empty individual listitems [list_id => human readable user-mapping] for individual listselect source fields
             if ([string]::IsNullOrWhiteSpace($field.value)){continue}
-        # mapping for individual listitems
-            $result = Set-MappedListSelectItemFromuserMapping `
-                -Mapping $mapping `
-                -RawValue $field.value `
-                -SourceListItemMap $sourceListItemMap `
-                -FieldLabel $field.label
-
+            $result = Set-MappedListSelectItemFromuserMapping -Mapping $mapping -RawValue $field.value -SourceListItemMap $sourceListItemMap -FieldLabel $field.label
             if ($result.MatchFound) {
                 Write-Host "$transformedlabel value '$($field.value)' mapped to listselect item '$($result.Key)'"
                 $transformedFields += @{ $transformedlabel = $result.Key }
@@ -1477,11 +1468,21 @@ foreach ($originalasset in $sourceassets) {
                 $transformedFields += @{ $transformedlabel = $("$($field.value)".Trim()) }
             } else {Write-Host "No value matches for list id $($valueEquivilencies.list_id) from '$($field.value)' / '$($result.Normalized)'; not configured to add list items, so leaving empty."}
         }
-        
+        # mask logging/output for password fields but still process them
         if ($destFieldType -ilike "Password"){
             write-host "$($field.label) => *** [masked password] for value"
         } else {
             write-host "$($field.label) => $transformedlabel for value $($field.value)"
+        }
+    }
+    # handle any constants that should be applied regardless of source value presence, but only if dest field doesn't already have a value from source mapping ( to avoid clobbering )
+    if ($CONSTANTS -and $CONSTANTS.Count -gt 0) {
+        foreach ($c in $CONSTANTS) {
+            if (-not ($transformedFields | Where-Object {$_.Keys | Where-Object { $_ -ieq $c.to_label }})) {
+                $transformedFields += @{ $c.to_label = $c.literal }
+            } else {
+                write-host "constant mapping for $($c.to_label) is configured but destination field already has a value from source mapping, skipping constant value assignment of $($c.literal)"
+            }
         }
     }
 
@@ -1537,7 +1538,8 @@ foreach ($originalasset in $sourceassets) {
         AssetLayoutId   = $destassetlayout.id
     }
 
-     if ($null -ne $matchedmap -and $matchedmap.count -gt 0){
+    # Merge on match if user-elected to do so, with source and dest field values combined according to selected merge mode (fill blanks, prefer source, concat)
+    if ($null -ne $matchedmap -and $matchedmap.count -gt 0){
         write-host "Merging transformed fields with matched existing asset fields..."
         $transformedMap = Convert-FieldArrayToMap $transformedFields 
         $finalMap = Merge-HuduFieldMaps `
@@ -1548,8 +1550,7 @@ foreach ($originalasset in $sourceassets) {
     } elseif ($transformedFields -and $transformedFields.count -gt 0){
         $newAssetRequest["Fields"]=$transformedFields
         write-host $($($transformedFields | convertto-json -depth 5).ToString())
-     }
-
+    }
 
     # prepare any typical asset properties, falling back to a match if a match is present + configured for merge
     $propPairs = @(
@@ -1596,7 +1597,7 @@ foreach ($originalasset in $sourceassets) {
         continue
     }
     if ($null -ne $newAssetRequest.id -and $newAssetRequest.id -gt 0){
-        write-host "updated asset $($newasset.id), no need to re-relate or archive items outside of previous asset-tags"
+        write-host "updated asset $($newasset.id), no need to archive matched target asset (even if the matching source was archived.)"
     } else {
         # archive new asset if original was archived
         if ($originalasset.archived -eq $true) {
@@ -1607,38 +1608,39 @@ foreach ($originalasset in $sourceassets) {
         if ($archivesource -eq $true) {
             Set-HuduAssetArchive -CompanyId $originalasset.company_id -Id $originalasset.id -Archive $true
             $totalcounts.assetsarchived=$totalcounts.assetsarchived+1
-        }        
-        $totalcounts.assetsmoved=$totalcounts.assetsmoved+1
-        write-host "created asset $($newasset.id), adding relations now."
-        # add relations
-
-        $sourceToables  = $($($allrelations | where-object {$_.toable_type -eq 'Asset' -and $originalasset.id -eq $_.toable_id }) ?? @())
-        write-host "$($sourceToables.count) toable relations"
-        $sourceFromables  = $($($allrelations | where-object {$_.fromable_type -eq 'Asset' -and $originalasset.id -eq $_.fromable_id }) ?? @())
-        write-host "$($sourceFromables.count) fromable relations"
-        $relationsTo = $sourceToables | Where-Object { $_.toable_id -eq $originalasset.id }
-        
-        if (get-command -name Set-HapiErrorsDirectory -ErrorAction SilentlyContinue){try {Set-HapiErrorsDirectory -skipRetry $true} catch {}}
-        foreach ($rel in $relationsTo) {
-            try {
-                $newToable=New-HuduRelation -FromableType $rel.fromable_type -FromableId $rel.fromable_id -ToableType "Asset" -ToableId $newAsset.id
-                write-host "created toable rel $($newToable.id)"
-                $totalcounts.toablescreated= if ($newToable) {$totalcounts.toablescreated+1} else {$totalcounts.toablescreated}
-            } catch {
-                Write-ErrorObjectsToFile -ErrorObject @{Err= $_; From = $relationsFrom; To=$relationsTo} -Name "NCREL-TOABLE-$($newasset.name)"
-            }
-        }
-        $relationsFrom = $sourceFromables | Where-Object { $_.fromable_id -eq $originalasset.id }
-        foreach ($rel in $relationsFrom) {
-            try {
-                $newFromable=New-HuduRelation -FromableType "Asset" -FromableId $newAsset.id -ToableType $rel.toable_type -ToableId $rel.toable_id
-                write-host "created fromable rel $($newFromable.id)"
-                $totalcounts.fromablescreated= if ($newFromable) {$totalcounts.fromablescreated+1} else {$totalcounts.fromablescreated}
-            } catch {
-                Write-ErrorObjectsToFile -ErrorObject @{Err= $_; From = $relationsFrom; To=$relationsTo} -Name "NCREL-FROMABLE-$($newasset.name)"
-            }            
         }
     }
+    $totalcounts.assetsmoved=$totalcounts.assetsmoved+1
+    write-host "created asset $($newasset.id), adding relations now."
+    # add relations
+
+    $sourceToables  = $($($allrelations | where-object {$_.toable_type -eq 'Asset' -and $originalasset.id -eq $_.toable_id }) ?? @())
+    write-host "$($sourceToables.count) toable relations"
+    $sourceFromables  = $($($allrelations | where-object {$_.fromable_type -eq 'Asset' -and $originalasset.id -eq $_.fromable_id }) ?? @())
+    write-host "$($sourceFromables.count) fromable relations"
+    $relationsTo = $sourceToables | Where-Object { $_.toable_id -eq $originalasset.id }
+    
+    if (get-command -name Set-HapiErrorsDirectory -ErrorAction SilentlyContinue){try {Set-HapiErrorsDirectory -skipRetry $true} catch {}}
+    foreach ($rel in $relationsTo) {
+        try {
+            $newToable=New-HuduRelation -FromableType $rel.fromable_type -FromableId $rel.fromable_id -ToableType "Asset" -ToableId $newAsset.id
+            write-host "created toable rel $($newToable.id)"
+            $totalcounts.toablescreated= if ($newToable) {$totalcounts.toablescreated+1} else {$totalcounts.toablescreated}
+        } catch {
+            Write-ErrorObjectsToFile -ErrorObject @{Err= $_; From = $relationsFrom; To=$relationsTo} -Name "NCREL-TOABLE-$($newasset.name)"
+        }
+    }
+    $relationsFrom = $sourceFromables | Where-Object { $_.fromable_id -eq $originalasset.id }
+    foreach ($rel in $relationsFrom) {
+        try {
+            $newFromable=New-HuduRelation -FromableType "Asset" -FromableId $newAsset.id -ToableType $rel.toable_type -ToableId $rel.toable_id
+            write-host "created fromable rel $($newFromable.id)"
+            $totalcounts.fromablescreated= if ($newFromable) {$totalcounts.fromablescreated+1} else {$totalcounts.fromablescreated}
+        } catch {
+            Write-ErrorObjectsToFile -ErrorObject @{Err= $_; From = $relationsFrom; To=$relationsTo} -Name "NCREL-FROMABLE-$($newasset.name)"
+        }            
+    }
+
     # add assettag linking regardless of match/merge or made assets
     if ($linkableToAssetInfo -and $linkableToAssetInfo.count -gt 0){
         if (get-command -name Set-HapiErrorsDirectory -ErrorAction SilentlyContinue){try {Set-HapiErrorsDirectory -skipRetry $true} catch {}}
@@ -1677,6 +1679,4 @@ if ($true -eq $setsourceassetsarchived) {
     }
 }
 
-foreach ($entry in $totalcounts.GetEnumerator()) {
-    Write-Host "$($entry.Key): $($entry.Value)" -ForegroundColor DarkCyan
-}
+foreach ($entry in $totalcounts.GetEnumerator()) {Write-Host "$($entry.Key): $($entry.Value)" -ForegroundColor DarkCyan}
