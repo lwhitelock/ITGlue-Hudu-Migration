@@ -1250,12 +1250,13 @@ $inspectlayouts = $false; $archivesource = $false;
 # $CreateAsIPAM=$true
 
 # load relatables and assets for use in mapping and transfer
-write-host "$(if ($allassets -and $null -ne $allassets) {'using existing asset cache'} else {'refreshing asset cache'})"; $allassets = $allassets ?? $(get-huduassets);
-write-host "$(if ($allPasswords -and $null -ne $allPasswords) {'using existing passwordables cache'} else {'refreshing passwordables cache'})"; $allPasswords = $allPasswords ?? $(Get-HuduPasswords);
-write-host "$(if ($allUploads -and $null -ne $allUploads) {'using existing uploadables cache'} else {'refreshing uploadables cache'})"; $allUploads = $allUploads ?? $(Get-HuduUploads);
-write-host "$(if ($allPhotos -and $null -ne $allPhotos) {'using existing photos cache'} else {'refreshing photos cache'})"; $allphotos = $allPhotos ?? $(Get-HuduPhotos);
-write-host "$(if ($allPublicPhotos -and $null -ne $allPublicPhotos) {'using existing public photos cache'} else {'refreshing public photos cache'})"; $allPublicPhotos = $allPublicPhotos ?? $(Get-HuduPublicPhotos);
-write-host "$(if ($allrelations -and $null -ne $allrelations) {'using existing relations cache'} else {'refreshing relations cache'})"; $allrelations = $allrelations ?? $(Get-HuduRelations);
+write-host "$(if ($allassets -and $null -ne $allassets) {'refreshing existing asset cache'} else {'refreshing asset cache'}) --  (please be patient, this takes a while)"; $allassets = $(get-huduassets);
+write-host "$(if ($allPasswords -and $null -ne $allPasswords) {'refreshing existing passwordables cache'} else {'refreshing passwordables cache'})"; $allPasswords = $(Get-HuduPasswords);
+write-host "$(if ($allUploads -and $null -ne $allUploads) {'refreshing existing uploadables cache'} else {'refreshing uploadables cache'})"; $allUploads = $(Get-HuduUploads);
+write-host "$(if ($allPhotos -and $null -ne $allPhotos) {'refreshing existing photos cache'} else {'refreshing photos cache'})"; $allphotos = $(Get-HuduPhotos);
+write-host "$(if ($allPublicPhotos -and $null -ne $allPublicPhotos) {'refreshing existing public photos cache'} else {'refreshing public photos cache'})"; $allPublicPhotos = $(Get-HuduPublicPhotos);
+write-host "$(if ($allrelations -and $null -ne $allrelations) {'refreshing existing relations cache'} else {'refreshing relations cache'})"; $allrelations = $(Get-HuduRelations);
+
 write-host "refreshing layouts cache (every time)";$assetlayouts = get-huduassetlayouts; 
 
 $totallayouts = $assetlayouts.count
