@@ -465,6 +465,7 @@ if ($InitType -eq 'Full') {
 ############################ Migration Logs Path ##############################
 $MigrationLogs = $environmentSettings.MigrationLogs
 
+# Now that ITGlue export jobs require a user to elect to include passwords via checkbox, we need to check for the presence of the passwords.csv and warn user in relation to their migration strategy.
 $passwordsCSVvalidated = $false
 
 while ($passwordsCSVvalidated -eq $false) {
