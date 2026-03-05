@@ -473,8 +473,12 @@ while ($passwordsCSVvalidated -eq $false) {
         $passwordsCSVvalidated = $true
     }
     else {
-        Write-Host "passwords.csv not found at $(join-path -path $settings.ITGLueExportPath -childpath "passwords.csv"). You'll want to take another export, this time ensuring that passwords are included. Failure to do so will result in missing password data." -ForegroundColor Red
-        read-host "Press Enter to re-check for the file if you have extracted a new export to $($settings.ITGLueExportPath), or Ctrl+C to exit."
+        Write-Host "passwords.csv not found at $(join-path -path $settings.ITGLueExportPath -childpath "passwords.csv"). You'll want to take another export, this time ensuring that passwords are included. Failure to do so will result in missing password data. Passwords.csv is used in both flexible assets and passwords portions of the migration." -ForegroundColor Red
+        $overrideNoPassCSV = read-host "Press Enter to re-check for the file if you have extracted a new export to $($settings.ITGLueExportPath), or Ctrl+C to exit. To continue anyway without passwords CSV (not reccomended), please enter this phrase exactly with no quotes: 'migrate-anyway'"
+        if ($overrideNoPassCSV -ieq 'migrate-anyway') {
+            Write-Host "Continuing without passwords.csv. Password data will be missing from the migration." -ForegroundColor Yellow
+            $passwordsCSVvalidated = $true
+        }
     }
 }
 
