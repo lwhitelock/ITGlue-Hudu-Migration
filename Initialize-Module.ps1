@@ -465,6 +465,19 @@ if ($InitType -eq 'Full') {
 ############################ Migration Logs Path ##############################
 $MigrationLogs = $environmentSettings.MigrationLogs
 
+$passwordsCSVvalidated = $false
+
+while ($passwordsCSVvalidated -eq $false) {
+    if (Test-Path -Path $(join-path -path $settings.ITGLueExportPath -childpath "passwords.csv") -ErrorAction SilentlyContinue) {
+        Write-Host "Password CSV found at $(join-path -path $settings.ITGLueExportPath -childpath "passwords.csv")" -ForegroundColor Cyan
+        $passwordsCSVvalidated = $true
+    }
+    else {
+        Write-Host "passwords.csv not found at $(join-path -path $settings.ITGLueExportPath -childpath "passwords.csv"). You'll want to take another export, this time ensuring that passwords are included. Failure to do so will result in missing password data." -ForegroundColor Red
+        read-host "Press Enter to re-check for the file if you have extracted a new export to $($settings.ITGLueExportPath), or Ctrl+C to exit."
+    }
+}
+
 ############################### End of Settings ###############################
 
 ############################## Load ImageMagick ###############################
