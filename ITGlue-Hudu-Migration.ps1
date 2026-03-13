@@ -1371,28 +1371,70 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\AssetsBase.json")) {
     $MatchedAssets | ConvertTo-Json -depth 100 | Out-File "$MigrationLogs\AssetsBase.json"
     Write-TimedMessage -Timeout 3 -Message "Snapshot Point: Base Assets Created. Continue?"  -DefaultResponse "continue to Populate Assets, please."
 	}
-}
-############################### Populating Flexible Assets ###############################
-#Check for Assets Populate Resume
+}############################### Flexible Assets ###############################
+#Check for Assets Resume
 if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Assets.json")) {
-    Write-Host "Loading Previous Migration Assets"
+    Write-Host "Loading Previous Asset Migration"
     $MatchedAssets = Get-Content "$MigrationLogs\Assets.json" -raw | Out-String | ConvertFrom-Json -depth 100
     $MatchedAssetPasswords = Get-Content "$MigrationLogs\AssetPasswords.json" -raw | Out-String | ConvertFrom-Json -depth 100
     $RelationsToCreate = [System.Collections.ArrayList](Get-Content "$MigrationLogs\RelationsToCreate.json" -raw | Out-String | ConvertFrom-Json -depth 100)
     $ManualActions = [System.Collections.ArrayList](Get-Content "$MigrationLogs\ManualActions.json" -raw | Out-String | ConvertFrom-Json -depth 100)
 } else {
+    # Load raw passwords for embedded fields and future use
+    $ITGPasswordsRaw = Import-CSV -Path "$ITGLueExportPath\passwords.csv"
+    
     if ($ImportFlexibleAssets -eq $true) {
         $RelationsToCreate = [System.Collections.ArrayList]@()
+        $MatchedAssets = [System.Collections.ArrayList]@()
         $MatchedAssetPasswords = [System.Collections.ArrayList]@()
+
+        #We need to do a first pass creating empty assets with just the ITG migrated data. This builds an array we need to use to lookup relations when populating the entire assets
+        
+        #limit scope for matched layouts.
+        if ($ScopedMigration) {
+            $OriginalLayoutsCount = $($MatchedLayouts.count)
+            Write-Host "Setting layouts to those in scope..." -foregroundcolor Yellow               
+            $MatchedLayouts = Filter-ScopedAssets -Layouts $MatchedLayouts -ScopedCompanyIds $ScopedCompanyIds
+            Write-Host "Layouts scoped... $OriginalLayoutsCount => $($MatchedLayouts.count)"
+        }
+
+        Foreach ($Layout in $MatchedLayouts) {
+            Write-Host "Creating base assets for $($layout.name)"
+            foreach ($ITGAsset in $Layout.ITGAssets) {
+                # Match Company
+                $HuduCompanyID = ($MatchedCompanies | Where-Object { $_.ITGID -eq $ITGAsset.attributes.'organization-id' }).HuduID
+
+                $AssetFields = @{ 
+                    'Imported From ITGlue' = Get-Date -Format "o"
+                    'ITGlue URL' = $ITGAsset.attributes.'resource-url'
+                    'ITGlue ID' = $ITGAsset.id
+                }
+			
+                $NewHuduAsset = (New-HuduAsset -name $ITGAsset.attributes.name -company_id $HuduCompanyID -asset_layout_id $Layout.HuduObject.id -fields $AssetFields).asset
+
+                $AssetDetails = [PSCustomObject]@{
+                    "Name"       = $ITGAsset.attributes.name
+                    "ITGID"      = $ITGAsset.id
+                    "HuduID"     = $NewHuduAsset.Id
+                    "Matched"    = $false
+                    "HuduObject" = $NewHuduAsset
+                    "ITGObject"  = $ITGAsset
+                    "Imported"   = "First Pass"
+                }
+
+                $null = $MatchedAssets.add($AssetDetails)
+
+            }
 		
-		# Load raw passwords for embedded fields and future use
-		$ITGPasswordsRaw = Import-CSV -Path "$ITGLueExportPath\passwords.csv"
+        }
+	
+	
         #We now need to loop through all Assets again updating the assets to their final version
         foreach ($UpdateAsset in $MatchedAssets) {
             Write-Host "Populating $($UpdateAsset.Name)"
 		
             $AssetFields = @{ 
-                'imported_from_itglue' = Get-Date -Format "o"
+                'Imported From ITGlue' = Get-Date -Format "o"
             }
 
             $traits = $UpdateAsset.ITGObject.attributes.traits
@@ -1532,13 +1574,9 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Assets.json")) {
                         }
                         $null = $MatchedAssetPasswords.add($MigratedPassword)
                     } elseif ($field.FieldType -eq "Number") {
-                        if ($CurrentVersion -ge [version]("2.37.1")){
-                            # This version won't cast doubles for 'number' fields. It expects only integers.
-                            $coerced = Get-CastIfNumeric ($_.value -replace '[^\x09\x0A\x0D\x20-\xD7FF\xE000-\xFFFD\x10000\x10FFFF]')
-                            $null = $AssetFields.add("$($field.HuduParsedName)", [string]"$coerced")
-                        }  else {
-                            $null = $AssetFields.add("$($field.HuduParsedName)", [string]"$($($_.value) -replace '[^\x09\x0A\x0D\x20-\xD7FF\xE000-\xFFFD\x10000\x10FFFF]')")
-                        }
+                        # This version won't cast doubles for 'number' fields. It expects only integers.
+                        $coerced = Get-CastIfNumeric ($_.value -replace '[^\x09\x0A\x0D\x20-\xD7FF\xE000-\xFFFD\x10000\x10FFFF]')
+                        $null = $AssetFields.add("$($field.HuduParsedName)", [string]"$coerced")
                     } else {
                         $null = $AssetFields.add("$($field.HuduParsedName)", [string]"$($_.value)")
                     }
@@ -1546,8 +1584,11 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Assets.json")) {
                     Write-Host "Warning $ITGParsed : $ITGValues Could not be added" -ForegroundColor Red
                 }
             }
-
-            $UpdatedHuduAsset = (Set-HuduAsset -asset_id $UpdateAsset.HuduID -name $UpdateAsset.name -company_id $($UpdateAsset.HuduObject.company_id) -asset_layout_id $UpdateAsset.HuduObject.asset_layout_id -fields $AssetFields).asset
+            $CleanedAssetFields = @{}
+            $AssetFields.GetEnumerator() | ForEach-Object {
+                $CleanedAssetFields[$_.Key -replace '_', ' '] = $_.Value
+            }
+            $UpdatedHuduAsset = (Set-HuduAsset -asset_id $UpdateAsset.HuduID -name $UpdateAsset.name -company_id $($UpdateAsset.HuduObject.company_id) -asset_layout_id $UpdateAsset.HuduObject.asset_layout_id -fields $CleanedAssetFields).asset
 
             $UpdateAsset.HuduObject = $UpdatedHuduAsset
             $UpdateAsset.Imported = "Created-By-Script"
@@ -1561,8 +1602,6 @@ if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\Assets.json")) {
         Write-TimedMessage -Timeout 3 -Message "Snapshot Point: Assets Migrated Continue?" -DefaultResponse "continue to Documents/Articles, please."
     }
 }
-
-############################### Documents / Articles ###############################
 
 #Check for Article Resume
 if ($ResumeFound -eq $true -and (Test-Path "$MigrationLogs\ArticleBase.json")) {
