@@ -28,7 +28,6 @@ $ITGCompaniesFromCSV = Import-CSV (Join-Path -Path $ITGlueExportPath -ChildPath 
 $CompanyNotesToAdd = $ITGCompaniesFromCSV | Where-Object {$_.quick_notes -ne '' -or $_.alert -ne ''}
 
 Write-Host "Found $($CompanyNotesToAdd.count) Companies to update."
-Pause
 $UpdatedCompanies = foreach ($companyNotes in $CompanyNotesToAdd) {
     $CompanyToUpdate = $MatchedCompanies | Where-Object {$_.ITGID -eq $companyNotes.id}
     

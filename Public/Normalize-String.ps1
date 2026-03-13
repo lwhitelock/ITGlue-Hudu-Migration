@@ -67,6 +67,51 @@ function Normalize-Text {
     }
     ($sb.ToString()).Normalize([System.Text.NormalizationForm]::FormC)
 }
+function Test-Equiv {
+    param([string]$A, [string]$B)
+    $a = Normalize-Text $A; $b = Normalize-Text $B
+    if (-not $a -or -not $b) { return $false }
+    if ($a -eq $b) { return $true }
+    $reA = "(^| )$([regex]::Escape($a))( |$)"
+    $reB = "(^| )$([regex]::Escape($b))( |$)"
+    if ($b -match $reA -or $a -match $reB) { return $true } 
+    if ($a.Replace(' ', '') -eq $b.Replace(' ', '')) { return $true }
+    return $false
+}
+
+function remove-hudupasswordfromfolder {
+    Param (
+        [Parameter(Mandatory = $true)]
+        [Int]$Id
+    )
+    $AssetPassword = [ordered]@{asset_password = $(Get-HuduPasswords -Id $Id) }
+    $AssetPassword.asset_password | Add-Member -MemberType NoteProperty -Name password_folder_id -Force -Value $null
+    Invoke-HuduRequest -Method put -Resource "/api/v1/asset_passwords/$Id" -Body $($AssetPassword | ConvertTo-Json -Depth 10)
+}
+
+function New-HuduGlobalPasswordFolder {
+    param ([Parameter(Mandatory)] [string]$Name)
+    try {
+        $res = Invoke-HuduRequest -Method POST -Resource "/api/v1/password_folders" -Body $(@{password_folder = @{name = $Name; security = "all_users"; allowed_groups  = @()}} | ConvertTo-Json -Depth 10)
+        return $res
+    } catch {
+        Write-Warning "Failed to create new password folder '$Name'- $_"; return $null;
+    }
+}
+function Normalize-Text {
+    param([string]$s)
+    if ([string]::IsNullOrWhiteSpace($s)) { return $null }
+    $s = $s.Trim().ToLowerInvariant()
+    $s = [regex]::Replace($s, '[\s_-]+', ' ')  # "primary_email" -> "primary email"
+    # strip diacritics (prénom -> prenom)
+    $formD = $s.Normalize([System.Text.NormalizationForm]::FormD)
+    $sb = New-Object System.Text.StringBuilder
+    foreach ($ch in $formD.ToCharArray()){
+        if ([System.Globalization.CharUnicodeInfo]::GetUnicodeCategory($ch) -ne
+            [System.Globalization.UnicodeCategory]::NonSpacingMark) { [void]$sb.Append($ch) }
+    }
+    ($sb.ToString()).Normalize([System.Text.NormalizationForm]::FormC)
+}
 function Get-Similarity {
     param([string]$A, [string]$B)
 
@@ -111,8 +156,7 @@ function Get-SimilaritySafe { param([string]$A,[string]$B)
 }
 
 function ChoseBest-ByName {
-    param ([string]$Name,[array]$choices)
+    param ([string]$Name,[array]$choices,[string]$prop='name')
 return $($choices | ForEach-Object {
-[pscustomobject]@{Choice = $_; Score  = $(Get-SimilaritySafe -a "$Name" -b $_.name);}} | where-object {$_.Score -ge 0.97} | Sort-Object Score -Descending | select-object -First 1).Choice
+[pscustomobject]@{Choice = $_; Score  = $(Get-SimilaritySafe -a "$Name" -b $(if ([string]::IsNullOrEmpty($prop)){$_} else {$_.$prop}))}} | where-object {$_.Score -ge 0.97} | Sort-Object Score -Descending | select-object -First 1).Choice
 }
-

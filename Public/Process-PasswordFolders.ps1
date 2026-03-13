@@ -12,6 +12,12 @@ $PFMappings = $PFMappings ?? @{}
 # $PFMappings["Software &"]="Software & Applications"
 # $PFMappings["Software and"]="Software & Applications"
 
+function ChoseBest-ByName {
+    param ([string]$Name,[array]$choices)
+return $($choices | ForEach-Object {
+[pscustomobject]@{Choice = $_; Score  = $(Get-SimilaritySafe -a "$Name" -b $_.name);}} | where-object {$_.Score -ge 0.98} | Sort-Object Score -Descending | select-object -First 1).Choice
+}
+
 function remove-hudupasswordfromfolder {
     Param (
         [Parameter(Mandatory = $true)]
@@ -167,6 +173,56 @@ foreach ($itgcompanyID in ($matchedpasswords.ITGObject.attributes.'organization-
                 $passwordError = "error encountered assigning folder $_"
             }
             $MatchedPasswordFolders+=[PSCustomObject]@{FolderError=$FolderError; companyError=$companyError; ITGCompanyID= $itgcompanyID; HuduCompanyID=$($existingpass.company_id ?? $HuduCompanyId); ITGPasswordFolder= $passwordFolder; HuduPasswordFolder=$existingFolder; HuduPasswords=$passwordsForFolder; FolderName=$FolderName; PasswordError=$passwordError; Modified = $passChanged; existingFolderPresent=$existingFolderPresent}
+        }
+    }
+}
+
+$companyPasswordFolderAttributionMove = $companyPasswordFolderAttributionMove ?? $true
+$minCompanyPctForGlobalFolder = $minCompanyPctForGlobalFolder ?? 0.125 # defaults to 1/8th of companies with passwords as threshold for moving to global folder if using global password folder mode but allowing company attribution move
+
+if ($true -eq $companyPasswordFolderAttributionMove) {
+    $allPasswordFolders = Get-HuduPasswordFolders | Where-Object { -not $_.company_id -or $_.company_id -lt 1 }
+    $allPasswords = Get-HuduPasswords
+    $companyIdsWithAnyPasswords = $allPasswords.company_id | Where-Object { $_ -ge 1 } | Sort-Object -Unique
+    $denom = [math]::Max(1, $companyIdsWithAnyPasswords.Count)
+
+    foreach ($folder in $allPasswordFolders) {
+        $passwordsInFolder = $allPasswords | Where-Object { $_.password_folder_id -eq $folder.id }
+        $companyGroups = $passwordsInFolder.company_id | Where-Object { $_ -ge 1 } | Sort-Object -Unique
+
+        $representedPct = $companyGroups.Count / $denom
+        Write-Host ("Folder '{0}' has passwords from {1} company(ies) ({2:P1} of companies-with-passwords)" -f $folder.name, $companyGroups.Count, $representedPct)
+
+        if ($companyGroups -gt 1 -and $representedPct -lt $minCompanyPctForGlobalFolder) {
+            Write-Host ("Moving folder '{0}' because {1:P1} < threshold {2:P1}" -f $folder.name, $representedPct, $minCompanyPctForGlobalFolder)
+            foreach ($companyId in $companyGroups) {
+                Write-Host "Company $companyId has password(s) in folder '$($folder.name)'"
+
+                $companyPasswords = $passwordsInFolder | Where-Object { $_.company_id -eq $companyId }
+                $companyScopedFolder = Get-HuduPasswordFolders -CompanyId $companyId -Name $folder.name | Select-Object -First 1
+
+                if ($null -eq $companyScopedFolder) {
+                    Write-Host "Creating company-scoped folder for company $companyId for folder '$($folder.name)'"
+                    $companyScopedFolder = New-HuduPasswordFolder -CompanyId $companyId -Name $folder.name
+                    $companyScopedFolder = $companyScopedFolder.password_folder ?? $companyScopedFolder
+                } else {
+                    Write-Host "Company-scoped folder already exists for company $companyId for folder '$($folder.name)'"
+                }
+
+                Write-Host "Moving $($companyPasswords.Count) password(s) to company-scoped folder '$($companyScopedFolder.name)' for company $companyId"
+
+                foreach ($pass in $companyPasswords) {
+                    try {
+                        Set-HuduPassword -Id $pass.id -Company_Id $companyId -Password_Folder_Id $companyScopedFolder.id
+                    } catch {
+                        Write-Warning "Failed to move password id $($pass.id) to company-scoped folder '$($companyScopedFolder.name)' for company $companyId $_"
+                    }
+                }
+            }
+            write-host "Deleting global folder '$($folder.name)' since it now should have no passwords in it"
+            Remove-HuduPasswordFolder -Id $folder.id
+        } else {
+            Write-Host ("Keeping folder '{0}' because {1:P1} >= threshold {2:P1}" -f $folder.name, $representedPct, $minCompanyPctForGlobalFolder)
         }
     }
 }
