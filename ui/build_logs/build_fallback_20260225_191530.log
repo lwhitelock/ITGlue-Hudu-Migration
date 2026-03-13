@@ -1,0 +1,17 @@
+[19:15:30] Running script: C:\Users\Cameron2\Documents\Remote Support\Files\ITGlue-Hudu-MigrationWizard\ITGlue-Hudu-Wizard\ui\build_exe.ps1
+[19:15:30] Repo root: C:\Users\Cameron2\Documents\Remote Support\Files\ITGlue-Hudu-MigrationWizard\ITGlue-Hudu-Wizard
+[19:15:30] Fallback log: C:\Users\Cameron2\Documents\Remote Support\Files\ITGlue-Hudu-MigrationWizard\ITGlue-Hudu-Wizard\ui\build_logs\build_fallback_20260225_191530.log
+[19:15:30] Transcript: C:\Users\Cameron2\Documents\Remote Support\Files\ITGlue-Hudu-MigrationWizard\ITGlue-Hudu-Wizard\ui\build_logs\build_20260225_191530.log
+[19:15:30] Killing possible lockers...
+[19:15:30] Python: C:\Users\Cameron2\AppData\Local\Programs\Python\Python313\python.exe
+[19:15:30] pip upgrade: python -m pip install --upgrade pip
+[19:15:32] pip deps: python -m pip install PySide6 pyinstaller
+[19:15:34] py_compile: python -m py_compile ui\main.py
+[19:15:34] Cleaning build artifacts...
+[19:15:34] Running pyinstaller...
+[19:15:34] pyinstaller: pyinstaller --noconsole --clean --name ITGlue-Hudu-Migration-GUI ui\main.py
+[19:16:33] ✅ Built: C:\Users\Cameron2\Documents\Remote Support\Files\ITGlue-Hudu-MigrationWizard\ITGlue-Hudu-Wizard\ITGlue-Hudu-Migration-GUI.exe
+[19:16:33] Done.
+[19:17:36] Copied EXE to: C:\Users\Cameron2\Documents\Remote Support\Files\ITGlue-Hudu-MigrationWizard\ITGlue-Hudu-Wizard\ITGlue-Hudu-Migration-GUI.exe
+[19:17:41] Copied runtime folder to: C:\Users\Cameron2\Documents\Remote Support\Files\ITGlue-Hudu-MigrationWizard\ITGlue-Hudu-Wizard\_internal
+[19:17:42] Published EXE + _internal to repo root.

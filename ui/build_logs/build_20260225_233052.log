@@ -1,0 +1,37 @@
+**********************
+PowerShell transcript start
+Start time: 20260225233052
+Username: EC2AMAZ-1ARNI6V\Cameron2
+RunAs User: EC2AMAZ-1ARNI6V\Cameron2
+Configuration Name: 
+Machine: EC2AMAZ-1ARNI6V (Microsoft Windows NT 10.0.26100.0)
+Host Application: C:\Program Files\PowerShell\7\pwsh.dll -NoExit -NoProfile -ExecutionPolicy Bypass -File C:\Users\Cameron2\Documents\Remote Support\Files\ITGlue-Hudu-MigrationWizard\ITGlue-Hudu-Wizard\migrationrun.ps1 *>> C:\Users\Cameron2\Documents\Remote Support\Files\ITGlue-Hudu-MigrationWizard\ITGlue-Hudu-Wizard\migrationrun.log
+Process ID: 23496
+PSVersion: 7.5.4
+PSEdition: Core
+GitCommitId: 7.5.4
+OS: Microsoft Windows 10.0.26100
+Platform: Win32NT
+PSCompatibleVersions: 1.0, 2.0, 3.0, 4.0, 5.0, 5.1, 6.0, 7.0
+PSRemotingProtocolVersion: 2.3
+SerializationVersion: 1.1.0.1
+WSManStackVersion: 3.0
+**********************
+[23:30:52] Python: C:\Users\Cameron2\AppData\Local\Programs\Python\Python313\python.exe
+[23:30:52] Killing possible lockers...
+[23:30:52] Upgrading pip...
+Requirement already satisfied: pip in C:\Users\Cameron2\AppData\Local\Programs\Python\Python313\Lib\site-packages (26.0.1)
+[23:30:54] Installing build dependencies (PySide6, WebEngine, pyinstaller, markdown)...
+Requirement already satisfied: PySide6 in C:\Users\Cameron2\AppData\Local\Programs\Python\Python313\Lib\site-packages (6.10.2)
+[23:30:56] Preflight: python -m py_compile ui/main.py
+
+[23:30:56] Cleaning previous exe output...
+[23:30:56] Running PyInstaller...
+[23:33:37]
+[23:33:37] ❌ BUILD FAILED
+[23:33:37] Build completed but EXE not found at: C:\Users\Cameron2\Documents\Remote Support\Files\ITGlue-Hudu-MigrationWizard\ITGlue-Hudu-Wizard\exe\ITGlue-Hudu-Migration-GUI.exe
+[23:33:37] See build log: C:\Users\Cameron2\Documents\Remote Support\Files\ITGlue-Hudu-MigrationWizard\ITGlue-Hudu-Wizard\ui\build_logs\build_20260225_233052.log
+**********************
+PowerShell transcript end
+End time: 20260225233337
+**********************

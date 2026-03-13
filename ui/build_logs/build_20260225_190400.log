@@ -1,0 +1,21 @@
+**********************
+PowerShell transcript start
+Start time: 20260225190401
+Username: EC2AMAZ-1ARNI6V\Cameron2
+RunAs User: EC2AMAZ-1ARNI6V\Cameron2
+Configuration Name: 
+Machine: EC2AMAZ-1ARNI6V (Microsoft Windows NT 10.0.26100.0)
+Host Application: C:\Program Files\PowerShell\7\pwsh.dll
+Process ID: 31952
+PSVersion: 7.5.4
+PSEdition: Core
+GitCommitId: 7.5.4
+OS: Microsoft Windows 10.0.26100
+Platform: Win32NT
+PSCompatibleVersions: 1.0, 2.0, 3.0, 4.0, 5.0, 5.1, 6.0, 7.0
+PSRemotingProtocolVersion: 2.3
+SerializationVersion: 1.1.0.1
+WSManStackVersion: 3.0
+**********************
+[19:04:01] Transcript: C:\Users\Cameron2\Documents\Remote Support\Files\ITGlue-Hudu-MigrationWizard\ITGlue-Hudu-Wizard\ui\build_logs\build_20260225_190400.log
+[19:04:01] Killing possible lockers...

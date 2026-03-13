@@ -1,0 +1,35 @@
+﻿**********************
+Windows PowerShell transcript start
+Start time: 20260312185833
+Username: EC2AMAZ-1ARNI6V\CodexSandboxOffline
+RunAs User: EC2AMAZ-1ARNI6V\CodexSandboxOffline
+Configuration Name: 
+Machine: EC2AMAZ-1ARNI6V (Microsoft Windows NT 10.0.26100.0)
+Host Application: C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe -ExecutionPolicy Bypass -File ui\build_exe.ps1
+Process ID: 14304
+PSVersion: 5.1.26100.32370
+PSEdition: Desktop
+PSCompatibleVersions: 1.0, 2.0, 3.0, 4.0, 5.0, 5.1.26100.32370
+BuildVersion: 10.0.26100.32370
+CLRVersion: 4.0.30319.42000
+WSManStackVersion: 3.0
+PSRemotingProtocolVersion: 2.3
+SerializationVersion: 1.1.0.1
+**********************
+[18:58:38] Python launcher: C:\Windows\py.exe -3
+[18:58:38] Killing possible lockers...
+[18:58:38] Upgrading pip...
+[18:58:38] Installing build dependencies (PySide6, pyinstaller, markdown)...
+[18:58:38] Preflight: python -m py_compile ui/main.py
+
+[18:58:38] Cleaning build_out...
+[18:58:38] Cleaning published outputs in repo root...
+[18:58:39] Running PyInstaller (staging)...
+[18:58:39]
+[18:58:39] âŒ BUILD FAILED
+[18:58:39] Build finished but EXE not found: C:\Users\Cameron2\Documents\Remote Support\Files\ITGlue-Hudu-Wizard\ITGlue-Hudu-Wizard\ui\build_out\_stage\ITGlue-Hudu-Migration-GUI\ITGlue-Hudu-Migration-GUI.exe
+[18:58:39] See build log: C:\Users\Cameron2\Documents\Remote Support\Files\ITGlue-Hudu-Wizard\ITGlue-Hudu-Wizard\ui\build_logs\build_20260312_185831.log
+**********************
+Windows PowerShell transcript end
+End time: 20260312185839
+**********************

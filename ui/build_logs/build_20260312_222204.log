@@ -1,0 +1,54 @@
+**********************
+PowerShell transcript start
+Start time: 20260312222204
+Username: EC2AMAZ-1ARNI6V\Cameron2
+RunAs User: EC2AMAZ-1ARNI6V\Cameron2
+Configuration Name: 
+Machine: EC2AMAZ-1ARNI6V (Microsoft Windows NT 10.0.26100.0)
+Host Application: C:\Program Files\PowerShell\7\pwsh.dll
+Process ID: 7348
+PSVersion: 7.5.4
+PSEdition: Core
+GitCommitId: 7.5.4
+OS: Microsoft Windows 10.0.26100
+Platform: Win32NT
+PSCompatibleVersions: 1.0, 2.0, 3.0, 4.0, 5.0, 5.1, 6.0, 7.0
+PSRemotingProtocolVersion: 2.3
+SerializationVersion: 1.1.0.1
+WSManStackVersion: 3.0
+**********************
+[22:22:04] Python launcher: C:\Users\Cameron2\AppData\Local\Programs\Python\Python313\python.exe
+[22:22:04] Killing possible lockers...
+[22:22:04] Upgrading pip...
+Requirement already satisfied: pip in C:\Users\Cameron2\AppData\Local\Programs\Python\Python313\Lib\site-packages (26.0.1)
+[22:22:06] Installing build dependencies (PySide6, pyinstaller, markdown)...
+Requirement already satisfied: PySide6 in C:\Users\Cameron2\AppData\Local\Programs\Python\Python313\Lib\site-packages (6.10.2)
+Requirement already satisfied: pyinstaller in C:\Users\Cameron2\AppData\Local\Programs\Python\Python313\Lib\site-packages (6.19.0)
+Requirement already satisfied: markdown in C:\Users\Cameron2\AppData\Local\Programs\Python\Python313\Lib\site-packages (3.10.2)
+Requirement already satisfied: shiboken6==6.10.2 in C:\Users\Cameron2\AppData\Local\Programs\Python\Python313\Lib\site-packages (from PySide6) (6.10.2)
+Requirement already satisfied: PySide6_Essentials==6.10.2 in C:\Users\Cameron2\AppData\Local\Programs\Python\Python313\Lib\site-packages (from PySide6) (6.10.2)
+Requirement already satisfied: PySide6_Addons==6.10.2 in C:\Users\Cameron2\AppData\Local\Programs\Python\Python313\Lib\site-packages (from PySide6) (6.10.2)
+Requirement already satisfied: altgraph in C:\Users\Cameron2\AppData\Local\Programs\Python\Python313\Lib\site-packages (from pyinstaller) (0.17.5)
+Requirement already satisfied: packaging>=22.0 in C:\Users\Cameron2\AppData\Local\Programs\Python\Python313\Lib\site-packages (from pyinstaller) (26.0)
+Requirement already satisfied: pefile>=2022.5.30 in C:\Users\Cameron2\AppData\Local\Programs\Python\Python313\Lib\site-packages (from pyinstaller) (2024.8.26)
+Requirement already satisfied: pyinstaller-hooks-contrib>=2026.0 in C:\Users\Cameron2\AppData\Local\Programs\Python\Python313\Lib\site-packages (from pyinstaller) (2026.1)
+Requirement already satisfied: pywin32-ctypes>=0.2.1 in C:\Users\Cameron2\AppData\Local\Programs\Python\Python313\Lib\site-packages (from pyinstaller) (0.2.3)
+Requirement already satisfied: setuptools>=42.0.0 in C:\Users\Cameron2\AppData\Local\Programs\Python\Python313\Lib\site-packages (from pyinstaller) (82.0.0)
+[22:22:08] Preflight: python -m py_compile ui/main.py
+
+[22:22:09] Cleaning build_out...
+[22:22:09] Preparing EXE icon...
+[22:22:10] Cleaning published outputs in repo root...
+[22:22:10] Running PyInstaller (staging)...
+[22:23:50] Publishing into repo root...
+[22:23:50] Cleaning ui\build_out (post-success)...
+[22:23:50]
+[22:23:50] ✅ Build complete:
+[22:23:50]     EXE:      C:\Users\Cameron2\Documents\Remote Support\Files\ITGlue-Hudu-Wizard\new-ITGlue-Hudu-Wizard\ITGlue-Hudu-Migration-GUI.exe
+[22:23:50]     INTERNAL: C:\Users\Cameron2\Documents\Remote Support\Files\ITGlue-Hudu-Wizard\new-ITGlue-Hudu-Wizard\_internal
+[22:23:50]
+[22:23:50] Run it from: C:\Users\Cameron2\Documents\Remote Support\Files\ITGlue-Hudu-Wizard\new-ITGlue-Hudu-Wizard\ITGlue-Hudu-Migration-GUI.exe
+**********************
+PowerShell transcript end
+End time: 20260312222350
+**********************

@@ -1,0 +1,39 @@
+**********************
+PowerShell transcript start
+Start time: 20260225191129
+Username: EC2AMAZ-1ARNI6V\Cameron2
+RunAs User: EC2AMAZ-1ARNI6V\Cameron2
+Configuration Name: 
+Machine: EC2AMAZ-1ARNI6V (Microsoft Windows NT 10.0.26100.0)
+Host Application: C:\Program Files\PowerShell\7\pwsh.dll -WorkingDirectory ~
+Process ID: 12124
+PSVersion: 7.5.4
+PSEdition: Core
+GitCommitId: 7.5.4
+OS: Microsoft Windows 10.0.26100
+Platform: Win32NT
+PSCompatibleVersions: 1.0, 2.0, 3.0, 4.0, 5.0, 5.1, 6.0, 7.0
+PSRemotingProtocolVersion: 2.3
+SerializationVersion: 1.1.0.1
+WSManStackVersion: 3.0
+**********************
+[19:11:29] Transcript: C:\Users\Cameron2\Documents\Remote Support\Files\ITGlue-Hudu-MigrationWizard\ITGlue-Hudu-Wizard\ui\build_logs\build_20260225_191129.log
+[19:11:29] Killing possible lockers...
+[19:11:29] Python: C:\Users\Cameron2\AppData\Local\Programs\Python\Python313\python.exe
+[19:11:29] pip upgrade: python -m pip install --upgrade pip
+
+[19:11:31] pip deps: python -m pip install PySide6 pyinstaller
+
+[19:11:33] py_compile: python -m py_compile ui\main.py
+
+[19:11:33] Cleaning build artifacts...
+[19:11:33] Running pyinstaller...
+[19:11:33] pyinstaller: pyinstaller --noconsole --clean --name ITGlue-Hudu-Migration-GUI ui\main.py
+55519 INFO: Build complete! The results are available in: C:\Users\Cameron2\Documents\Remote Support\Files\ITGlue-Hudu-M
+igrationWizard\ITGlue-Hudu-Wizard\dist
+[19:12:29] ✅ Built: C:\Users\Cameron2\Documents\Remote Support\Files\ITGlue-Hudu-MigrationWizard\ITGlue-Hudu-Wizard\ITGlue-Hudu-Migration-GUI.exe
+[19:12:29] Done.
+**********************
+PowerShell transcript end
+End time: 20260225191230
+**********************

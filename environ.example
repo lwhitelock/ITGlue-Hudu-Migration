@@ -69,6 +69,9 @@ $customBrandedDomain        = "n"
 $resumeQuestion             = "yes"
 $reenterChoice              = "Continue"
 
+# Apply flags and flag types during the migration; requires Hudu 2.40+
+$allowSettingFlagsAndTypes  = $true
+
 # Individual Import Options, below, (1-yes, 2-no)
 $ImportCompanies            = 1
 $ImportLocations            = 1
@@ -96,8 +99,7 @@ $ScopedMigration            = 1
 $MergedOrganizationTypes    = 1
 # do you want to skip flexible asset layouts from integrators? they are generally have the phrase '(auto)' in the name
 $skipIntegratorLayouts = $true
-$OptionalImageAnchorReplace = $true # best to leave this set to 'true'. it replaces anchors to images with the image URL in Hudu.
-$allowSettingFlagsAndTypes = $false # you can set to True if you want all objects to inherit a flag type association. This can be helpful if you already have data in hudu.
+
 # pre-designated array/list of prescoped/preselected companies for scoped migration (typically for faster testing)
 # prescoped Companies
 # $Prescoped = @(

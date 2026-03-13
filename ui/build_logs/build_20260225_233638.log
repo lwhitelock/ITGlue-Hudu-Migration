@@ -1,0 +1,40 @@
+**********************
+PowerShell transcript start
+Start time: 20260225233638
+Username: EC2AMAZ-1ARNI6V\Cameron2
+RunAs User: EC2AMAZ-1ARNI6V\Cameron2
+Configuration Name: 
+Machine: EC2AMAZ-1ARNI6V (Microsoft Windows NT 10.0.26100.0)
+Host Application: C:\Program Files\PowerShell\7\pwsh.dll
+Process ID: 31292
+PSVersion: 7.5.4
+PSEdition: Core
+GitCommitId: 7.5.4
+OS: Microsoft Windows 10.0.26100
+Platform: Win32NT
+PSCompatibleVersions: 1.0, 2.0, 3.0, 4.0, 5.0, 5.1, 6.0, 7.0
+PSRemotingProtocolVersion: 2.3
+SerializationVersion: 1.1.0.1
+WSManStackVersion: 3.0
+**********************
+[23:36:38] Python: C:\Users\Cameron2\AppData\Local\Programs\Python\Python313\python.exe
+[23:36:38] Killing possible lockers...
+[23:36:38] Upgrading pip...
+Requirement already satisfied: pip in C:\Users\Cameron2\AppData\Local\Programs\Python\Python313\Lib\site-packages (26.0.1)
+[23:36:40] Installing build dependencies (PySide6, WebEngine, pyinstaller, markdown)...
+Requirement already satisfied: PySide6 in C:\Users\Cameron2\AppData\Local\Programs\Python\Python313\Lib\site-packages (6.10.2)
+[23:36:42] Preflight: python -m py_compile ui/main.py
+
+[23:36:42] Cleaning previous published output...
+[23:36:42] Running PyInstaller (staging)...
+[23:38:53] Publishing to C:\Users\Cameron2\Documents\Remote Support\Files\ITGlue-Hudu-MigrationWizard\ITGlue-Hudu-Wizard\exe ...
+[23:38:53]
+[23:38:53] ✅ Build complete:
+[23:38:53]     EXE:      C:\Users\Cameron2\Documents\Remote Support\Files\ITGlue-Hudu-MigrationWizard\ITGlue-Hudu-Wizard\exe\ITGlue-Hudu-Migration-GUI.exe
+[23:38:53]     INTERNAL: C:\Users\Cameron2\Documents\Remote Support\Files\ITGlue-Hudu-MigrationWizard\ITGlue-Hudu-Wizard\exe\_internal
+[23:38:53]
+[23:38:53] Run it from: C:\Users\Cameron2\Documents\Remote Support\Files\ITGlue-Hudu-MigrationWizard\ITGlue-Hudu-Wizard\exe\ITGlue-Hudu-Migration-GUI.exe
+**********************
+PowerShell transcript end
+End time: 20260225233853
+**********************
