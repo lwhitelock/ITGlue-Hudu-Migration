@@ -320,7 +320,7 @@ $ITGURL = $environmentSettings.ITGURL
 $InternalCompany = $environmentSettings.InternalCompany
 $PlaceInternalDocsInInternalCompany = [bool]$environmentSettings.PlaceInternalDocsInInternalCompany ?? $false
 
-$ITGLueExportPath = $environmentSettings.ITGLueExportPath
+$ITGlueExportPath = $environmentSettings.ITGLueExportPath
 
 
 # Choose if you want to resume previous attempts from the last successful section
