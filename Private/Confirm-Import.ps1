@@ -6,7 +6,7 @@ function Confirm-Import {
     )
     if ($ImportSetting -eq "S") {
         $ImportConfirm = Read-Host "Would you like to migrate: $ImportObjectName Y/n"
-        if ($ImportConfirm -ne "Y" -or $ImportConfirm -ne "y") {
+        if ($ImportConfirm -notin @("Y", "y")) {
             Write-Host "$ImportObjectName has been skipped"
             $ImportObject.imported = "Not-Migrated"
             continue

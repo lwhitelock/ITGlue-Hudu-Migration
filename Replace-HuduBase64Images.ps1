@@ -4,6 +4,9 @@ param(
     [parameter(ParameterSetName='RunSome')][int]$NumberofArticlesToLoop
 )
 
+# Convert Base64 Images into usable image file.
+
+
 # Main settings load
 . $PSScriptRoot\Initialize-Module.ps1 -InitType 'Lite'
 
@@ -86,7 +89,6 @@ $TemporaryFolderPath = try {New-Item -Path "$($ENV:APPDATA)\HuduFix" -ItemType D
 # Main script running from here, will validate parameters and process the above functions based on values.
 
 Write-Host 'Running Script'
-pause
 if ($ArticleIdsToProcess) {
 
     # Pulling specific document with base64 images from the database. This can take several minutes.
@@ -117,8 +119,19 @@ if ($InlineImageArticles) {
     Write-Host "Found articles. Processing"
     # Hudu Api Details needed for fixing documents, only load this into memory if necessary.
     ## SENSITIVE KEYS STORED HERE DO NOT SAVE OR SHARE
-    Import-Module HuduAPI
-    #New-HuduAPIKey -ApiKey <APIKEY>
+    $HAPImodulePath = "C:\Users\$env:USERNAME\Documents\GitHub\HuduAPI\HuduAPI\HuduAPI.psm1"
+    if (Test-Path $HAPImodulePath) {
+        Import-Module $HAPImodulePath -Force
+        Write-Host "Module imported from $HAPImodulePath"
+    } elseif ((Get-Module -ListAvailable -Name HuduAPI).version -ge '2.4.4') {
+        Write-Host "Module imported from $HAPImodulePath"
+        Import-Module HuduAPI
+    } else {
+        Install-Module HuduAPI -MinimumVersion 2.4.5 -Scope CurrentUser
+        Import-Module HuduAPI
+    }
+    
+    
     New-HuduAPIKey -ApiKey (Read-Host "Enter your Hudu API Key")
     #New-HuduBaseURL -BaseURL <URL>
     New-HuduBaseURL -BaseURL (Read-Host "Enter your Hudu URL")
